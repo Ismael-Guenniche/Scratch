@@ -2,6 +2,9 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.28: bienvenida con política de privacidad, ajustes básicos y permisos; targetSdk 36 (servicio multimedia, notificaciones, gesto atrás); barra de scroll en modo DJ; portada cuadrada con scratch bloqueado
+- Tutorial para publicar en Google Play y .gitignore de claves de firma
+- Documentación completa: README, funciones, modo DJ, motor de audio, arquitectura, ajustes, estilo, compilar y cambios
 - 0.27: numeración en faders DJ; hot cues, bucle/roll, slip, saltos, flanger/phaser/trans, echo out, vinyl stop, sampler, cut, reverse, vúmetro, modo disco, giro automático; interruptores en Ajustes
 - 0.26: inercia al soltar la rueda con fricción ajustable
 - 0.25: mantener el tono (keylock granular), sensibilidad, invertir sentido y vibración de la rueda

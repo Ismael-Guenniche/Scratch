@@ -88,6 +88,16 @@ public class ScratchActivity extends Activity {
         th.apply(this);
         Player.I.init(this);
         setContentView(buildUi());
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                    new android.window.OnBackInvokedCallback() {
+                        @Override
+                        public void onBackInvoked() {
+                            onBackPressed();
+                        }
+                    });
+        }
         if (state == null) {
             // Entrada: el panel sube desde abajo, como el reproductor de una app de música.
             final View content = findViewById(android.R.id.content);
@@ -232,6 +242,7 @@ public class ScratchActivity extends Activity {
             body.addView(leftCol, new LinearLayout.LayoutParams(0,
                     LinearLayout.LayoutParams.MATCH_PARENT, 1f));
             android.widget.ScrollView rs = new android.widget.ScrollView(this);
+            mainScroll = rs;
             rs.setVerticalScrollBarEnabled(false);
             rs.setOverScrollMode(View.OVER_SCROLL_NEVER);
             rs.addView(rightCol, new android.widget.FrameLayout.LayoutParams(
@@ -389,6 +400,8 @@ public class ScratchActivity extends Activity {
         sv.setFillViewport(true);
         sv.setVerticalScrollBarEnabled(false);
         sv.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        mainScroll = sv;
+        applyScrollBar();
         sv.addView(root, new android.widget.FrameLayout.LayoutParams(
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
                 android.widget.FrameLayout.LayoutParams.WRAP_CONTENT));
@@ -579,7 +592,35 @@ public class ScratchActivity extends Activity {
         return (pct >= 0 ? "+" : "") + String.format(java.util.Locale.US, "%.0f", pct) + "%";
     }
 
+    private android.widget.ScrollView mainScroll;
+
+    /** En modo DJ la pantalla es larga: barra lateral siempre visible, gruesa y con el acento. */
+    private void applyScrollBar() {
+        android.widget.ScrollView sv = mainScroll;
+        if (sv == null) {
+            return;
+        }
+        sv.setVerticalScrollBarEnabled(djMode);
+        if (djMode) {
+            sv.setScrollbarFadingEnabled(false);
+            sv.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                android.graphics.drawable.GradientDrawable thumb = new android.graphics.drawable.GradientDrawable();
+                thumb.setColor(Lucent.withAlpha(th.accent, 0.9f));
+                thumb.setCornerRadius(dp(3));
+                thumb.setSize(dp(5), dp(48));
+                android.graphics.drawable.GradientDrawable track = new android.graphics.drawable.GradientDrawable();
+                track.setColor(Lucent.withAlpha(th.ink, 0.12f));
+                track.setCornerRadius(dp(3));
+                track.setSize(dp(5), dp(48));
+                sv.setVerticalScrollbarThumbDrawable(thumb);
+                sv.setVerticalScrollbarTrackDrawable(track);
+            }
+        }
+    }
+
     private void refreshMode() {
+        applyScrollBar();
         lockBtn.set(locked ? DotIcons.LOCK : DotIcons.DISC, locked ? th.ink : th.accent);
         lockLabel.setText(locked ? "BLOQUEADA" : "SCRATCH");
         coverBtn.set(DotIcons.COVER, coverOn ? th.accent : th.ink);

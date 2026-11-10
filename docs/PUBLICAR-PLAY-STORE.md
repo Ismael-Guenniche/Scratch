@@ -6,16 +6,16 @@ Datos de requisitos comprobados en la documentación de Google (nov. 2026). Rev�
 
 ## 0. Antes de nada: lo que bloquea la publicación
 
-La app **no está lista para Play todavía**. Hay que arreglar esto primero:
+Estado en la **0.28**: ya está migrada a `targetSdk 36`, con tipo de servicio, permiso de notificaciones y bienvenida con política de privacidad. Falta lo marcado «pendiente»:
 
 | Bloqueo | Estado actual | Qué hay que hacer |
 |---|---|---|
-| **Target API** | `targetSdk 28` | Play exige **API 36 (Android 16)** para apps nuevas y actualizaciones desde el 31-08-2026. |
-| Servicio en primer plano | `PlayerService` sin tipo | Declarar `android:foregroundServiceType="mediaPlayback"` y el permiso `FOREGROUND_SERVICE_MEDIA_PLAYBACK` (obligatorio desde API 34). |
-| Notificaciones | no se pide permiso | Pedir `POST_NOTIFICATIONS` en tiempo de ejecución (API 33+) o la notificación de reproducción no aparecerá. |
-| Pantalla completa | layouts con insets propios | A partir de API 35 las apps se dibujan *edge-to-edge*; revisar márgenes de todas las pantallas. |
-| Formato de entrega | solo APK | Play exige **AAB** (Android App Bundle): `./gradlew bundleRelease`. |
-| Política de privacidad | no existe | Obligatoria (la app declara `INTERNET`). Ver §5. |
+| **Target API** | hecho: `targetSdk 36` (probar en móvil) | Play exige **API 36 (Android 16)** para apps nuevas y actualizaciones desde el 31-08-2026. |
+| Servicio en primer plano | hecho: `mediaPlayback` | Declarar `android:foregroundServiceType="mediaPlayback"` y el permiso `FOREGROUND_SERVICE_MEDIA_PLAYBACK` (obligatorio desde API 34). |
+| Notificaciones | hecho: se pide en la bienvenida | Pedir `POST_NOTIFICATIONS` en tiempo de ejecución (API 33+) o la notificación de reproducción no aparecerá. |
+| Pantalla completa | pendiente de comprobar en móvil | A partir de API 35 las apps se dibujan *edge-to-edge*; revisar márgenes de todas las pantallas. |
+| Formato de entrega | pendiente: solo APK | Play exige **AAB** (Android App Bundle): `./gradlew bundleRelease`. |
+| Política de privacidad | hecha en la app y en `docs/PRIVACIDAD.md`; falta publicarla en una URL y añadir un correo de contacto | Obligatoria (la app declara `INTERNET`). Ver §5. |
 
 Cambiar `targetSdk` de 28 a 36 afecta a permisos, servicios, orientación y almacenamiento: **es una tarea de código** (no solo cambiar un número) y hay que volver a probar en el móvil. Pídeme que la haga cuando quieras.
 

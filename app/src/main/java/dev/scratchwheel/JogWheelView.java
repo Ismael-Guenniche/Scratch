@@ -171,11 +171,26 @@ public class JogWheelView extends View {
         } else if (accent.getColor() != accentColor) {
             accent.setColor(accentColor);
         }
-        ring.setColor(touching ? accentColor : (disco ? dc : ringIdle));
-        c.drawCircle(cx, cy, r, ring);
-
         boolean showCover = coverOn && cover != null;
-        if (showCover) {
+        boolean square = showCover && locked;
+        if (!square) {
+            ring.setColor(touching ? accentColor : (disco ? dc : ringIdle));
+            c.drawCircle(cx, cy, r, ring);
+        }
+
+        if (square) {
+            // Scratch bloqueado + portada: carátula cuadrada, quieta, con esquinas redondeadas.
+            float half = r;
+            box.set(cx - half, cy - half, cx + half, cy + half);
+            clip.reset();
+            clip.addRoundRect(box, dp(22), dp(22), Path.Direction.CW);
+            c.save();
+            c.clipPath(clip);
+            c.drawBitmap(cover, null, box, bmp);
+            scrim.setColor(0x33000000);
+            c.drawRect(box, scrim);
+            c.restore();
+        } else if (showCover) {
             clip.reset();
             clip.addCircle(cx, cy, r - dp(2), Path.Direction.CW);
             c.save();
@@ -204,9 +219,11 @@ public class JogWheelView extends View {
 
         }
 
-        double m = angle - Math.PI / 2;
-        c.drawCircle(cx + (float) Math.cos(m) * r * 0.95f, cy + (float) Math.sin(m) * r * 0.95f,
-                dp(5), accent);
+        if (!square) {
+            double m = angle - Math.PI / 2;
+            c.drawCircle(cx + (float) Math.cos(m) * r * 0.95f, cy + (float) Math.sin(m) * r * 0.95f,
+                    dp(5), accent);
+        }
 
         if (showCover) {
             hubFill.setColor(0xAA000000);

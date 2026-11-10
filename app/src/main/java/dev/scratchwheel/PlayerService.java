@@ -114,7 +114,11 @@ public class PlayerService extends MediaBrowserService {
         try {
             // Siempre en primer plano mientras haya una canción cargada: así la notificación
             // se queda también en pausa y se puede reanudar desde ella.
-            startForeground(ID, n);
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                startForeground(ID, n, android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK);
+            } else {
+                startForeground(ID, n);
+            }
         } catch (RuntimeException e) {
             stopSelf();
             return START_NOT_STICKY;

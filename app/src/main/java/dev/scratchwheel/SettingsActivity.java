@@ -1,6 +1,7 @@
 package dev.scratchwheel;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.graphics.drawable.GradientDrawable;
@@ -310,6 +311,28 @@ public class SettingsActivity extends Activity {
                     }
                 }));
 
+        // PERMISOS Y PRIVACIDAD
+        c = card(list, "PERMISOS Y PRIVACIDAD");
+        c.addView(muted("Scratch solo lee la carpeta de música que eliges (sin permiso de almacenamiento amplio) "
+                + "y usa notificaciones para los controles de reproducción."));
+        c.addView(actionRow("Notificaciones", "ABRIR", new Runnable() {
+            @Override
+            public void run() {
+                Intent i = new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+                i.putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, getPackageName());
+                startActivity(i);
+            }
+        }));
+        c.addView(dots());
+        c.addView(actionRow("Política de privacidad", "LEER", new Runnable() {
+            @Override
+            public void run() {
+                new DotDialog(SettingsActivity.this, th).title("PRIVACIDAD")
+                        .message(Privacy.text() + "\n\nVersión " + Privacy.VERSION + " · " + Privacy.DATE)
+                        .button("CERRAR", Lucent.GLASS, null).show();
+            }
+        }));
+
         // TEMPORIZADOR
         int left = Player.I.sleepMinutes();
         c = card(list, "TEMPORIZADOR DE APAGADO");
@@ -392,7 +415,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.27");
+        about.setText("SCRATCH 0.28");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);
@@ -544,6 +567,25 @@ public class SettingsActivity extends Activity {
             lp.rightMargin = dp(8);
             row.addView(b, lp);
         }
+        return row;
+    }
+
+    private View actionRow(String label, String action, final Runnable r) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(8), 0, dp(4));
+        row.addView(body(label), new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        TextView b = th.chip(this, action, false, 18);
+        b.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                r.run();
+            }
+        });
+        row.addView(b, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT));
         return row;
     }
 

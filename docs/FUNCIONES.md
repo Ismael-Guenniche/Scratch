@@ -2,6 +2,14 @@
 
 Guía pantalla por pantalla.
 
+## Primer inicio (bienvenida)
+Al abrir la app por primera vez (o si cambia la versión de la política) aparece `OnboardingActivity`:
+1. **Privacidad:** se muestra la política completa; hay que pulsar «ACEPTO» para continuar («NO ACEPTO» cierra la app).
+2. **Aspecto:** tema SISTEMA / CLARO / OSCURO y color de acento.
+3. **Avisos:** permiso de notificaciones (Android 13+) para los controles de reproducción.
+4. **Música:** elegir la carpeta con el selector del sistema (sin permisos de almacenamiento amplios) o hacerlo más tarde.
+La política puede releerse en Ajustes → Permisos y privacidad ([PRIVACIDAD.md](PRIVACIDAD.md)).
+
 ## Inicio
 Primera pantalla (`HomeView`).
 - Tarjeta **REPRODUCIENDO** con lo último que sonaba; tócala para abrir la rueda.
@@ -24,7 +32,7 @@ Primera pantalla (`HomeView`).
 - Transporte: anterior, retroceso rápido, play/pausa, avance rápido, siguiente. **Mantener** retroceso/avance mueve a 1,5× con audio; deslizar el dedo ajusta la velocidad (0,5×–4×) con un globo con barra.
 - Chips: **modo** (estándar/DJ), **aleatorio**, **scratch/bloqueada** (la rueda solo gira), **portada/puntos**.
 - Modo estándar: volumen del sistema y velocidad de reproducción (±20 %).
-- **Portada** incrustada del archivo en lugar del plato de puntos (opcional).
+- **Portada** incrustada del archivo en lugar del plato de puntos (opcional). Con **scratch bloqueado** la portada se muestra **cuadrada y sin girar**.
 - Vibración suave cada pocos grados al girar.
 - Giro automático vertical/horizontal.
 - Ver [MODO-DJ.md](MODO-DJ.md) para el panel DJ.

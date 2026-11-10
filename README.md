@@ -4,7 +4,7 @@ Reproductor de música **local** para Android (MP3, WAV y los formatos que decod
 
 Sin cuentas, sin streaming, sin anuncios. Tu música, tu carpeta, tu rueda.
 
-> **Versión actual: 0.27 (beta).** La lógica del motor de audio se prueba con tests sin Android (`tools/Check.java`); la interfaz se ha ido probando en un Nothing Phone (4a).
+> **Versión actual: 0.28 (beta).** La lógica del motor de audio se prueba con tests sin Android (`tools/Check.java`); la interfaz se ha ido probando en un Nothing Phone (4a).
 
 ## Lo esencial
 
@@ -33,6 +33,7 @@ Sin cuentas, sin streaming, sin anuncios. Tu música, tu carpeta, tu rueda.
 | [docs/IMPORTAR-SPOTIFY.md](docs/IMPORTAR-SPOTIFY.md) | Importar listas de Spotify |
 | [docs/ANDROID-AUTO.md](docs/ANDROID-AUTO.md) | Activar Android Auto |
 | [docs/PUBLICAR-PLAY-STORE.md](docs/PUBLICAR-PLAY-STORE.md) | Tutorial para publicar en Google Play |
+| [docs/PRIVACIDAD.md](docs/PRIVACIDAD.md) | Política de privacidad |
 | [docs/CAMBIOS.md](docs/CAMBIOS.md) | Historial de versiones |
 
 ## Compilar en 30 segundos

@@ -131,11 +131,36 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        if (OnboardingActivity.needed(this)) {
+            // primer inicio (o política nueva): bienvenida antes de nada
+            startActivity(new Intent(this, OnboardingActivity.class));
+            finish();
+            return;
+        }
         th = Lucent.load(this);
         th.apply(this);
         Player.I.init(this);
         setContentView(buildUi());
         handleSpotifyIntent(getIntent());
+        backCallback();
+        if (Lucent.prefs(this).getBoolean("pick_pending", false)) {
+            Lucent.prefs(this).edit().putBoolean("pick_pending", false).apply();
+            pickFolder();
+        }
+    }
+
+    /** Con targetSdk 36 el sistema ya no llama a onBackPressed: se registra el gesto atrás a mano. */
+    private void backCallback() {
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                    android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                    new android.window.OnBackInvokedCallback() {
+                        @Override
+                        public void onBackInvoked() {
+                            onBackPressed();
+                        }
+                    });
+        }
     }
 
     @Override

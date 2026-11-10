@@ -4,14 +4,14 @@ plugins {
 
 android {
     namespace 'dev.scratchwheel'
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId 'dev.scratchwheel'
         minSdk 24
-        targetSdk 28
-        versionCode 27
-        versionName '0.27'
+        targetSdk 36
+        versionCode 28
+        versionName '0.28'
     }
 
     compileOptions {

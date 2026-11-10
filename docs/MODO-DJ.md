@@ -50,5 +50,8 @@ Cuatro sonidos **sintetizados al vuelo** (no son archivos): BOCINA (acorde de on
 - **Vúmetro:** 32 puntos que se encienden con el nivel de salida, con memoria de pico; los últimos se ponen rojos.
 - **Modo disco** (apagado por defecto): el aro y los puntos de la rueda y el vúmetro cambian de color y pulsan con el volumen.
 
+## Barra de scroll
+El panel DJ es largo: en modo DJ aparece una **barra lateral siempre visible** (con el acento) para desplazarte por la pantalla.
+
 ## Rotación
 En horizontal, la rueda ocupa la columna izquierda y los controles (incluido el panel DJ) van en una columna con scroll a la derecha.

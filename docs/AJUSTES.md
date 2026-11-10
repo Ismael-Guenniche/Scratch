@@ -41,6 +41,11 @@ Interruptor por grupo de funciones; apagado = el grupo no aparece en el panel.
 
 Estado interno: `djmode` (modo DJ activo), `slip_on` (botón SLIP).
 
+## Permisos y privacidad
+- **Notificaciones:** abre los ajustes de notificaciones del sistema para Scratch.
+- **Política de privacidad:** lectura dentro de la app.
+Claves internas de la bienvenida: `privacy_ok` (versión de la política aceptada), `onboarded`, `pick_pending` (abrir el selector de carpeta al entrar).
+
 ## Temporizador de apagado
 NO / 15 / 30 / 60 / 90 min.
 
