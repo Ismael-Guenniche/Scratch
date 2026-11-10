@@ -1193,7 +1193,9 @@ final class Player {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                final List<Track> found = Library.scan(app, tree, new Library.Progress() {
+                List<Track> got;
+                try {
+                    got = Library.scan(app, tree, new Library.Progress() {
                     @Override
                     public void onCount(final int n) {
                         if (n % 50 == 0) {
@@ -1206,7 +1208,13 @@ final class Player {
                             });
                         }
                     }
-                });
+                    });
+                } catch (Throwable t) {
+                    Library.fail(t);
+                    Library.buildReport(tree, 0, 0);
+                    got = new ArrayList<Track>();
+                }
+                final List<Track> found = got;
                 main.post(new Runnable() {
                     @Override
                     public void run() {
@@ -1232,7 +1240,7 @@ final class Player {
         scanning = false;
         scanCount = found.size();
         if (found.isEmpty()) {
-            toast("No se encontró audio en esa carpeta");
+            toast("No se encontró audio · mira MENÚ → DIAGNÓSTICO");
             changed();
             return;
         }

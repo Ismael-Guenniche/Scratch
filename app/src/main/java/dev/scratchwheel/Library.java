@@ -31,6 +31,64 @@ final class Library {
     private Library() {
     }
 
+    /** Resultado del último escaneo, para entender por qué una biblioteca sale vacía. */
+    static volatile String report = "Aún no se ha escaneado nada.";
+    private static int rFolders;
+    private static int rEntries;
+    private static int rNullCursor;
+    private static int rDeepCut;
+    private static final java.util.TreeMap<String, Integer> rOther = new java.util.TreeMap<String, Integer>();
+    private static final ArrayList<String> rErrors = new ArrayList<String>();
+
+    private static void err(String where, Throwable t) {
+        if (rErrors.size() < 4) {
+            rErrors.add(where + ": " + t.getClass().getSimpleName() + " " + t.getMessage());
+        }
+    }
+
+    static void fail(Throwable t) {
+        err("escaneo", t);
+    }
+
+    static void buildReport(Uri tree, int audio, long ms) {
+        StringBuilder b = new StringBuilder();
+        b.append("Carpeta: ").append(labelFor(tree)).append('\n');
+        b.append("Carpetas leídas: ").append(rFolders).append('\n');
+        b.append("Archivos vistos: ").append(rEntries).append('\n');
+        b.append("Audio encontrado: ").append(audio).append('\n');
+        b.append("Tiempo: ").append(ms / 1000.0).append(" s\n");
+        if (rNullCursor > 0) {
+            b.append("Carpetas ilegibles (sin permiso): ").append(rNullCursor).append('\n');
+        }
+        if (rDeepCut > 0) {
+            b.append("Carpetas omitidas por profundidad: ").append(rDeepCut).append('\n');
+        }
+        if (audio == 0 && !rOther.isEmpty()) {
+            b.append("Otros tipos vistos: ");
+            int k = 0;
+            for (java.util.Map.Entry<String, Integer> e : rOther.entrySet()) {
+                if (k++ >= 6) {
+                    break;
+                }
+                b.append(e.getKey()).append(" x").append(e.getValue()).append("  ");
+            }
+            b.append('\n');
+        }
+        for (String e : rErrors) {
+            b.append("Error ").append(e).append('\n');
+        }
+        if (audio == 0) {
+            if (rFolders == 0 || rNullCursor > 0 || !rErrors.isEmpty()) {
+                b.append("Pista: la app no puede leer esa carpeta. Elígela de nuevo con ELEGIR CARPETA.\n");
+            } else if (rEntries == 0) {
+                b.append("Pista: la carpeta está vacía para Android. Prueba con la carpeta Music o una subcarpeta.\n");
+            } else {
+                b.append("Pista: hay archivos pero ninguno es audio conocido.\n");
+            }
+        }
+        report = b.toString().trim();
+    }
+
     static String labelFor(Uri tree) {
         try {
             String id = DocumentsContract.getTreeDocumentId(tree);
@@ -42,11 +100,20 @@ final class Library {
 
     static List<Player.Track> scan(Context c, Uri tree, Progress p) {
         ArrayList<Player.Track> out = new ArrayList<Player.Track>();
+        rFolders = 0;
+        rEntries = 0;
+        rNullCursor = 0;
+        rDeepCut = 0;
+        rOther.clear();
+        rErrors.clear();
+        long t0 = System.currentTimeMillis();
         try {
             String root = DocumentsContract.getTreeDocumentId(tree);
             walk(c.getContentResolver(), tree, root, out, p, 0);
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException e) {
+            err("raíz", e);
         }
+        buildReport(tree, out.size(), System.currentTimeMillis() - t0);
         Collections.sort(out, new Comparator<Player.Track>() {
             @Override
             public int compare(Player.Track a, Player.Track b) {
@@ -58,9 +125,11 @@ final class Library {
 
     private static void walk(ContentResolver cr, Uri tree, String docId, List<Player.Track> out,
                              Progress p, int depth) {
-        if (depth > 12) {
+        if (depth > 24) {
+            rDeepCut++;
             return;
         }
+        rFolders++;
         Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(tree, docId);
         ArrayList<String> dirs = new ArrayList<String>();
         Cursor cur = null;
@@ -70,6 +139,7 @@ final class Library {
                     DocumentsContract.Document.COLUMN_DISPLAY_NAME,
                     DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null);
             if (cur == null) {
+                rNullCursor++;
                 return;
             }
             while (cur.moveToNext()) {
@@ -79,15 +149,22 @@ final class Library {
                 if (id == null) {
                     continue;
                 }
+                rEntries++;
                 if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
                     dirs.add(id);
                 } else if (isAudio(name, mime)) {
                     String shown = name == null ? id : stripExt(name);
                     out.add(new Player.Track(DocumentsContract.buildDocumentUriUsingTree(tree, id), shown));
                     p.onCount(out.size());
+                } else if (name != null && rOther.size() < 30) {
+                    int dot = name.lastIndexOf('.');
+                    String ext = dot >= 0 ? name.substring(dot).toLowerCase(Locale.ROOT) : "(sin ext)";
+                    Integer old = rOther.get(ext);
+                    rOther.put(ext, old == null ? 1 : old + 1);
                 }
             }
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException e) {
+            err("carpeta", e);
         } finally {
             if (cur != null) {
                 cur.close();

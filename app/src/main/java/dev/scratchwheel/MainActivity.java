@@ -895,7 +895,7 @@ public class MainActivity extends Activity {
 
     private void showMainMenu(View anchor) {
         DotMenu.show(this, th, anchor,
-                new String[] {"ELEGIR CARPETA", "RESCANEAR", "ABRIR ARCHIVO", "IMPORTAR DE SPOTIFY", "FALTANTES", "AJUSTES"},
+                new String[] {"ELEGIR CARPETA", "RESCANEAR", "ABRIR ARCHIVO", "IMPORTAR DE SPOTIFY", "FALTANTES", "DIAGNÓSTICO", "AJUSTES"},
                 new DotMenu.Picked() {
                     @Override
                     public void onPick(int id) {
@@ -914,6 +914,13 @@ public class MainActivity extends Activity {
                             chooseImportMethod();
                         } else if (id == 4) {
                             showMissing(Imports.missing(MainActivity.this, Player.I.tracks));
+                        } else if (id == 5) {
+                            String head = "Canciones en la biblioteca: " + Player.I.tracks.size()
+                                    + (Player.I.isScanning() ? "\nEscaneando… " + Player.I.scanCount() : "")
+                                    + "\nCarpeta guardada: " + (Player.I.hasLibraryFolder() ? "sí" : "no") + "\n\n";
+                            new DotDialog(MainActivity.this, th).title("DIAGNÓSTICO")
+                                    .message(head + Library.report)
+                                    .button("CERRAR", Lucent.GLASS, null).show();
                         } else {
                             startActivity(new Intent(MainActivity.this, SettingsActivity.class));
                         }
