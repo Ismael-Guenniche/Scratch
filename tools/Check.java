@@ -3,6 +3,7 @@ import dev.scratchwheel.DotFont;
 import dev.scratchwheel.DemoTrack;
 import dev.scratchwheel.PcmData;
 import dev.scratchwheel.ScratchEngine;
+import dev.scratchwheel.SeekSpeed;
 import dev.scratchwheel.WavParser;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -232,14 +233,31 @@ public class Check {
             e4.render(buf, 256);
         }
         double s1 = e4.getPositionSeconds();
-        ok(s1 - s0 > 0.4, "avance rápido en pausa: +" + (s1 - s0) + " s con sonido");
+        ok(s1 - s0 > 0.25, "avance rápido en pausa: +" + (s1 - s0) + " s con sonido");
         double energyFf = energy(buf, 256);
         ok(energyFf > 50, "avance rápido: suena (energía " + energyFf + ")");
+        // la barra del globo: cambiar la velocidad en caliente (0,5x lento, 4x rápido)
+        e4.setSeekSpeed(4.0);
+        double f0 = e4.getPositionSeconds();
+        for (int i = 0; i < 50; i++) {
+            e4.render(buf, 256);
+        }
+        double fFast = e4.getPositionSeconds() - f0;
+        e4.setSeekSpeed(0.5);
+        f0 = e4.getPositionSeconds();
+        for (int i = 0; i < 50; i++) {
+            e4.render(buf, 256);
+        }
+        double fSlow = e4.getPositionSeconds() - f0;
+        ok(fFast > fSlow * 3, "avance con barra: 4x (" + fFast + " s) mucho más que 0,5x (" + fSlow + " s)");
+        ok(Math.abs(SeekSpeed.forDrag(100f, 1f) - 4.0) < 1e-9 && Math.abs(SeekSpeed.forDrag(-100f, 1f) - 0.5) < 1e-9
+                && Math.abs(SeekSpeed.forDrag(0f, 1f) - 1.5) < 1e-9, "barra: 0 = 1,5x, derecha = 4x, izquierda = 0,5x");
+        double beforeRew = e4.getPositionSeconds();
         e4.setSeek(-1);
         for (int i = 0; i < 80; i++) {
             e4.render(buf, 256);
         }
-        ok(e4.getPositionSeconds() < s1, "rebobinado rápido: retrocede");
+        ok(e4.getPositionSeconds() < beforeRew, "rebobinado rápido: retrocede");
         e4.setSeek(0);
         for (int i = 0; i < 400; i++) {
             e4.render(buf, 256);

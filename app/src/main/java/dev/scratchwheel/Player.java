@@ -737,6 +737,10 @@ final class Player {
         engine.touchUp();
     }
 
+    void seekSpeed(double mag) {
+        engine.setSeekSpeed(mag);
+    }
+
     void seekHold(int dir) {
         engine.setSeek(dir);
         if (dir != 0) {

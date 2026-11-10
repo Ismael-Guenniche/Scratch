@@ -778,17 +778,46 @@ public class ScratchActivity extends Activity {
         });
     }
 
-    private void holdToSeek(View b, final int dir) {
+    /**
+     * Avance/retroceso rápido a 1,5×. Si se mantiene pulsado, aparece un globo con una barra:
+     * mover el dedo a la derecha acelera y a la izquierda frena.
+     */
+    private void holdToSeek(final View b, final int dir) {
+        final Handler h = new Handler(Looper.getMainLooper());
+        final SeekPopup pop = new SeekPopup(this, th);
+        final float[] down = new float[1];
+        final boolean[] shown = new boolean[1];
+        final Runnable show = new Runnable() {
+            @Override
+            public void run() {
+                shown[0] = true;
+                pop.show(b);
+            }
+        };
+        final float density = getResources().getDisplayMetrics().density;
         b.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent e) {
                 switch (e.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
                         v.setPressed(true);
+                        down[0] = e.getRawX();
+                        shown[0] = false;
                         Player.I.seekHold(dir);
+                        h.postDelayed(show, 400);
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        if (shown[0]) {
+                            double s = SeekSpeed.forDrag(e.getRawX() - down[0], density);
+                            Player.I.seekSpeed(s);
+                            pop.set(s);
+                        }
                         return true;
                     case MotionEvent.ACTION_UP:
                     case MotionEvent.ACTION_CANCEL:
+                        h.removeCallbacks(show);
+                        pop.dismiss();
+                        shown[0] = false;
                         v.setPressed(false);
                         Player.I.seekHold(0);
                         return true;

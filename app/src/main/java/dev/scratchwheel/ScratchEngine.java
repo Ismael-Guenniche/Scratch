@@ -15,7 +15,7 @@ public final class ScratchEngine {
     /** Una vuelta completa de la rueda = 1,8 s de audio (33 1/3 rpm). */
     public static final double SECONDS_PER_REV = 1.8;
     private static final double MAX_RATE = 12.0;
-    private static final double SEEK_RATE = 3.0;
+    private static final double SEEK_RATE = 1.5;
     /** Constante de tiempo del arranque y duración del frenado al dar a play/pausa, en segundos. */
     private static final double SPIN_UP = 0.12;
     private static final double SPIN_DOWN = 0.7;
@@ -40,6 +40,7 @@ public final class ScratchEngine {
     private double filter;
     private double echo;
     private double spinDown = SPIN_DOWN;
+    private double seekMag = SEEK_RATE;
     private int backspinLeft;
     private int backspinTotal;
     private boolean fxActive;
@@ -248,7 +249,18 @@ public final class ScratchEngine {
 
     /** Avance/retroceso rápido con audio: -1, 0 o 1. */
     public synchronized void setSeek(int dir) {
-        seek = Integer.signum(dir) * SEEK_RATE;
+        if (dir == 0) {
+            seekMag = SEEK_RATE;
+        }
+        seek = Integer.signum(dir) * seekMag;
+    }
+
+    /** Cambia la velocidad del avance rápido en curso (0,5× a 4×). */
+    public synchronized void setSeekSpeed(double mag) {
+        seekMag = Math.max(0.25, Math.min(5.0, mag));
+        if (seek != 0) {
+            seek = Math.signum(seek) * seekMag;
+        }
     }
 
     public synchronized void touchDown() {
