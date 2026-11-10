@@ -50,6 +50,7 @@ public class MainActivity extends Activity {
     private static final int TAB_RECENT = 4;
     private static final int TAB_TOP = 5;
     private static final int TAB_ARTIST = 6;
+    private static final int TAB_HOME = 7;
     private String artistSel = "";
 
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -66,7 +67,8 @@ public class MainActivity extends Activity {
     private DotIconView barPlay;
     private LineView barLine;
 
-    private int tab = TAB_ALL;
+    private int tab = TAB_HOME;
+    private HomeView home;
     private int metaStamp;
     private String folderSel = "";
     private String listSel = "";
@@ -446,6 +448,20 @@ public class MainActivity extends Activity {
         });
         panel.addView(search);
 
+        home = new HomeView(this, th, new HomeView.Host() {
+            @Override
+            public void play(List<Integer> idxs, int pos) {
+                Player.I.playFrom(new ArrayList<Integer>(idxs), pos);
+            }
+
+            @Override
+            public void open(String what) {
+                openFromHome(what);
+            }
+        });
+        panel.addView(home, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+
         list = new ListView(this);
         list.setDivider(new ColorDrawable(th.ghost));
         list.setDividerHeight(1);
@@ -650,13 +666,73 @@ public class MainActivity extends Activity {
     public void onBackPressed() {
         if (searchOpen) {
             toggleSearch();
+        } else if (tab != TAB_HOME) {
+            tab = TAB_HOME;
+            refilter();
         } else {
             super.onBackPressed();
         }
     }
 
+    /** Accesos de la pantalla de inicio. */
+    private void openFromHome(String what) {
+        final Player p = Player.I;
+        if (what.equals("ALL")) {
+            tab = TAB_ALL;
+        } else if (what.equals("FAVS")) {
+            tab = TAB_FAVS;
+        } else if (what.equals("RECENT")) {
+            tab = TAB_RECENT;
+        } else if (what.equals("TOP")) {
+            tab = TAB_TOP;
+        } else if (what.startsWith("LIST:")) {
+            tab = TAB_LIST;
+            listSel = what.substring(5);
+        } else if (what.equals("SHUFFLE")) {
+            if (p.tracks.isEmpty()) {
+                return;
+            }
+            ArrayList<Integer> all = new ArrayList<Integer>();
+            for (int i = 0; i < p.tracks.size(); i++) {
+                all.add(i);
+            }
+            p.setShuffle(true);
+            p.playFrom(all, new java.util.Random().nextInt(all.size()));
+            return;
+        } else if (what.equals("MISSING")) {
+            showMissing(Imports.missing(this, p.tracks));
+            return;
+        } else if (what.equals("FOLDERS")) {
+            TreeMap<String, Integer> fs = new TreeMap<String, Integer>(String.CASE_INSENSITIVE_ORDER);
+            for (String f : folderOf) {
+                Integer n = fs.get(f);
+                fs.put(f, n == null ? 1 : n + 1);
+            }
+            final ArrayList<String> keys = new ArrayList<String>(fs.keySet());
+            String[] labels = new String[keys.size()];
+            for (int i = 0; i < labels.length; i++) {
+                labels[i] = (keys.get(i).length() == 0 ? "RAÍZ" : keys.get(i).toUpperCase(Locale.ROOT))
+                        + "  " + fs.get(keys.get(i));
+            }
+            new DotDialog(this, th).title("CARPETAS").options(labels, new DotMenu.Picked() {
+                @Override
+                public void onPick(int id) {
+                    tab = TAB_FOLDER;
+                    folderSel = keys.get(id);
+                    refilter();
+                }
+            }).button("CERRAR", Lucent.GLASS, null).show();
+            return;
+        }
+        refilter();
+    }
+
     private void toggleSearch() {
         searchOpen = !searchOpen;
+        if (searchOpen && tab == TAB_HOME) {
+            tab = TAB_ALL;
+            refilter();
+        }
         android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager)
                 getSystemService(INPUT_METHOD_SERVICE);
         if (searchOpen) {
@@ -709,7 +785,9 @@ public class MainActivity extends Activity {
         buildChips();
         String q = search == null ? "" : search.getText().toString().trim().toLowerCase(Locale.ROOT);
         shown.clear();
-        if (tab == TAB_LIST) {
+        if (tab == TAB_HOME) {
+            // el inicio no usa la lista
+        } else if (tab == TAB_LIST) {
             for (String u : Playlists.I.uris(listSel)) {
                 Integer i = uriIndex.get(u);
                 if (i != null && matches(i, q)) {
@@ -750,14 +828,19 @@ public class MainActivity extends Activity {
             }
         }
         boolean none = p.count() == 0 && !p.isScanning();
+        boolean isHome = tab == TAB_HOME;
         empty.setVisibility(none ? View.VISIBLE : View.GONE);
-        list.setVisibility(none ? View.GONE : View.VISIBLE);
+        list.setVisibility(none || isHome ? View.GONE : View.VISIBLE);
+        home.setVisibility(none || !isHome ? View.GONE : View.VISIBLE);
+        if (isHome && !none) {
+            home.refresh();
+        }
         if (none) {
             search.setVisibility(View.GONE);
         }
         if (p.isScanning()) {
             status.setText("ESCANEANDO… " + p.scanCount());
-        } else if (p.count() == 0) {
+        } else if (p.count() == 0 || isHome) {
             status.setText("");
         } else {
             status.setText(shown.size() + " CANCIONES"
@@ -782,6 +865,13 @@ public class MainActivity extends Activity {
         }
         chipKey = key;
         chips.removeAllViews();
+        addChip("INICIO", tab == TAB_HOME, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tab = TAB_HOME;
+                refilter();
+            }
+        });
         addChip("CANCIONES", tab == TAB_ALL, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
