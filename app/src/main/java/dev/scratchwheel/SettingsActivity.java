@@ -154,6 +154,49 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
+        c.addView(switchRow("Mantener el tono",
+                "Al mover la rueda rápido o lento el tono no sube ni baja (el audio se estira en vez de acelerarse). También aplica al control de velocidad.",
+                prefs.getBoolean("keylock", false), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("keylock", v).apply();
+                        Player.I.applyWheelPrefs();
+                    }
+                }));
+        c.addView(dots());
+        c.addView(body("Sensibilidad de la rueda"));
+        c.addView(segmented(new String[] {"LENTA", "NORMAL", "RÁPIDA"}, prefs.getInt("wsens", 1),
+                new Pick() {
+                    @Override
+                    public void on(int v) {
+                        prefs.edit().putInt("wsens", v).apply();
+                        Player.I.applyWheelPrefs();
+                        redo();
+                    }
+                }));
+        TextView sensNote = muted("Cuánto audio recorre una vuelta: lenta = más preciso, rápida = más recorrido.");
+        sensNote.setPadding(0, dp(8), 0, 0);
+        c.addView(sensNote);
+        c.addView(dots());
+        c.addView(switchRow("Invertir el sentido",
+                "Girar en sentido horario hace retroceder el audio, como en algunos platos.",
+                prefs.getBoolean("winvert", false), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("winvert", v).apply();
+                        Player.I.applyWheelPrefs();
+                    }
+                }));
+        c.addView(dots());
+        c.addView(switchRow("Vibración al girar",
+                "Un toque suave cada pocos grados, como los pasos de un dial.",
+                prefs.getBoolean("haptic", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("haptic", v).apply();
+                    }
+                }));
+        c.addView(dots());
         c.addView(switchRow("Bloquear scratch",
                 "La rueda solo gira; el centro sigue haciendo play y pausa.",
                 prefs.getBoolean("wlock", false), true, new Toggle() {
@@ -245,7 +288,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.24");
+        about.setText("SCRATCH 0.25");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);

@@ -280,6 +280,7 @@ public class ScratchActivity extends Activity {
         locked = Lucent.prefs(this).getBoolean("wlock", false);
         coverOn = Lucent.prefs(this).getBoolean("cover", false);
         wheel.setLocked(locked);
+        wheel.setHaptic(Lucent.prefs(this).getBoolean("haptic", true));
         wheel.setCoverOn(coverOn);
         LinearLayout wheelCard = card();
         wheelCard.setPadding(dp(8), dp(8), dp(8), dp(8));
@@ -969,7 +970,7 @@ public class ScratchActivity extends Activity {
         }
         ScratchEngine e = Player.I.engine;
         double pos = e.getPositionSeconds();
-        wheel.setAngle((float) (pos / ScratchEngine.SECONDS_PER_REV * 2 * Math.PI));
+        wheel.setAngle((float) (pos / Player.I.engine.getSecondsPerRev() * 2 * Math.PI * (Player.I.engine.isInverted() ? -1 : 1)));
         double total = e.getDurationSeconds();
         if (!dragging && total > 0) {
             progress.setProgress((int) Math.round(pos / total * 1000));

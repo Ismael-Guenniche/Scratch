@@ -45,6 +45,12 @@ public class JogWheelView extends View {
     private boolean locked;
     private boolean coverOn;
     private Listener listener;
+    private boolean haptic = true;
+    private double hapticAcc;
+
+    public void setHaptic(boolean on) {
+        haptic = on;
+    }
     private float angle;
     private boolean touching;
     private boolean hubDown;
@@ -228,6 +234,13 @@ public class JogWheelView extends View {
                     d += TWO_PI;
                 }
                 lastTouchAngle = a;
+                if (haptic) {
+                    hapticAcc += Math.abs(d);
+                    if (hapticAcc >= 0.30) {
+                        hapticAcc = 0;
+                        performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+                    }
+                }
                 if (listener != null && d != 0) {
                     listener.onRotate(d);
                 }

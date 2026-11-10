@@ -533,6 +533,54 @@ public class Check {
             ok(st.rankOf("a") == 1, "Stats: rankOf");
             ok(Stats.duration(2700).equals("45 M"), "Stats: duration " + Stats.duration(2700));
         }
+
+        // ---- Mantener el tono: con pitch 1.5 el tono sube sin keylock y se mantiene con keylock
+        {
+            int sr = 44100;
+            int fr = sr * 10;
+            short[] sine = new short[fr * 2];
+            for (int i = 0; i < fr; i++) {
+                short v = (short) (12000 * Math.sin(2 * Math.PI * 440.0 * i / sr));
+                sine[2 * i] = v;
+                sine[2 * i + 1] = v;
+            }
+            String sw = dir + "/sine.wav";
+            writeWav(sw, sine, fr, sr);
+            PcmData sp;
+            try (FileInputStream in = new FileInputStream(sw)) {
+                sp = WavParser.parse(in);
+            }
+            double[] hz = new double[2];
+            for (int k = 0; k < 2; k++) {
+                ScratchEngine se = new ScratchEngine();
+                se.setOutputRate(44100);
+                se.load(sp);
+                se.setPitch(1.5);
+                se.setKeyLock(k == 1);
+                se.setPlaying(true);
+                short[] b = new short[512];
+                for (int i = 0; i < 60; i++) {
+                    se.render(b, 256); // arranque
+                }
+                int cross = 0;
+                int frames = 0;
+                short prev = 0;
+                for (int i = 0; i < 300; i++) {
+                    se.render(b, 256);
+                    for (int j = 0; j < 256; j++) {
+                        short v = b[2 * j];
+                        if (prev < 0 && v >= 0) {
+                            cross++;
+                        }
+                        prev = v;
+                    }
+                    frames += 256;
+                }
+                hz[k] = cross / (frames / 44100.0);
+            }
+            ok(hz[0] > 600 && hz[0] < 720, "sin keylock a 1.5x el tono sube (" + hz[0] + " Hz)");
+            ok(hz[1] > 410 && hz[1] < 470, "con keylock a 1.5x el tono se mantiene (" + hz[1] + " Hz)");
+        }
         System.out.println(fails == 0 ? "TODO OK" : (fails + " FALLOS"));
         System.exit(fails == 0 ? 0 : 1);
     }

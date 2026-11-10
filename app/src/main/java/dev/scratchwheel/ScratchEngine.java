@@ -25,6 +25,18 @@ public final class ScratchEngine {
     private int sampleRate = 44100;
     private int outRate = 44100;
 
+    // ----- ajustes de la rueda
+    private double secPerRev = SECONDS_PER_REV;
+    private boolean invert;
+    private boolean keyLock;
+    private static final int MAXG = 4;
+    private final double[] gPos = new double[MAXG];
+    private final double[] gDir = new double[MAXG];
+    private final int[] gAge = new int[MAXG];
+    private final boolean[] gOn = new boolean[MAXG];
+    private int hopCnt;
+    private double lastDir = 1;
+
     private double pos;
     private double rate;
     private double scratchTarget;
@@ -263,6 +275,38 @@ public final class ScratchEngine {
         }
     }
 
+    /** Segundos de audio por vuelta de la rueda (menos = más sensible). */
+    public synchronized void setSecondsPerRev(double s) {
+        secPerRev = Math.max(0.3, Math.min(10, s));
+    }
+
+    public synchronized double getSecondsPerRev() {
+        return secPerRev;
+    }
+
+    public synchronized void setInvert(boolean inv) {
+        invert = inv;
+    }
+
+    public synchronized boolean isInverted() {
+        return invert;
+    }
+
+    /** Mantener el tono: el audio se lee en granos a velocidad normal, así que mover la rueda no cambia el tono. */
+    public synchronized void setKeyLock(boolean on) {
+        if (keyLock != on) {
+            keyLock = on;
+            for (int g = 0; g < MAXG; g++) {
+                gOn[g] = false;
+            }
+            hopCnt = 0;
+        }
+    }
+
+    public synchronized boolean isKeyLock() {
+        return keyLock;
+    }
+
     public synchronized void touchDown() {
         scratching = true;
         scratchTarget = pos;
@@ -272,7 +316,7 @@ public final class ScratchEngine {
         if (!scratching) {
             return;
         }
-        scratchTarget += radians / (2 * Math.PI) * SECONDS_PER_REV * sampleRate;
+        scratchTarget += (invert ? -radians : radians) / (2 * Math.PI) * secPerRev * sampleRate;
         scratchTarget = Math.max(0, Math.min(Math.max(frames - 1, 0), scratchTarget));
     }
 
@@ -361,15 +405,23 @@ public final class ScratchEngine {
                 out[2 * i + 1] = 0;
                 continue;
             }
-            int i0 = (int) pos;
-            double f = pos - i0;
-            int im = Math.max(i0 - 1, 0);
-            int ip = Math.min(i0 + 1, last);
-            int ip2 = Math.min(i0 + 2, last);
             double g = Math.min(1.0, Math.abs(rate) * 8.0) * volume;
-            double vl = cubic(data[2 * im], data[2 * i0], data[2 * ip], data[2 * ip2], f) * g;
-            double vr = cubic(data[2 * im + 1], data[2 * i0 + 1], data[2 * ip + 1],
-                    data[2 * ip2 + 1], f) * g;
+            double vl;
+            double vr;
+            if (keyLock) {
+                double[] s = grains(ratio, last);
+                vl = s[0] * g;
+                vr = s[1] * g;
+            } else {
+                int i0 = (int) pos;
+                double f = pos - i0;
+                int im = Math.max(i0 - 1, 0);
+                int ip = Math.min(i0 + 1, last);
+                int ip2 = Math.min(i0 + 2, last);
+                vl = cubic(data[2 * im], data[2 * i0], data[2 * ip], data[2 * ip2], f) * g;
+                vr = cubic(data[2 * im + 1], data[2 * i0 + 1], data[2 * ip + 1],
+                        data[2 * ip2 + 1], f) * g;
+            }
             if (fxActive) {
                 tmp[0] = vl;
                 tmp[1] = vr;
@@ -380,6 +432,60 @@ public final class ScratchEngine {
             out[2 * i] = clip(vl);
             out[2 * i + 1] = clip(vr);
         }
+    }
+
+    private final double[] gOut = new double[2];
+
+    /**
+     * Síntesis granular (OLA con ventana Hann y solape del 50 %): cada grano suena a velocidad normal
+     * (hacia delante o hacia atrás según la rueda), así que el tono no cambia aunque la posición avance
+     * más rápido o más lento.
+     */
+    private double[] grains(double ratio, int last) {
+        int len = Math.max(64, (int) (0.05 * outRate));
+        int hop = len / 2;
+        if (hopCnt <= 0) {
+            if (Math.abs(rate) > 0.02) {
+                lastDir = rate > 0 ? 1 : -1;
+            }
+            int slot = -1;
+            for (int k = 0; k < MAXG; k++) {
+                if (!gOn[k]) {
+                    slot = k;
+                    break;
+                }
+            }
+            if (slot >= 0) {
+                double half = len * ratio / 2.0;
+                gPos[slot] = pos - lastDir * half;
+                gDir[slot] = lastDir;
+                gAge[slot] = 0;
+                gOn[slot] = true;
+            }
+            hopCnt = hop;
+        }
+        hopCnt--;
+        double l = 0;
+        double r = 0;
+        for (int k = 0; k < MAXG; k++) {
+            if (!gOn[k]) {
+                continue;
+            }
+            double w = 0.5 * (1 - Math.cos(2 * Math.PI * gAge[k] / len));
+            double p = Math.max(0, Math.min(last, gPos[k]));
+            int i0 = (int) p;
+            int i1 = Math.min(i0 + 1, last);
+            double f = p - i0;
+            l += w * (data[2 * i0] + (data[2 * i1] - data[2 * i0]) * f);
+            r += w * (data[2 * i0 + 1] + (data[2 * i1 + 1] - data[2 * i0 + 1]) * f);
+            gPos[k] += gDir[k] * ratio;
+            if (++gAge[k] >= len) {
+                gOn[k] = false;
+            }
+        }
+        gOut[0] = l;
+        gOut[1] = r;
+        return gOut;
     }
 
     private static double cubic(double y0, double y1, double y2, double y3, double f) {

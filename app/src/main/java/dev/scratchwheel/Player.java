@@ -176,6 +176,7 @@ final class Player {
         }
         engine.setOutputRate(outRate);
         engine.setPitch(prefs.getFloat("pitch", 1f));
+        applyWheelPrefs();
         PowerManager pm = (PowerManager) app.getSystemService(Context.POWER_SERVICE);
         wake = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "scratch:play");
         wake.setReferenceCounted(false);
@@ -819,6 +820,15 @@ final class Player {
     }
 
     // ------------------------------------------------- rueda y avance rápido
+
+    /** Lee los ajustes de la rueda (Ajustes → Rueda) y los aplica al motor. */
+    void applyWheelPrefs() {
+        android.content.SharedPreferences sp = Lucent.prefs(app);
+        engine.setKeyLock(sp.getBoolean("keylock", false));
+        int sens = sp.getInt("wsens", 1);
+        engine.setSecondsPerRev(sens == 0 ? 3.6 : sens == 2 ? 0.9 : ScratchEngine.SECONDS_PER_REV);
+        engine.setInvert(sp.getBoolean("winvert", false));
+    }
 
     void touchDown() {
         engine.touchDown();
