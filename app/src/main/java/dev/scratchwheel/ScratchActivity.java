@@ -361,7 +361,7 @@ public class ScratchActivity extends Activity {
                 return false;
             }
         });
-        c.addView(icon, new LinearLayout.LayoutParams(dp(38), dp(38)));
+        c.addView(icon, new LinearLayout.LayoutParams(dp(40), dp(40)));
         label.setSingleLine(true);
         label.setGravity(Gravity.CENTER);
         c.addView(label);
@@ -377,7 +377,7 @@ public class ScratchActivity extends Activity {
     /** Segunda tarjeta, separada de la botonera: aleatorio, bloqueo de la rueda, carátula y volumen. */
     private View buildOptions() {
         LinearLayout card = card();
-        card.setPadding(dp(10), dp(10), dp(16), dp(10));
+        card.setPadding(0, 0, 0, dp(10));
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         clp.topMargin = dp(10);
@@ -429,15 +429,15 @@ public class ScratchActivity extends Activity {
                 setDjMode(!djMode);
             }
         });
-        opts.addView(modeChip, new LinearLayout.LayoutParams(0, dp(72), 1f));
-        opts.addView(shuffleChip, new LinearLayout.LayoutParams(0, dp(72), 1f));
-        opts.addView(lockChip, new LinearLayout.LayoutParams(0, dp(72), 1f));
-        opts.addView(coverChip, new LinearLayout.LayoutParams(0, dp(72), 1f));
+        opts.addView(modeChip, new LinearLayout.LayoutParams(0, dp(96), 1f));
+        opts.addView(shuffleChip, new LinearLayout.LayoutParams(0, dp(96), 1f));
+        opts.addView(lockChip, new LinearLayout.LayoutParams(0, dp(96), 1f));
+        opts.addView(coverChip, new LinearLayout.LayoutParams(0, dp(96), 1f));
         card.addView(opts);
 
         LinearLayout vol = row();
         vol.setGravity(Gravity.CENTER_VERTICAL);
-        vol.setPadding(dp(6), 0, 0, 0);
+        vol.setPadding(dp(20), dp(2), dp(22), 0);
         DotIconView vi = icon(DotIcons.VOL, th.ink2);
         vol.addView(vi, new LinearLayout.LayoutParams(dp(30), dp(30)));
         audio = (android.media.AudioManager) getSystemService(AUDIO_SERVICE);
@@ -468,7 +468,7 @@ public class ScratchActivity extends Activity {
 
         LinearLayout pr = row();
         pr.setGravity(Gravity.CENTER_VERTICAL);
-        pr.setPadding(dp(6), dp(4), 0, 0);
+        pr.setPadding(dp(20), dp(4), dp(22), 0);
         pr.addView(icon(DotIcons.PITCH, th.ink2), new LinearLayout.LayoutParams(dp(30), dp(30)));
         pitchBar = new SeekBar(this);
         th.styleSeek(pitchBar);

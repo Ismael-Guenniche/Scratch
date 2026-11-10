@@ -7,7 +7,8 @@
 
     <application
         android:allowBackup="false"
-        android:icon="@drawable/ic_launcher"
+        android:icon="@mipmap/ic_a1"
+        android:roundIcon="@mipmap/ic_a1"
         android:label="Scratch"
         android:largeHeap="true"
         android:theme="@android:style/Theme.Material.Wallpaper.NoTitleBar">
@@ -31,7 +32,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="true"
             android:exported="true"
-            android:icon="@drawable/ic_icon1"
+            android:icon="@mipmap/ic_a1"
             android:label="Scratch">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -44,7 +45,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@drawable/ic_icon2"
+            android:icon="@mipmap/ic_a2"
             android:label="Scratch">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -57,7 +58,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@drawable/ic_icon3"
+            android:icon="@mipmap/ic_a3"
             android:label="Scratch">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -70,7 +71,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@drawable/ic_icon4"
+            android:icon="@mipmap/ic_a4"
             android:label="Scratch">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -83,7 +84,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@drawable/ic_icon5"
+            android:icon="@mipmap/ic_a5"
             android:label="Scratch">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -96,7 +97,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@drawable/ic_icon6"
+            android:icon="@mipmap/ic_a6"
             android:label="Scratch">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -109,7 +110,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@drawable/ic_icon7"
+            android:icon="@mipmap/ic_a7"
             android:label="Scratch">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -122,7 +123,7 @@
             android:targetActivity=".MainActivity"
             android:enabled="false"
             android:exported="true"
-            android:icon="@drawable/ic_icon8"
+            android:icon="@mipmap/ic_a8"
             android:label="Scratch">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

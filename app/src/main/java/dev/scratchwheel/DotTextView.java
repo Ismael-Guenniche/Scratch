@@ -48,8 +48,9 @@ public class DotTextView extends View {
 
     @Override
     protected void onMeasure(int wSpec, int hSpec) {
-        int w = dots ? (int) Math.ceil(DotFont.cols(text) * cell) : (int) Math.ceil(textWidth());
-        int h = (int) Math.ceil(DotFont.ROWS * cell);
+        int w = (dots ? (int) Math.ceil(DotFont.cols(text) * cell) : (int) Math.ceil(textWidth()))
+                + getPaddingLeft() + getPaddingRight();
+        int h = (int) Math.ceil(DotFont.ROWS * cell) + getPaddingTop() + getPaddingBottom();
         setMeasuredDimension(resolveSize(w, wSpec), resolveSize(h, hSpec));
     }
 
@@ -60,6 +61,7 @@ public class DotTextView extends View {
 
     @Override
     protected void onDraw(Canvas c) {
+        c.translate(getPaddingLeft(), getPaddingTop());
         if (!dots) {
             // Modo Mono / Clean: texto normal con la misma altura que la matriz de puntos.
             on.setTextSize(cell * 7f);
