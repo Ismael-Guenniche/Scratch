@@ -32,7 +32,7 @@ final class Library {
     }
 
     /** Resultado del último escaneo, para entender por qué una biblioteca sale vacía. */
-    static volatile String report = "Aún no se ha escaneado nada.";
+    static volatile String report = Tr.t("Aún no se ha escaneado nada.");
     private static int rFolders;
     private static int rEntries;
     private static int rNullCursor;
@@ -52,19 +52,19 @@ final class Library {
 
     static void buildReport(Uri tree, int audio, long ms) {
         StringBuilder b = new StringBuilder();
-        b.append("Carpeta: ").append(labelFor(tree)).append('\n');
-        b.append("Carpetas leídas: ").append(rFolders).append('\n');
-        b.append("Archivos vistos: ").append(rEntries).append('\n');
-        b.append("Audio encontrado: ").append(audio).append('\n');
-        b.append("Tiempo: ").append(ms / 1000.0).append(" s\n");
+        b.append(Tr.t("Carpeta: ")).append(labelFor(tree)).append('\n');
+        b.append(Tr.t("Carpetas leídas: ")).append(rFolders).append('\n');
+        b.append(Tr.t("Archivos vistos: ")).append(rEntries).append('\n');
+        b.append(Tr.t("Audio encontrado: ")).append(audio).append('\n');
+        b.append(Tr.t("Tiempo: ")).append(ms / 1000.0).append(" s\n");
         if (rNullCursor > 0) {
-            b.append("Carpetas ilegibles (sin permiso): ").append(rNullCursor).append('\n');
+            b.append(Tr.t("Carpetas ilegibles (sin permiso): ")).append(rNullCursor).append('\n');
         }
         if (rDeepCut > 0) {
-            b.append("Carpetas omitidas por profundidad: ").append(rDeepCut).append('\n');
+            b.append(Tr.t("Carpetas omitidas por profundidad: ")).append(rDeepCut).append('\n');
         }
         if (audio == 0 && !rOther.isEmpty()) {
-            b.append("Otros tipos vistos: ");
+            b.append(Tr.t("Otros tipos vistos: "));
             int k = 0;
             for (java.util.Map.Entry<String, Integer> e : rOther.entrySet()) {
                 if (k++ >= 6) {
@@ -79,11 +79,11 @@ final class Library {
         }
         if (audio == 0) {
             if (rFolders == 0 || rNullCursor > 0 || !rErrors.isEmpty()) {
-                b.append("Pista: la app no puede leer esa carpeta. Elígela de nuevo con ELEGIR CARPETA.\n");
+                b.append(Tr.t("Pista: la app no puede leer esa carpeta. Elígela de nuevo con ELEGIR CARPETA.\n"));
             } else if (rEntries == 0) {
-                b.append("Pista: la carpeta está vacía para Android. Prueba con la carpeta Music o una subcarpeta.\n");
+                b.append(Tr.t("Pista: la carpeta está vacía para Android. Prueba con la carpeta Music o una subcarpeta.\n"));
             } else {
-                b.append("Pista: hay archivos pero ninguno es audio conocido.\n");
+                b.append(Tr.t("Pista: hay archivos pero ninguno es audio conocido.\n"));
             }
         }
         report = b.toString().trim();
@@ -94,7 +94,7 @@ final class Library {
             String id = DocumentsContract.getTreeDocumentId(tree);
             return id.replace(':', '/');
         } catch (RuntimeException e) {
-            return "CARPETA";
+            return Tr.t("CARPETA");
         }
     }
 
@@ -111,7 +111,7 @@ final class Library {
             String root = DocumentsContract.getTreeDocumentId(tree);
             walk(c.getContentResolver(), tree, root, out, p, 0);
         } catch (RuntimeException e) {
-            err("raíz", e);
+            err(Tr.t("raíz"), e);
         }
         buildReport(tree, out.size(), System.currentTimeMillis() - t0);
         Collections.sort(out, new Comparator<Player.Track>() {
@@ -158,7 +158,7 @@ final class Library {
                     p.onCount(out.size());
                 } else if (name != null && rOther.size() < 30) {
                     int dot = name.lastIndexOf('.');
-                    String ext = dot >= 0 ? name.substring(dot).toLowerCase(Locale.ROOT) : "(sin ext)";
+                    String ext = dot >= 0 ? name.substring(dot).toLowerCase(Locale.ROOT) : Tr.t("(sin ext)");
                     Integer old = rOther.get(ext);
                     rOther.put(ext, old == null ? 1 : old + 1);
                 }

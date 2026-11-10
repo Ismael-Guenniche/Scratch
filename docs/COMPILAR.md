@@ -7,7 +7,9 @@ Requisitos: **JDK 17+**, **Android Gradle Plugin 8.10**, **Gradle 8.14**, **comp
 2. Activa la depuración USB en el móvil y pulsa *Run*.
 3. En la pantalla de inicio y en Ajustes debe verse la versión («BETA 0.27» / «SCRATCH 0.27»); si no, estás ejecutando una build antigua.
 
-Por línea de comandos: `./gradlew assembleDebug` (necesita `local.properties` con `sdk.dir`).
+Hay dos sabores (*product flavors*): **`play`** (el que se publica; sin japonés) y **`personal`** (uso propio; añade el japonés experimental). En Android Studio se elige en *Build Variants* (`personalDebug`, `playDebug`, `playRelease`).
+
+Por línea de comandos: `./gradlew assemblePersonalDebug` (o `assemblePlayDebug`) (necesita `local.properties` con `sdk.dir`).
 
 > La versión de la app está en `app/build.gradle` (`versionCode` / `versionName`); súbela en cada entrega para distinguir builds.
 

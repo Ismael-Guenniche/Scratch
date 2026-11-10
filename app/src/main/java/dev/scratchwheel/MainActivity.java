@@ -174,11 +174,11 @@ public class MainActivity extends Activity {
 
     /** Elige cómo traer las listas: con tu cuenta (API oficial) o desde un archivo CSV/M3U. */
     private void chooseImportMethod() {
-        new DotDialog(this, th).title("IMPORTAR DE SPOTIFY")
-                .message("Elige cómo traer tus listas. Después se emparejan con tus archivos.")
-                .options(new String[] {"CON MI CUENTA · API OFICIAL (PREMIUM)",
-                        "SIN PREMIUM · SESIÓN WEB (EXPERIMENTAL)",
-                        "DESDE ARCHIVO · CSV O M3U"}, new DotMenu.Picked() {
+        new DotDialog(this, th).title(Tr.t("IMPORTAR DE SPOTIFY"))
+                .message(Tr.t("Elige cómo traer tus listas. Después se emparejan con tus archivos."))
+                .options(new String[] {Tr.t("CON MI CUENTA · API OFICIAL (PREMIUM)"),
+                        Tr.t("SIN PREMIUM · SESIÓN WEB (EXPERIMENTAL)"),
+                        Tr.t("DESDE ARCHIVO · CSV O M3U")}, new DotMenu.Picked() {
                     @Override
                     public void onPick(int w) {
                         if (w == 0) {
@@ -194,7 +194,7 @@ public class MainActivity extends Activity {
                             startActivityForResult(i, REQ_CSV);
                         }
                     }
-                }).button("CANCELAR", Lucent.GLASS, null).show();
+                }).button(Tr.t("CANCELAR"), Lucent.GLASS, null).show();
     }
 
     private void handleSpotifyIntent(Intent in) {
@@ -232,11 +232,11 @@ public class MainActivity extends Activity {
             final DotDialog dd = new DotDialog(this, th).title("SPOTIFY · CLIENT ID")
                     .message("1) developer.spotify.com/dashboard → Create app.\n"
                             + "2) Redirect URI: " + SpotifyApi.REDIRECT + "\n"
-                            + "3) En User Management añade tu email.\n"
-                            + "4) Pega aquí el Client ID.");
+                            + Tr.t("3) En User Management añade tu email.\n")
+                            + Tr.t("4) Pega aquí el Client ID."));
             final EditText et = dd.input("Client ID");
-            dd.button("CANCELAR", Lucent.GLASS, null);
-            dd.button("GUARDAR", Lucent.ACCENT, new Runnable() {
+            dd.button(Tr.t("CANCELAR"), Lucent.GLASS, null);
+            dd.button(Tr.t("GUARDAR"), Lucent.ACCENT, new Runnable() {
                 @Override
                 public void run() {
                     if (et.getText().toString().trim().length() > 0) {
@@ -252,7 +252,7 @@ public class MainActivity extends Activity {
             try {
                 startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(SpotifyApi.loginUrl(this))));
             } catch (Exception e) {
-                Toast.makeText(this, "No se pudo abrir el navegador", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, Tr.t("No se pudo abrir el navegador"), Toast.LENGTH_LONG).show();
             }
             return;
         }
@@ -260,7 +260,7 @@ public class MainActivity extends Activity {
     }
 
     private void fetchPlaylistsDialog() {
-        Toast.makeText(this, "Leyendo tus listas…", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, Tr.t("Leyendo tus listas…"), Toast.LENGTH_SHORT).show();
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -289,7 +289,7 @@ public class MainActivity extends Activity {
 
     private void choosePlaylists(final java.util.List<SpotifyApi.Pl> pls) {
         if (pls.isEmpty()) {
-            Toast.makeText(this, "No hay listas", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, Tr.t("No hay listas"), Toast.LENGTH_SHORT).show();
             return;
         }
         String[] names = new String[pls.size()];
@@ -297,15 +297,15 @@ public class MainActivity extends Activity {
         for (int i = 0; i < names.length; i++) {
             names[i] = pls.get(i).name;
         }
-        new DotDialog(this, th).title("ELIGE LISTAS").multi(names, on)
-                .button("CERRAR SESIÓN", Lucent.GLASS, new Runnable() {
+        new DotDialog(this, th).title(Tr.t("ELIGE LISTAS")).multi(names, on)
+                .button(Tr.t("CERRAR SESIÓN"), Lucent.GLASS, new Runnable() {
                     @Override
                     public void run() {
                         SpotifyApi.logout(MainActivity.this);
                     }
                 })
-                .button("CANCELAR", Lucent.GLASS, null)
-                .button("IMPORTAR", Lucent.ACCENT, new Runnable() {
+                .button(Tr.t("CANCELAR"), Lucent.GLASS, null)
+                .button(Tr.t("IMPORTAR"), Lucent.ACCENT, new Runnable() {
                     @Override
                     public void run() {
                         ArrayList<SpotifyApi.Pl> sel = new ArrayList<SpotifyApi.Pl>();
@@ -323,7 +323,7 @@ public class MainActivity extends Activity {
         if (sel.isEmpty()) {
             return;
         }
-        Toast.makeText(this, "Importando…", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, Tr.t("Importando…"), Toast.LENGTH_SHORT).show();
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -335,7 +335,7 @@ public class MainActivity extends Activity {
                     try {
                         java.util.List<SpotifyImport.Row> rows = SpotifyApi.items(MainActivity.this, pl.id);
                         if (rows.isEmpty()) {
-                            report.append(pl.name).append(": sin acceso a sus canciones (¿no es tuya?)\n");
+                            report.append(pl.name).append(Tr.t(": sin acceso a sus canciones (¿no es tuya?)\n"));
                             continue;
                         }
                         Imports.save(MainActivity.this, pl.name, rows);
@@ -349,7 +349,7 @@ public class MainActivity extends Activity {
                             Playlists.I.create(pl.name);
                             Playlists.I.add(pl.name, uu);
                         }
-                        report.append(pl.name).append(": ").append(r.matched.size()).append(" de ")
+                        report.append(pl.name).append(": ").append(r.matched.size()).append(Tr.t(" de "))
                                 .append(r.total).append("\n");
                         for (SpotifyImport.Row m : r.missing) {
                             missingAll.append(m).append('\n');
@@ -460,7 +460,7 @@ public class MainActivity extends Activity {
         panel.addView(status);
 
         search = new EditText(this);
-        search.setHint("BUSCAR POR TÍTULO O CARPETA");
+        search.setHint(Tr.t("BUSCAR POR TÍTULO O CARPETA"));
         search.setVisibility(View.GONE);
         search.setHintTextColor(th.dotOff);
         search.setTextColor(th.ink);
@@ -576,14 +576,14 @@ public class MainActivity extends Activity {
         empty.setGravity(Gravity.CENTER);
         empty.setVisibility(View.GONE);
         DotTextView et = new DotTextView(this, 2.2f, th);
-        et.setText("SIN MÚSICA");
+        et.setText(Tr.t("SIN MÚSICA"));
         empty.addView(et);
-        TextView msg = text("Elige la carpeta donde tienes tus canciones y listas.", 13, th.ink2, th.regular);
+        TextView msg = text(Tr.t("Elige la carpeta donde tienes tus canciones y listas."), 13, th.ink2, th.regular);
         msg.setGravity(Gravity.CENTER);
         msg.setPadding(dp(20), dp(14), dp(20), dp(14));
         empty.addView(msg);
         Button pick = new Button(this);
-        pick.setText("ELEGIR CARPETA");
+        pick.setText(Tr.t("ELEGIR CARPETA"));
         th.style(pick, Lucent.ACCENT);
         pick.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -676,7 +676,7 @@ public class MainActivity extends Activity {
 
     private void refreshBar() {
         Player p = Player.I;
-        String t = p.isLoading() ? "CARGANDO…" : p.title();
+        String t = p.isLoading() ? Tr.t("CARGANDO…") : p.title();
         barTitle.setText(t.toUpperCase(Locale.ROOT));
         barPlay.set(p.isPlayingOrPending() ? DotIcons.PAUSE : DotIcons.PLAY, th.accent);
         lastSec = -1;
@@ -760,17 +760,17 @@ public class MainActivity extends Activity {
             final ArrayList<String> keys = new ArrayList<String>(fs.keySet());
             String[] labels = new String[keys.size()];
             for (int i = 0; i < labels.length; i++) {
-                labels[i] = (keys.get(i).length() == 0 ? "RAÍZ" : keys.get(i).toUpperCase(Locale.ROOT))
+                labels[i] = (keys.get(i).length() == 0 ? Tr.t("RAÍZ") : keys.get(i).toUpperCase(Locale.ROOT))
                         + "  " + fs.get(keys.get(i));
             }
-            new DotDialog(this, th).title("CARPETAS").options(labels, new DotMenu.Picked() {
+            new DotDialog(this, th).title(Tr.t("CARPETAS")).options(labels, new DotMenu.Picked() {
                 @Override
                 public void onPick(int id) {
                     tab = TAB_FOLDER;
                     folderSel = keys.get(id);
                     refilter();
                 }
-            }).button("CERRAR", Lucent.GLASS, null).show();
+            }).button(Tr.t("CERRAR"), Lucent.GLASS, null).show();
             return;
         }
         refilter();
@@ -888,12 +888,12 @@ public class MainActivity extends Activity {
             search.setVisibility(View.GONE);
         }
         if (p.isScanning()) {
-            status.setText("ESCANEANDO… " + p.scanCount());
+            status.setText(Tr.t("ESCANEANDO… ") + p.scanCount());
         } else if (p.count() == 0 || isHome) {
             status.setText("");
         } else {
-            status.setText(shown.size() + " CANCIONES"
-                    + ((tab == TAB_RECENT || tab == TAB_TOP) && shown.isEmpty() ? " · REPRODUCE ALGO" : ""));
+            status.setText(shown.size() + Tr.t(" CANCIONES")
+                    + ((tab == TAB_RECENT || tab == TAB_TOP) && shown.isEmpty() ? Tr.t(" · REPRODUCE ALGO") : ""));
         }
         adapter.notifyDataSetChanged();
     }
@@ -914,35 +914,35 @@ public class MainActivity extends Activity {
         }
         chipKey = key;
         chips.removeAllViews();
-        addChip("INICIO", tab == TAB_HOME, new View.OnClickListener() {
+        addChip(Tr.t("INICIO"), tab == TAB_HOME, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 tab = TAB_HOME;
                 refilter();
             }
         });
-        addChip("CANCIONES", tab == TAB_ALL, new View.OnClickListener() {
+        addChip(Tr.t("CANCIONES"), tab == TAB_ALL, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 tab = TAB_ALL;
                 refilter();
             }
         });
-        addChip("FAVORITAS", tab == TAB_FAVS, new View.OnClickListener() {
+        addChip(Tr.t("FAVORITAS"), tab == TAB_FAVS, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 tab = TAB_FAVS;
                 refilter();
             }
         });
-        addChip("RECIENTES", tab == TAB_RECENT, new View.OnClickListener() {
+        addChip(Tr.t("RECIENTES"), tab == TAB_RECENT, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 tab = TAB_RECENT;
                 refilter();
             }
         });
-        addChip("MÁS ESCUCHADAS", tab == TAB_TOP, new View.OnClickListener() {
+        addChip(Tr.t("MÁS ESCUCHADAS"), tab == TAB_TOP, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 tab = TAB_TOP;
@@ -962,7 +962,7 @@ public class MainActivity extends Activity {
             chip.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
                 public boolean onLongClick(View v) {
-                    DotMenu.show(MainActivity.this, th, v, new String[] {"BORRAR LISTA"}, new DotMenu.Picked() {
+                    DotMenu.show(MainActivity.this, th, v, new String[] {Tr.t("BORRAR LISTA")}, new DotMenu.Picked() {
                         @Override
                         public void onPick(int id) {
                             Playlists.I.delete(name);
@@ -972,7 +972,7 @@ public class MainActivity extends Activity {
                 }
             });
         }
-        addChip("+ LISTA", false, new View.OnClickListener() {
+        addChip(Tr.t("+ LISTA"), false, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 PlaylistUi.promptName(MainActivity.this, new PlaylistUi.Name() {
@@ -994,7 +994,7 @@ public class MainActivity extends Activity {
         }
         for (final java.util.Map.Entry<String, Integer> en : folders.entrySet()) {
             final String f = en.getKey();
-            String label = (f.length() == 0 ? "RAÍZ" : f.toUpperCase(Locale.ROOT)) + "  " + en.getValue();
+            String label = (f.length() == 0 ? Tr.t("RAÍZ") : f.toUpperCase(Locale.ROOT)) + "  " + en.getValue();
             addChip(label, tab == TAB_FOLDER && f.equals(folderSel), new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
@@ -1020,7 +1020,7 @@ public class MainActivity extends Activity {
 
     private void showMainMenu(View anchor) {
         DotMenu.show(this, th, anchor,
-                new String[] {"ELEGIR CARPETA", "RESCANEAR", "ABRIR ARCHIVO", "IMPORTAR DE SPOTIFY", "FALTANTES", "DIAGNÓSTICO", "ESTADÍSTICAS", "AJUSTES"},
+                new String[] {Tr.t("ELEGIR CARPETA"), Tr.t("RESCANEAR"), Tr.t("ABRIR ARCHIVO"), Tr.t("IMPORTAR DE SPOTIFY"), Tr.t("FALTANTES"), Tr.t("DIAGNÓSTICO"), Tr.t("ESTADÍSTICAS"), Tr.t("AJUSTES")},
                 new DotMenu.Picked() {
                     @Override
                     public void onPick(int id) {
@@ -1040,12 +1040,12 @@ public class MainActivity extends Activity {
                         } else if (id == 4) {
                             showMissing(Imports.missing(MainActivity.this, Player.I.tracks));
                         } else if (id == 5) {
-                            String head = "Canciones en la biblioteca: " + Player.I.tracks.size()
-                                    + (Player.I.isScanning() ? "\nEscaneando… " + Player.I.scanCount() : "")
-                                    + "\nCarpeta guardada: " + (Player.I.hasLibraryFolder() ? "sí" : "no") + "\n\n";
-                            new DotDialog(MainActivity.this, th).title("DIAGNÓSTICO")
+                            String head = Tr.t("Canciones en la biblioteca: ") + Player.I.tracks.size()
+                                    + (Player.I.isScanning() ? Tr.t("\nEscaneando… ") + Player.I.scanCount() : "")
+                                    + Tr.t("\nCarpeta guardada: ") + (Player.I.hasLibraryFolder() ? Tr.t("sí") : "no") + "\n\n";
+                            new DotDialog(MainActivity.this, th).title(Tr.t("DIAGNÓSTICO"))
                                     .message(head + Library.report)
-                                    .button("CERRAR", Lucent.GLASS, null).show();
+                                    .button(Tr.t("CERRAR"), Lucent.GLASS, null).show();
                         } else if (id == 6) {
                             startActivity(new Intent(MainActivity.this, StatsActivity.class));
                         } else {
@@ -1079,16 +1079,16 @@ public class MainActivity extends Activity {
         long last = Meta.last(u);
         String msg;
         if (r == null || (r.plays == 0 && r.secs == 0)) {
-            msg = "Aún sin escuchas registradas.";
+            msg = Tr.t("Aún sin escuchas registradas.");
         } else {
             int rank = st.rankOf(u);
-            msg = "Reproducciones: " + r.plays + "\nTiempo: " + Stats.duration(r.secs)
-                    + (rank > 0 ? "\nPuesto en tu top: " + rank : "")
-                    + (first > 0 ? "\nPrimera vez: " + df.format(new java.util.Date(first)) : "")
-                    + (last > 0 ? "\nÚltima vez: " + df.format(new java.util.Date(last)) : "");
+            msg = Tr.t("Reproducciones: ") + r.plays + Tr.t("\nTiempo: ") + Stats.duration(r.secs)
+                    + (rank > 0 ? Tr.t("\nPuesto en tu top: ") + rank : "")
+                    + (first > 0 ? Tr.t("\nPrimera vez: ") + df.format(new java.util.Date(first)) : "")
+                    + (last > 0 ? Tr.t("\nÚltima vez: ") + df.format(new java.util.Date(last)) : "");
         }
-        new DotDialog(this, th).title("ESTADISTICAS").message(t.display() + "\n\n" + msg)
-                .button("CERRAR", Lucent.GLASS, null).show();
+        new DotDialog(this, th).title(Tr.t("ESTADISTICAS")).message(t.display() + "\n\n" + msg)
+                .button(Tr.t("CERRAR"), Lucent.GLASS, null).show();
     }
 
     private void showTrackMenu(View anchor, final int idx) {
@@ -1096,10 +1096,10 @@ public class MainActivity extends Activity {
         final Player.Track t = p.tracks.get(idx);
         final boolean inList = tab == TAB_LIST;
         final String[] labels = inList
-                ? new String[] {"REPRODUCIR A CONTINUACIÓN", "AÑADIR A LA COLA", "AÑADIR A LISTA…",
-                    "QUITAR DE ESTA LISTA", p.isFav(t.uri) ? "QUITAR DE FAVORITAS" : "AÑADIR A FAVORITAS", "ESTADÍSTICAS"}
-                : new String[] {"REPRODUCIR A CONTINUACIÓN", "AÑADIR A LA COLA", "AÑADIR A LISTA…",
-                    p.isFav(t.uri) ? "QUITAR DE FAVORITAS" : "AÑADIR A FAVORITAS", "ESTADÍSTICAS"};
+                ? new String[] {Tr.t("REPRODUCIR A CONTINUACIÓN"), Tr.t("AÑADIR A LA COLA"), Tr.t("AÑADIR A LISTA…"),
+                    Tr.t("QUITAR DE ESTA LISTA"), p.isFav(t.uri) ? Tr.t("QUITAR DE FAVORITAS") : Tr.t("AÑADIR A FAVORITAS"), Tr.t("ESTADÍSTICAS")}
+                : new String[] {Tr.t("REPRODUCIR A CONTINUACIÓN"), Tr.t("AÑADIR A LA COLA"), Tr.t("AÑADIR A LISTA…"),
+                    p.isFav(t.uri) ? Tr.t("QUITAR DE FAVORITAS") : Tr.t("AÑADIR A FAVORITAS"), Tr.t("ESTADÍSTICAS")};
         final View a = anchor;
         DotMenu.show(this, th, anchor, labels, new DotMenu.Picked() {
             @Override
@@ -1167,7 +1167,7 @@ public class MainActivity extends Activity {
 
     /** Importa listas de Spotify (CSV de Exportify): empareja con tus archivos y crea una lista por CSV. */
     private void importCsvs(final ArrayList<Uri> uris) {
-        Toast.makeText(this, "Importando…", Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, Tr.t("Importando…"), Toast.LENGTH_SHORT).show();
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -1198,7 +1198,7 @@ public class MainActivity extends Activity {
                         java.util.List<SpotifyImport.Row> rows =
                                 SpotifyImport.parseTracks(new String(bo.toByteArray(), "UTF-8"));
                         if (rows.isEmpty()) {
-                            report.append(listName).append(": no parece un CSV de Exportify\n");
+                            report.append(listName).append(Tr.t(": no parece un CSV de Exportify\n"));
                             continue;
                         }
                         Imports.save(MainActivity.this, listName, rows);
@@ -1213,13 +1213,13 @@ public class MainActivity extends Activity {
                             Playlists.I.add(Playlists.I.find(listName) == null ? listName
                                     : Playlists.I.find(listName), uu);
                         }
-                        report.append(listName).append(": ").append(r.matched.size()).append(" de ")
+                        report.append(listName).append(": ").append(r.matched.size()).append(Tr.t(" de "))
                                 .append(r.total).append("\n");
                         for (SpotifyImport.Row m : r.missing) {
                             missingAll.append(m).append('\n');
                         }
                     } catch (Exception e) {
-                        report.append(listName).append(": error al leer\n");
+                        report.append(listName).append(Tr.t(": error al leer\n"));
                     }
                 }
                 ui.post(new Runnable() {
@@ -1235,22 +1235,22 @@ public class MainActivity extends Activity {
     private void showImportResult(String report, final String missing,
                                   final java.util.List<SpotifyImport.Row> rows) {
         String warn = Player.I.count() == 0
-                ? (Player.I.isScanning() ? "Aún se está escaneando tu carpeta; "
-                : "Tu biblioteca está vacía; ") + "las listas se guardaron y se rellenarán solas al terminar el escaneo.\n\n"
+                ? (Player.I.isScanning() ? Tr.t("Aún se está escaneando tu carpeta; ")
+                : Tr.t("Tu biblioteca está vacía; ")) + Tr.t("las listas se guardaron y se rellenarán solas al terminar el escaneo.\n\n")
                 : "";
-        DotDialog d = new DotDialog(this, th).title("IMPORTACIÓN")
-                .message(warn + report + (rows.isEmpty() ? "" : "\nNo encontradas: " + rows.size()));
+        DotDialog d = new DotDialog(this, th).title(Tr.t("IMPORTACIÓN"))
+                .message(warn + report + (rows.isEmpty() ? "" : Tr.t("\nNo encontradas: ") + rows.size()));
         if (!rows.isEmpty()) {
-            d.button("COPIAR FALTANTES", Lucent.GLASS, new Runnable() {
+            d.button(Tr.t("COPIAR FALTANTES"), Lucent.GLASS, new Runnable() {
                 @Override
                 public void run() {
                     android.content.ClipboardManager cm = (android.content.ClipboardManager)
                             getSystemService(CLIPBOARD_SERVICE);
                     cm.setPrimaryClip(android.content.ClipData.newPlainText("faltantes", missing));
-                    Toast.makeText(MainActivity.this, "Copiado", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, Tr.t("Copiado"), Toast.LENGTH_SHORT).show();
                 }
             });
-            d.button("VER FALTANTES", Lucent.ACCENT, new Runnable() {
+            d.button(Tr.t("VER FALTANTES"), Lucent.ACCENT, new Runnable() {
                 @Override
                 public void run() {
                     showMissing(rows);
@@ -1265,7 +1265,7 @@ public class MainActivity extends Activity {
     /** Lista de faltantes; al tocar una se abre su búsqueda en una tienda o en YouTube Music (en su propia app). */
     private void showMissing(final java.util.List<SpotifyImport.Row> rows) {
         if (rows.isEmpty()) {
-            Toast.makeText(this, "No falta ninguna", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, Tr.t("No falta ninguna"), Toast.LENGTH_SHORT).show();
             return;
         }
         int n = Math.min(rows.size(), 300);
@@ -1273,14 +1273,14 @@ public class MainActivity extends Activity {
         for (int i = 0; i < n; i++) {
             items[i] = rows.get(i).toString();
         }
-        new DotDialog(this, th).title("FALTANTES · " + rows.size())
+        new DotDialog(this, th).title(Tr.t("FALTANTES · ") + rows.size())
                 .options(items, new DotMenu.Picked() {
                     @Override
                     public void onPick(int w) {
                         final String q = Uri.encode(items[w].replace(" - ", " "));
                         new DotDialog(MainActivity.this, th).title(items[w])
-                                .options(new String[] {"BUSCAR EN YOUTUBE MUSIC", "BUSCAR EN BANDCAMP",
-                                        "BUSCAR EN QOBUZ"}, new DotMenu.Picked() {
+                                .options(new String[] {Tr.t("BUSCAR EN YOUTUBE MUSIC"), Tr.t("BUSCAR EN BANDCAMP"),
+                                        Tr.t("BUSCAR EN QOBUZ")}, new DotMenu.Picked() {
                                     @Override
                                     public void onPick(int k) {
                                         String url = k == 0 ? "https://music.youtube.com/search?q=" + q
@@ -1289,12 +1289,12 @@ public class MainActivity extends Activity {
                                         try {
                                             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
                                         } catch (RuntimeException e) {
-                                            Toast.makeText(MainActivity.this, "Sin navegador", Toast.LENGTH_SHORT).show();
+                                            Toast.makeText(MainActivity.this, Tr.t("Sin navegador"), Toast.LENGTH_SHORT).show();
                                         }
                                     }
-                                }).button("CERRAR", Lucent.GLASS, null).show();
+                                }).button(Tr.t("CERRAR"), Lucent.GLASS, null).show();
                     }
-                }).button("CERRAR", Lucent.ACCENT, null).show();
+                }).button(Tr.t("CERRAR"), Lucent.ACCENT, null).show();
     }
 
     private String displayName(Uri uri) {

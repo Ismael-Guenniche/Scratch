@@ -19,7 +19,9 @@ import java.util.TimeZone;
 
 /** Estadísticas de escucha: tiempo, reproducciones, rankings de canciones, artistas y álbumes, horas del día. */
 public class StatsActivity extends Activity {
-    static final String[] PERIODS = {"7 DÍAS", "30 DÍAS", "AÑO", "TODO"};
+    static String[] periods() {
+        return new String[] {Tr.t("7 DÍAS"), Tr.t("30 DÍAS"), Tr.t("AÑO"), Tr.t("TODO")};
+    }
 
     private Lucent th;
     private Stats stats;
@@ -122,7 +124,7 @@ public class StatsActivity extends Activity {
         });
         header.addView(back, new LinearLayout.LayoutParams(dp(48), dp(48)));
         DotTextView title = new DotTextView(this, 3.2f, th);
-        title.setText("ESTADISTICAS");
+        title.setText(Tr.t("ESTADISTICAS"));
         title.setPadding(dp(6), 0, 0, 0);
         header.addView(title);
         root.addView(header);
@@ -146,9 +148,9 @@ public class StatsActivity extends Activity {
 
         LinearLayout chips = new LinearLayout(this);
         chips.setPadding(0, dp(4), 0, 0);
-        for (int i = 0; i < PERIODS.length; i++) {
+        for (int i = 0; i < periods().length; i++) {
             final int p = i;
-            chips.addView(chip(PERIODS[i], i == period, new View.OnClickListener() {
+            chips.addView(chip(periods()[i], i == period, new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     period = p;
@@ -161,9 +163,9 @@ public class StatsActivity extends Activity {
 
         if (s.plays == 0 && s.secs == 0) {
             LinearLayout e = card();
-            e.addView(label("SIN ESCUCHAS"));
-            TextView m = text("Aún no hay historial en este periodo. Reproduce canciones (se cuentan a partir de "
-                    + "unos segundos) y aquí verás tu tiempo, tus favoritas y tu resumen.", 13, th.ink2, th.regular);
+            e.addView(label(Tr.t("SIN ESCUCHAS")));
+            TextView m = text(Tr.t("Aún no hay historial en este periodo. Reproduce canciones (se cuentan a partir de ")
+                    + Tr.t("unos segundos) y aquí verás tu tiempo, tus favoritas y tu resumen."), 13, th.ink2, th.regular);
             m.setPadding(0, dp(8), 0, 0);
             e.addView(m);
             body.addView(e);
@@ -171,23 +173,23 @@ public class StatsActivity extends Activity {
         }
 
         LinearLayout big = card();
-        big.addView(label("TIEMPO ESCUCHADO · " + PERIODS[period]));
+        big.addView(label(Tr.t("TIEMPO ESCUCHADO · ") + periods()[period]));
         DotTextView t = new DotTextView(this, 5f, th);
         t.setText(bigTime(s.secs));
         t.setPadding(0, dp(10), 0, dp(2));
         big.addView(t);
         body.addView(big);
 
-        LinearLayout row1 = tilesRow(tile("REPRODUCCIONES", String.valueOf(s.plays)),
-                tile("CANCIONES", String.valueOf(s.tracks)));
+        LinearLayout row1 = tilesRow(tile(Tr.t("REPRODUCCIONES"), String.valueOf(s.plays)),
+                tile(Tr.t("CANCIONES"), String.valueOf(s.tracks)));
         body.addView(row1);
-        body.addView(tilesRow(tile("ARTISTAS", String.valueOf(s.artists)),
-                tile("RACHA", s.bestStreak + " D")));
+        body.addView(tilesRow(tile(Tr.t("ARTISTAS"), String.valueOf(s.artists)),
+                tile(Tr.t("RACHA"), s.bestStreak + " D")));
 
         // rankings
         final LinearLayout rank = card();
         LinearLayout tabs = new LinearLayout(this);
-        String[] names = {"CANCIONES", "ARTISTAS", "ÁLBUMES"};
+        String[] names = {Tr.t("CANCIONES"), Tr.t("ARTISTAS"), Tr.t("ÁLBUMES")};
         for (int i = 0; i < 3; i++) {
             final int k = i;
             tabs.addView(chip(names[i], i == kind, new View.OnClickListener() {
@@ -202,8 +204,8 @@ public class StatsActivity extends Activity {
         List<Stats.Row> rows = stats.top(kind, r[0], r[1], 10);
         long max = rows.isEmpty() ? 1 : Math.max(1, rows.get(0).secs);
         if (rows.isEmpty()) {
-            TextView m = text(kind == Stats.TRACK ? "Sin datos." : "Tus archivos no tienen "
-                    + (kind == Stats.ARTIST ? "artista" : "álbum") + " en las etiquetas.", 13, th.ink2, th.regular);
+            TextView m = text(kind == Stats.TRACK ? Tr.t("Sin datos.") : Tr.t("Tus archivos no tienen ")
+                    + (kind == Stats.ARTIST ? "artista" : "álbum") + Tr.t(" en las etiquetas."), 13, th.ink2, th.regular);
             m.setPadding(0, dp(12), 0, 0);
             rank.addView(m);
         }
@@ -214,7 +216,7 @@ public class StatsActivity extends Activity {
 
         // horas del día
         LinearLayout hours = card();
-        hours.addView(label("HORAS DEL DÍA"));
+        hours.addView(label(Tr.t("HORAS DEL DÍA")));
         HourBars hb = new HourBars(this);
         hb.set(s.byHour);
         hours.addView(hb, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(90)));
@@ -227,14 +229,14 @@ public class StatsActivity extends Activity {
         }
         hours.addView(ax);
         if (s.favHour >= 0) {
-            TextView m = text("Escuchas más a las " + s.favHour + ":00"
-                    + (s.favWeekday >= 0 ? " y los " + weekday(s.favWeekday) : "") + ".", 12, th.ink2, th.regular);
+            TextView m = text(Tr.t("Escuchas más a las ") + s.favHour + ":00"
+                    + (s.favWeekday >= 0 ? Tr.t(" y los ") + weekday(s.favWeekday) : "") + ".", 12, th.ink2, th.regular);
             m.setPadding(0, dp(8), 0, 0);
             hours.addView(m);
         }
         body.addView(hours);
 
-        TextView wr = text("VER WRAPPED", 13, th.onAccent, th.mono);
+        TextView wr = text(Tr.t("VER WRAPPED"), 13, th.onAccent, th.mono);
         wr.setGravity(Gravity.CENTER);
         wr.setLetterSpacing(0.1f);
         wr.setBackground(accentPill());
@@ -254,8 +256,8 @@ public class StatsActivity extends Activity {
     }
 
     static String weekday(int i) {
-        String[] d = {"lunes", "martes", "miércoles", "jueves", "viernes", "sábados", "domingos"};
-        return d[Math.max(0, Math.min(6, i))].replace("lunes", "lunes").replace("martes", "martes");
+        String[] d = {Tr.t("lunes"), Tr.t("martes"), Tr.t("miércoles"), Tr.t("jueves"), Tr.t("viernes"), Tr.t("sábados"), Tr.t("domingos")};
+        return d[Math.max(0, Math.min(6, i))];
     }
 
     static String bigTime(long secs) {

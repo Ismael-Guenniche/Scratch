@@ -19,7 +19,7 @@ public final class WavParser {
         InputStream in = new BufferedInputStream(raw, 1 << 16);
         byte[] hdr = new byte[12];
         if (readUpTo(in, hdr, 12) < 12 || !tag(hdr, 0, "RIFF") || !tag(hdr, 8, "WAVE")) {
-            throw new NotWavException("No es un WAV");
+            throw new NotWavException(Tr.t("No es un WAV"));
         }
         int fmtTag = 0;
         int channels = 0;
@@ -28,16 +28,16 @@ public final class WavParser {
         byte[] ch = new byte[8];
         while (true) {
             if (readUpTo(in, ch, 8) < 8) {
-                throw new IOException("WAV sin bloque de datos");
+                throw new IOException(Tr.t("WAV sin bloque de datos"));
             }
             long size = le32(ch, 4) & 0xFFFFFFFFL;
             if (tag(ch, 0, "fmt ")) {
                 if (size < 16 || size > 1024) {
-                    throw new IOException("Cabecera fmt no válida");
+                    throw new IOException(Tr.t("Cabecera fmt no válida"));
                 }
                 byte[] f = new byte[(int) size];
                 if (readUpTo(in, f, f.length) < f.length) {
-                    throw new IOException("fmt truncado");
+                    throw new IOException(Tr.t("fmt truncado"));
                 }
                 fmtTag = le16(f, 0);
                 channels = le16(f, 2);
@@ -60,16 +60,16 @@ public final class WavParser {
     private static PcmData readData(InputStream in, long size, int fmtTag, int channels,
                                     int rate, int bits) throws IOException {
         if (channels < 1 || rate < 1000 || rate > 400000) {
-            throw new IOException("Formato WAV no válido");
+            throw new IOException(Tr.t("Formato WAV no válido"));
         }
         boolean isFloat = fmtTag == 3;
         if (fmtTag != 1 && !isFloat) {
-            throw new IOException("WAV no soportado (solo PCM o float)");
+            throw new IOException(Tr.t("WAV no soportado (solo PCM o float)"));
         }
         int bps = bits / 8;
         boolean okBits = isFloat ? bps == 4 : (bps >= 1 && bps <= 4);
         if (!okBits) {
-            throw new IOException("Bits por muestra no soportados: " + bits);
+            throw new IOException(Tr.t("Bits por muestra no soportados: ") + bits);
         }
         int frameBytes = bps * channels;
         boolean known = size > 0 && size < 0xFFFFFFF0L;
@@ -96,7 +96,7 @@ public final class WavParser {
             }
         }
         if (b.frames() == 0) {
-            throw new IOException("WAV vacío");
+            throw new IOException(Tr.t("WAV vacío"));
         }
         return b.build(rate);
     }
@@ -154,7 +154,7 @@ public final class WavParser {
             long s = in.skip(n);
             if (s <= 0) {
                 if (in.read() < 0) {
-                    throw new IOException("Fin de archivo inesperado");
+                    throw new IOException(Tr.t("Fin de archivo inesperado"));
                 }
                 s = 1;
             }

@@ -21,7 +21,7 @@ import android.widget.TextView;
  * 4) carpeta de música (acceso por el selector del sistema, sin permisos de almacenamiento amplios).
  */
 public class OnboardingActivity extends Activity {
-    private static final int STEPS = 4;
+    private static final int STEPS = 5;
     private static final int REQ_NOTIF = 10;
 
     private Lucent th;
@@ -43,7 +43,7 @@ public class OnboardingActivity extends Activity {
         if (state != null) {
             step = state.getInt("step", 0);
         } else {
-            step = prefs.getInt("privacy_ok", 0) >= Privacy.VERSION ? 1 : 0;
+            step = prefs.getInt("privacy_ok", 0) >= Privacy.VERSION ? 2 : 0;
         }
         setContentView(build());
     }
@@ -64,7 +64,9 @@ public class OnboardingActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (step > 1) {
+        if (step == 1) {
+            go(0);
+        } else if (step > 2) {
             go(step - 1);
         } else {
             finishAffinity();
@@ -85,7 +87,7 @@ public class OnboardingActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         Lucent.insets(root, dp(18), dp(14), dp(18), dp(14));
 
-        TextView tag = text("BIENVENIDA · " + (step + 1) + " / " + STEPS, 11, th.ink2, th.mono);
+        TextView tag = text(Tr.t("BIENVENIDA · ") + (step + 1) + " / " + STEPS, 11, th.ink2, th.mono);
         tag.setLetterSpacing(0.12f);
         root.addView(tag);
         LinearLayout dots = new LinearLayout(this);
@@ -103,7 +105,7 @@ public class OnboardingActivity extends Activity {
         root.addView(dots);
 
         DotTextView title = new DotTextView(this, 3.2f, th);
-        title.setText(step == 0 ? "PRIVACIDAD" : step == 1 ? "ASPECTO" : step == 2 ? "AVISOS" : "MÚSICA");
+        title.setText(step == 0 ? "LANGUAGE" : step == 1 ? Tr.t("PRIVACIDAD") : step == 2 ? Tr.t("ASPECTO") : step == 3 ? Tr.t("AVISOS") : Tr.t("MÚSICA"));
         title.setPadding(0, dp(6), 0, dp(14));
         root.addView(title);
 
@@ -113,12 +115,15 @@ public class OnboardingActivity extends Activity {
         buttons.setOrientation(LinearLayout.VERTICAL);
         switch (step) {
             case 0:
-                stepPrivacy(body, buttons);
+                stepLanguage(body, buttons);
                 break;
             case 1:
-                stepLook(body, buttons);
+                stepPrivacy(body, buttons);
                 break;
             case 2:
+                stepLook(body, buttons);
+                break;
+            case 3:
                 stepNotifications(body, buttons);
                 break;
             default:
@@ -145,10 +150,31 @@ public class OnboardingActivity extends Activity {
 
     // ------------------------------------------------------------------ pasos
 
+    private void stepLanguage(LinearLayout body, LinearLayout buttons) {
+        body.addView(text("Choose your language.\nElige tu idioma.", 15, th.ink, th.regular));
+        TextView n = text("You can change it later in Settings.\nPodrás cambiarlo luego en Ajustes.", 12, th.ink2, th.regular);
+        n.setPadding(0, dp(14), 0, 0);
+        body.addView(n);
+        buttons.addView(button("ENGLISH", Lucent.ACCENT, new Runnable() {
+            @Override
+            public void run() {
+                Tr.set(OnboardingActivity.this, Tr.EN);
+                go(1);
+            }
+        }));
+        buttons.addView(button("ESPAÑOL", Lucent.GLASS, new Runnable() {
+            @Override
+            public void run() {
+                Tr.set(OnboardingActivity.this, Tr.ES);
+                go(1);
+            }
+        }));
+    }
+
     private void stepPrivacy(LinearLayout body, LinearLayout buttons) {
-        body.addView(text("Antes de empezar, lee cómo trata Scratch tus datos. Resumen: todo se queda en tu móvil.",
+        body.addView(text(Tr.t("Antes de empezar, lee cómo trata Scratch tus datos. Resumen: todo se queda en tu móvil."),
                 14, th.ink, th.regular));
-        for (String[] s : Privacy.SECTIONS) {
+        for (String[] s : Privacy.sections()) {
             TextView h = text(s[0], 11, th.accent, th.mono);
             h.setLetterSpacing(0.1f);
             h.setPadding(0, dp(16), 0, dp(4));
@@ -157,17 +183,17 @@ public class OnboardingActivity extends Activity {
             b.setLineSpacing(0, 1.2f);
             body.addView(b);
         }
-        TextView v = text("Versión " + Privacy.VERSION + " · " + Privacy.DATE, 11, th.ink2, th.mono);
+        TextView v = text(Tr.t("Versión ") + Privacy.VERSION + " · " + Privacy.date(), 11, th.ink2, th.mono);
         v.setPadding(0, dp(16), 0, 0);
         body.addView(v);
-        buttons.addView(button("ACEPTO LA POLÍTICA DE PRIVACIDAD", Lucent.ACCENT, new Runnable() {
+        buttons.addView(button(Tr.t("ACEPTO LA POLÍTICA DE PRIVACIDAD"), Lucent.ACCENT, new Runnable() {
             @Override
             public void run() {
                 prefs.edit().putInt("privacy_ok", Privacy.VERSION).apply();
-                go(1);
+                go(2);
             }
         }));
-        buttons.addView(button("NO ACEPTO · SALIR", Lucent.GLASS, new Runnable() {
+        buttons.addView(button(Tr.t("NO ACEPTO · SALIR"), Lucent.GLASS, new Runnable() {
             @Override
             public void run() {
                 finishAffinity();
@@ -176,14 +202,14 @@ public class OnboardingActivity extends Activity {
     }
 
     private void stepLook(LinearLayout body, LinearLayout buttons) {
-        body.addView(text("Elige el tema y el color de acento. Podrás cambiarlos cuando quieras en Ajustes.",
+        body.addView(text(Tr.t("Elige el tema y el color de acento. Podrás cambiarlos cuando quieras en Ajustes."),
                 14, th.ink, th.regular));
-        TextView l = text("TEMA", 11, th.ink2, th.mono);
+        TextView l = text(Tr.t("TEMA"), 11, th.ink2, th.mono);
         l.setLetterSpacing(0.12f);
         l.setPadding(0, dp(18), 0, dp(8));
         body.addView(l);
         LinearLayout row = new LinearLayout(this);
-        String[] names = {"SISTEMA", "CLARO", "OSCURO"};
+        String[] names = {Tr.t("SISTEMA"), Tr.t("CLARO"), Tr.t("OSCURO")};
         int sel = prefs.getInt("mode", 0);
         for (int i = 0; i < names.length; i++) {
             final int val = i;
@@ -202,15 +228,15 @@ public class OnboardingActivity extends Activity {
             row.addView(c, lp);
         }
         body.addView(row);
-        TextView a = text("COLOR DE ACENTO", 11, th.ink2, th.mono);
+        TextView a = text(Tr.t("COLOR DE ACENTO"), 11, th.ink2, th.mono);
         a.setLetterSpacing(0.12f);
         a.setPadding(0, dp(20), 0, dp(4));
         body.addView(a);
         body.addView(swatches());
-        buttons.addView(button("SIGUIENTE", Lucent.ACCENT, new Runnable() {
+        buttons.addView(button(Tr.t("SIGUIENTE"), Lucent.ACCENT, new Runnable() {
             @Override
             public void run() {
-                go(2);
+                go(3);
             }
         }));
     }
@@ -254,31 +280,31 @@ public class OnboardingActivity extends Activity {
     }
 
     private void stepNotifications(LinearLayout body, LinearLayout buttons) {
-        body.addView(text("Scratch usa una notificación para mostrar los controles de reproducción (anterior, "
-                + "pausa, siguiente) en la barra de estado y en la pantalla de bloqueo, y para que la música "
-                + "siga sonando con la pantalla apagada.", 14, th.ink, th.regular));
-        TextView st = text(notifGranted() ? (Build.VERSION.SDK_INT < 33 ? "No hace falta permiso en tu versión de Android."
-                : "PERMISO CONCEDIDO") : "Puedes cambiarlo luego en Ajustes del sistema.", 12, th.accent, th.mono);
+        body.addView(text(Tr.t("Scratch usa una notificación para mostrar los controles de reproducción (anterior, ")
+                + Tr.t("pausa, siguiente) en la barra de estado y en la pantalla de bloqueo, y para que la música ")
+                + Tr.t("siga sonando con la pantalla apagada."), 14, th.ink, th.regular));
+        TextView st = text(notifGranted() ? (Build.VERSION.SDK_INT < 33 ? Tr.t("No hace falta permiso en tu versión de Android.")
+                : Tr.t("PERMISO CONCEDIDO")) : Tr.t("Puedes cambiarlo luego en Ajustes del sistema."), 12, th.accent, th.mono);
         st.setPadding(0, dp(16), 0, 0);
         body.addView(st);
         if (!notifGranted()) {
-            buttons.addView(button("PERMITIR NOTIFICACIONES", Lucent.ACCENT, new Runnable() {
+            buttons.addView(button(Tr.t("PERMITIR NOTIFICACIONES"), Lucent.ACCENT, new Runnable() {
                 @Override
                 public void run() {
                     requestPermissions(new String[] {Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
                 }
             }));
-            buttons.addView(button("AHORA NO", Lucent.GLASS, new Runnable() {
+            buttons.addView(button(Tr.t("AHORA NO"), Lucent.GLASS, new Runnable() {
                 @Override
                 public void run() {
-                    go(3);
+                    go(4);
                 }
             }));
         } else {
-            buttons.addView(button("SIGUIENTE", Lucent.ACCENT, new Runnable() {
+            buttons.addView(button(Tr.t("SIGUIENTE"), Lucent.ACCENT, new Runnable() {
                 @Override
                 public void run() {
-                    go(3);
+                    go(4);
                 }
             }));
         }
@@ -288,25 +314,25 @@ public class OnboardingActivity extends Activity {
     public void onRequestPermissionsResult(int req, String[] perms, int[] res) {
         super.onRequestPermissionsResult(req, perms, res);
         if (req == REQ_NOTIF) {
-            go(3);
+            go(4);
         }
     }
 
     private void stepMusic(LinearLayout body, LinearLayout buttons) {
-        body.addView(text("Scratch reproduce los archivos de tu móvil. No necesita acceso a todo tu almacenamiento: "
-                + "eliges una carpeta con el selector del sistema y la app solo lee esa carpeta.",
+        body.addView(text(Tr.t("Scratch reproduce los archivos de tu móvil. No necesita acceso a todo tu almacenamiento: ")
+                + Tr.t("eliges una carpeta con el selector del sistema y la app solo lee esa carpeta."),
                 14, th.ink, th.regular));
-        TextView n = text("Puedes cambiarla o rescanearla cuando quieras desde el menú ⋮.", 12, th.ink2, th.regular);
+        TextView n = text(Tr.t("Puedes cambiarla o rescanearla cuando quieras desde el menú ⋮."), 12, th.ink2, th.regular);
         n.setPadding(0, dp(14), 0, 0);
         body.addView(n);
-        buttons.addView(button("ELEGIR CARPETA DE MÚSICA", Lucent.ACCENT, new Runnable() {
+        buttons.addView(button(Tr.t("ELEGIR CARPETA DE MÚSICA"), Lucent.ACCENT, new Runnable() {
             @Override
             public void run() {
                 prefs.edit().putBoolean("pick_pending", true).apply();
                 finishOnboarding();
             }
         }));
-        buttons.addView(button("MÁS TARDE", Lucent.GLASS, new Runnable() {
+        buttons.addView(button(Tr.t("MÁS TARDE"), Lucent.GLASS, new Runnable() {
             @Override
             public void run() {
                 finishOnboarding();

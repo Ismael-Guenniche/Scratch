@@ -78,7 +78,7 @@ public class QueueActivity extends Activity {
         Lucent.insets(root, dp(14), dp(8), dp(14), dp(10));
 
         DotTextView title = new DotTextView(this, 3.2f, th);
-        title.setText("COLA");
+        title.setText(Tr.t("COLA"));
         title.setPadding(dp(8), 0, 0, 0);
         root.addView(title);
 
@@ -91,7 +91,7 @@ public class QueueActivity extends Activity {
         plp.topMargin = dp(12);
 
         TextView l1 = text(11, th.ink2, th.mono);
-        l1.setText("SUENA AHORA");
+        l1.setText(Tr.t("SUENA AHORA"));
         panel.addView(l1);
         nowView = text(16, th.ink, th.semi);
         nowView.setSingleLine(true);
@@ -102,10 +102,10 @@ public class QueueActivity extends Activity {
         LinearLayout head = new LinearLayout(this);
         head.setOrientation(LinearLayout.HORIZONTAL);
         TextView l2 = text(11, th.ink2, th.mono);
-        l2.setText("A CONTINUACIÓN");
+        l2.setText(Tr.t("A CONTINUACIÓN"));
         head.addView(l2, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         Button clear = new Button(this);
-        clear.setText("VACIAR");
+        clear.setText(Tr.t("VACIAR"));
         th.style(clear, Lucent.GLASS);
         clear.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -114,7 +114,7 @@ public class QueueActivity extends Activity {
             }
         });
         Button save = new Button(this);
-        save.setText("GUARDAR");
+        save.setText(Tr.t("GUARDAR"));
         th.style(save, Lucent.GLASS);
         save.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -139,8 +139,8 @@ public class QueueActivity extends Activity {
         panel.addView(head);
 
         emptyView = text(13, th.ink2, th.regular);
-        emptyView.setText("La cola está vacía. Mantén pulsada una canción de la biblioteca "
-                + "para añadirla.");
+        emptyView.setText(Tr.t("La cola está vacía. Mantén pulsada una canción de la biblioteca ")
+                + Tr.t("para añadirla."));
         emptyView.setPadding(0, dp(14), 0, 0);
         panel.addView(emptyView);
 
@@ -189,7 +189,7 @@ public class QueueActivity extends Activity {
         list.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, final View view, final int pos, long id) {
-                DotMenu.show(QueueActivity.this, th, view, new String[] {"AÑADIR A LISTA…", "QUITAR DE LA COLA"},
+                DotMenu.show(QueueActivity.this, th, view, new String[] {Tr.t("AÑADIR A LISTA…"), Tr.t("QUITAR DE LA COLA")},
                         new DotMenu.Picked() {
                             @Override
                             public void onPick(int which) {
@@ -213,7 +213,7 @@ public class QueueActivity extends Activity {
         panel.addView(list, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         TextView hint = text(11, th.ink2, th.regular);
-        hint.setText("Toca para reproducir ya · mantén pulsado para más opciones");
+        hint.setText(Tr.t("Toca para reproducir ya · mantén pulsado para más opciones"));
         hint.setPadding(0, dp(8), 0, dp(4));
         panel.addView(hint);
         root.addView(panel, plp);

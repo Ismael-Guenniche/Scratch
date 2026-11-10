@@ -25,7 +25,7 @@ final class AudioLoader {
         try {
             InputStream in = c.getContentResolver().openInputStream(uri);
             if (in == null) {
-                throw new IOException("No se pudo abrir el archivo");
+                throw new IOException(Tr.t("No se pudo abrir el archivo"));
             }
             try {
                 return WavParser.parse(in);
@@ -56,7 +56,7 @@ final class AudioLoader {
                 }
             }
             if (track < 0) {
-                throw new IOException("El archivo no tiene audio");
+                throw new IOException(Tr.t("El archivo no tiene audio"));
             }
             ex.selectTrack(track);
             int sr = fmt.getInteger(MediaFormat.KEY_SAMPLE_RATE);
@@ -130,11 +130,11 @@ final class AudioLoader {
                 }
             }
             if (b.frames() == 0) {
-                throw new IOException("No se pudo decodificar el audio");
+                throw new IOException(Tr.t("No se pudo decodificar el audio"));
             }
             return b.build(sr);
         } catch (IllegalStateException e) {
-            throw new IOException("Formato no soportado");
+            throw new IOException(Tr.t("Formato no soportado"));
         } finally {
             if (codec != null) {
                 try {

@@ -36,9 +36,9 @@ public class PlayerService extends MediaBrowserService {
         Player p = Player.I;
         List<MediaBrowser.MediaItem> out = new ArrayList<MediaBrowser.MediaItem>();
         if ("root".equals(parentId)) {
-            out.add(folder("ALL", "Canciones"));
-            out.add(folder("FAV", "Favoritas"));
-            out.add(folder("REC", "Recientes"));
+            out.add(folder("ALL", Tr.t("Canciones")));
+            out.add(folder("FAV", Tr.t("Favoritas")));
+            out.add(folder("REC", Tr.t("Recientes")));
             List<String> names = Playlists.I.names();
             for (int i = 0; i < names.size() && i < 20; i++) {
                 out.add(folder("PL:" + names.get(i), names.get(i)));
@@ -76,7 +76,7 @@ public class PlayerService extends MediaBrowserService {
         active = true;
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-            NotificationChannel ch = new NotificationChannel(CHANNEL, "Reproducción",
+            NotificationChannel ch = new NotificationChannel(CHANNEL, Tr.t("Reproducción"),
                     NotificationManager.IMPORTANCE_LOW);
             ch.setShowBadge(false);
             nm.createNotificationChannel(ch);
@@ -143,11 +143,11 @@ public class PlayerService extends MediaBrowserService {
                 .setOngoing(true)
                 .setShowWhen(false)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
-                .addAction(action(android.R.drawable.ic_media_previous, "Anterior", A_PREV))
+                .addAction(action(android.R.drawable.ic_media_previous, Tr.t("Anterior"), A_PREV))
                 .addAction(action(playing ? android.R.drawable.ic_media_pause
-                        : android.R.drawable.ic_media_play, playing ? "Pausa" : "Play", A_TOGGLE))
-                .addAction(action(android.R.drawable.ic_media_next, "Siguiente", A_NEXT))
-                .addAction(action(android.R.drawable.ic_menu_close_clear_cancel, "Cerrar", A_STOP));
+                        : android.R.drawable.ic_media_play, playing ? Tr.t("Pausa") : "Play", A_TOGGLE))
+                .addAction(action(android.R.drawable.ic_media_next, Tr.t("Siguiente"), A_NEXT))
+                .addAction(action(android.R.drawable.ic_menu_close_clear_cancel, Tr.t("Cerrar"), A_STOP));
         Notification.MediaStyle style = new Notification.MediaStyle().setShowActionsInCompactView(0, 1, 2);
         MediaSession.Token token = p.sessionToken();
         if (token != null) {

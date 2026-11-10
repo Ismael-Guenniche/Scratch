@@ -89,7 +89,7 @@ public class SettingsActivity extends Activity {
         });
         header.addView(back, new LinearLayout.LayoutParams(dp(52), dp(52)));
         DotTextView title = new DotTextView(this, 3.2f, th);
-        title.setText("AJUSTES");
+        title.setText(Tr.t("AJUSTES"));
         title.setPadding(dp(16), 0, 0, 0);
         header.addView(title);
         root.addView(header);
@@ -98,8 +98,8 @@ public class SettingsActivity extends Activity {
         list.setOrientation(LinearLayout.VERTICAL);
 
         // TEMA
-        LinearLayout c = plain(list, "TEMA");
-        c.addView(segmented(new String[] {"SISTEMA", "CLARO", "OSCURO"}, prefs.getInt("mode", 0),
+        LinearLayout c = plain(list, Tr.t("TEMA"));
+        c.addView(segmented(new String[] {Tr.t("SISTEMA"), Tr.t("CLARO"), Tr.t("OSCURO")}, prefs.getInt("mode", 0),
                 new Pick() {
                     @Override
                     public void on(int v) {
@@ -109,11 +109,31 @@ public class SettingsActivity extends Activity {
                 }));
 
         // COLORES
-        c = card(list, "COLORES");
+        // IDIOMA
+        c = plain(list, Tr.t("IDIOMA"));
+        final String[] langCodes = TrJa.ENABLED
+                ? new String[] {Tr.EN, Tr.ES, Tr.JA} : new String[] {Tr.EN, Tr.ES};
+        final String[] langNames = TrJa.ENABLED
+                ? new String[] {"ENGLISH", "ESPAÑOL", "にほんご · EXPERIMENTAL"} : new String[] {"ENGLISH", "ESPAÑOL"};
+        int langSel = 0;
+        for (int i = 0; i < langCodes.length; i++) {
+            if (langCodes[i].equals(Tr.lang)) {
+                langSel = i;
+            }
+        }
+        c.addView(segmented(langNames, langSel, new Pick() {
+            @Override
+            public void on(int v) {
+                Tr.set(SettingsActivity.this, langCodes[v]);
+                redo();
+            }
+        }));
+
+        c = card(list, Tr.t("COLORES"));
         boolean wallOk = Build.VERSION.SDK_INT >= 27;
-        c.addView(switchRow("Colores del fondo",
-                wallOk ? "Usa el color principal de tu fondo de pantalla como acento."
-                        : "Requiere Android 8.1 o superior.",
+        c.addView(switchRow(Tr.t("Colores del fondo"),
+                wallOk ? Tr.t("Usa el color principal de tu fondo de pantalla como acento.")
+                        : Tr.t("Requiere Android 8.1 o superior."),
                 prefs.getBoolean("wall", false) && wallOk, wallOk, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -122,12 +142,12 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        TextView acc = body("Color de acento");
+        TextView acc = body(Tr.t("Color de acento"));
         c.addView(acc);
         c.addView(swatches());
 
         // TIPOGRAFIA
-        c = card(list, "TIPOGRAFÍA");
+        c = card(list, Tr.t("TIPOGRAFÍA"));
         c.addView(segmented(new String[] {"DOT", "MONO", "CLEAN"},
                 prefs.getInt("font", Lucent.defaultLucent() ? 0 : 2), new Pick() {
                     @Override
@@ -145,9 +165,9 @@ public class SettingsActivity extends Activity {
         c.addView(sample);
 
         // RUEDA
-        c = card(list, "RUEDA");
-        c.addView(switchRow("Carátula del disco",
-                "Muestra la imagen incrustada del archivo en vez del plato de puntos.",
+        c = card(list, Tr.t("RUEDA"));
+        c.addView(switchRow(Tr.t("Carátula del disco"),
+                Tr.t("Muestra la imagen incrustada del archivo en vez del plato de puntos."),
                 prefs.getBoolean("cover", false), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -155,8 +175,8 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        c.addView(switchRow("Mantener el tono",
-                "Al mover la rueda rápido o lento el tono no sube ni baja (el audio se estira en vez de acelerarse). También aplica al control de velocidad.",
+        c.addView(switchRow(Tr.t("Mantener el tono"),
+                Tr.t("Al mover la rueda rápido o lento el tono no sube ni baja (el audio se estira en vez de acelerarse). También aplica al control de velocidad."),
                 prefs.getBoolean("keylock", false), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -165,8 +185,8 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        c.addView(body("Sensibilidad de la rueda"));
-        c.addView(segmented(new String[] {"LENTA", "NORMAL", "RÁPIDA"}, prefs.getInt("wsens", 1),
+        c.addView(body(Tr.t("Sensibilidad de la rueda")));
+        c.addView(segmented(new String[] {Tr.t("LENTA"), "NORMAL", Tr.t("RÁPIDA")}, prefs.getInt("wsens", 1),
                 new Pick() {
                     @Override
                     public void on(int v) {
@@ -175,12 +195,12 @@ public class SettingsActivity extends Activity {
                         redo();
                     }
                 }));
-        TextView sensNote = muted("Cuánto audio recorre una vuelta: lenta = más preciso, rápida = más recorrido.");
+        TextView sensNote = muted(Tr.t("Cuánto audio recorre una vuelta: lenta = más preciso, rápida = más recorrido."));
         sensNote.setPadding(0, dp(8), 0, 0);
         c.addView(sensNote);
         c.addView(dots());
-        c.addView(switchRow("Inercia al soltar",
-                "Si sueltas la rueda lanzada con la música parada, sigue girando como un plato hasta frenarse.",
+        c.addView(switchRow(Tr.t("Inercia al soltar"),
+                Tr.t("Si sueltas la rueda lanzada con la música parada, sigue girando como un plato hasta frenarse."),
                 prefs.getBoolean("inertia", true), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -188,8 +208,8 @@ public class SettingsActivity extends Activity {
                         Player.I.applyWheelPrefs();
                     }
                 }));
-        c.addView(body("Fricción"));
-        c.addView(segmented(new String[] {"ALTA", "MEDIA", "BAJA"}, prefs.getInt("wfric", 1),
+        c.addView(body(Tr.t("Fricción")));
+        c.addView(segmented(new String[] {Tr.t("ALTA"), Tr.t("MEDIA"), Tr.t("BAJA")}, prefs.getInt("wfric", 1),
                 new Pick() {
                     @Override
                     public void on(int v) {
@@ -199,8 +219,8 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        c.addView(switchRow("Invertir el sentido",
-                "Girar en sentido horario hace retroceder el audio, como en algunos platos.",
+        c.addView(switchRow(Tr.t("Invertir el sentido"),
+                Tr.t("Girar en sentido horario hace retroceder el audio, como en algunos platos."),
                 prefs.getBoolean("winvert", false), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -209,8 +229,8 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        c.addView(switchRow("Vibración al girar",
-                "Un toque suave cada pocos grados, como los pasos de un dial.",
+        c.addView(switchRow(Tr.t("Vibración al girar"),
+                Tr.t("Un toque suave cada pocos grados, como los pasos de un dial."),
                 prefs.getBoolean("haptic", true), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -218,8 +238,8 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        c.addView(switchRow("Bloquear scratch",
-                "La rueda solo gira; el centro sigue haciendo play y pausa.",
+        c.addView(switchRow(Tr.t("Bloquear scratch"),
+                Tr.t("La rueda solo gira; el centro sigue haciendo play y pausa."),
                 prefs.getBoolean("wlock", false), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -228,10 +248,10 @@ public class SettingsActivity extends Activity {
                 }));
 
         // MODO DJ
-        c = card(list, "MODO DJ");
-        c.addView(muted("Elige qué funciones aparecen al activar el modo DJ."));
+        c = card(list, Tr.t("MODO DJ"));
+        c.addView(muted(Tr.t("Elige qué funciones aparecen al activar el modo DJ.")));
         c.addView(switchRow("Hot cues",
-                "4 pads: toca para guardar un punto y vuelve a tocar para saltar. Pulsación larga lo borra.",
+                Tr.t("4 pads: toca para guardar un punto y vuelve a tocar para saltar. Pulsación larga lo borra."),
                 prefs.getBoolean("dj_cues", true), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -239,8 +259,8 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        c.addView(switchRow("Bucles y roll",
-                "Bucle manual (IN / OUT / ½ / ×2) y roll de ¼, ½ y 1 s mientras mantienes.",
+        c.addView(switchRow(Tr.t("Bucles y roll"),
+                Tr.t("Bucle manual (IN / OUT / ½ / ×2) y roll de ¼, ½ y 1 s mientras mantienes."),
                 prefs.getBoolean("dj_loop", true), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -257,8 +277,8 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        c.addView(switchRow("Saltos",
-                "Botones para saltar ±4 y ±16 segundos.",
+        c.addView(switchRow(Tr.t("Saltos"),
+                Tr.t("Botones para saltar ±4 y ±16 segundos."),
                 prefs.getBoolean("dj_jump", true), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -266,8 +286,8 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        c.addView(switchRow("Efectos",
-                "Flanger, phaser, trans (gate), echo out y vinyl stop.",
+        c.addView(switchRow(Tr.t("Efectos"),
+                Tr.t("Flanger, phaser, trans (gate), echo out y vinyl stop."),
                 prefs.getBoolean("dj_fx", true), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -276,7 +296,7 @@ public class SettingsActivity extends Activity {
                 }));
         c.addView(dots());
         c.addView(switchRow("Sampler",
-                "Pads con sonidos sintetizados: bocina, sirena, láser y riser.",
+                Tr.t("Pads con sonidos sintetizados: bocina, sirena, láser y riser."),
                 prefs.getBoolean("dj_sampler", true), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -284,8 +304,8 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        c.addView(switchRow("Cut y reverse",
-                "Mantén CUT para silenciar a golpes y REVERSE para oír la canción hacia atrás.",
+        c.addView(switchRow(Tr.t("Cut y reverse"),
+                Tr.t("Mantén CUT para silenciar a golpes y REVERSE para oír la canción hacia atrás."),
                 prefs.getBoolean("dj_cut", true), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -293,8 +313,8 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        c.addView(switchRow("Vúmetro de puntos",
-                "Medidor de nivel de puntos arriba del panel DJ.",
+        c.addView(switchRow(Tr.t("Vúmetro de puntos"),
+                Tr.t("Medidor de nivel de puntos arriba del panel DJ."),
                 prefs.getBoolean("dj_meter", true), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -302,8 +322,8 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        c.addView(switchRow("Modo disco",
-                "La rueda y el vúmetro cambian de color y pulsan con el volumen.",
+        c.addView(switchRow(Tr.t("Modo disco"),
+                Tr.t("La rueda y el vúmetro cambian de color y pulsan con el volumen."),
                 prefs.getBoolean("dj_disco", false), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -312,10 +332,10 @@ public class SettingsActivity extends Activity {
                 }));
 
         // PERMISOS Y PRIVACIDAD
-        c = card(list, "PERMISOS Y PRIVACIDAD");
-        c.addView(muted("Scratch solo lee la carpeta de música que eliges (sin permiso de almacenamiento amplio) "
-                + "y usa notificaciones para los controles de reproducción."));
-        c.addView(actionRow("Notificaciones", "ABRIR", new Runnable() {
+        c = card(list, Tr.t("PERMISOS Y PRIVACIDAD"));
+        c.addView(muted(Tr.t("Scratch solo lee la carpeta de música que eliges (sin permiso de almacenamiento amplio) ")
+                + Tr.t("y usa notificaciones para los controles de reproducción.")));
+        c.addView(actionRow(Tr.t("Notificaciones"), Tr.t("ABRIR"), new Runnable() {
             @Override
             public void run() {
                 Intent i = new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS);
@@ -324,19 +344,19 @@ public class SettingsActivity extends Activity {
             }
         }));
         c.addView(dots());
-        c.addView(actionRow("Política de privacidad", "LEER", new Runnable() {
+        c.addView(actionRow(Tr.t("Política de privacidad"), Tr.t("LEER"), new Runnable() {
             @Override
             public void run() {
-                new DotDialog(SettingsActivity.this, th).title("PRIVACIDAD")
-                        .message(Privacy.text() + "\n\nVersión " + Privacy.VERSION + " · " + Privacy.DATE)
-                        .button("CERRAR", Lucent.GLASS, null).show();
+                new DotDialog(SettingsActivity.this, th).title(Tr.t("PRIVACIDAD"))
+                        .message(Privacy.text() + Tr.t("\n\nVersión ") + Privacy.VERSION + " · " + Privacy.date())
+                        .button(Tr.t("CERRAR"), Lucent.GLASS, null).show();
             }
         }));
 
         // TEMPORIZADOR
         int left = Player.I.sleepMinutes();
-        c = card(list, "TEMPORIZADOR DE APAGADO");
-        c.addView(muted(left > 0 ? "Se apagará en " + left + " min." : "La música no se apagará sola."));
+        c = card(list, Tr.t("TEMPORIZADOR DE APAGADO"));
+        c.addView(muted(left > 0 ? Tr.t("Se apagará en ") + left + Tr.t(" min.") : Tr.t("La música no se apagará sola.")));
         final int[] mins = {0, 15, 30, 60, 90};
         c.addView(segmented(new String[] {"NO", "15", "30", "60", "90"}, left == 0 ? 0 : -1,
                 new Pick() {
@@ -348,9 +368,9 @@ public class SettingsActivity extends Activity {
                 }));
 
         // CRISTAL
-        c = card(list, "CRISTAL");
-        c.addView(switchRow("Estilo Lucent",
-                "Tarjetas de cristal sobre tu fondo. Apagado: tarjetas sólidas.",
+        c = card(list, Tr.t("CRISTAL"));
+        c.addView(switchRow(Tr.t("Estilo Lucent"),
+                Tr.t("Tarjetas de cristal sobre tu fondo. Apagado: tarjetas sólidas."),
                 prefs.getBoolean("lucent", true), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -359,8 +379,8 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        c.addView(switchRow("Rejilla de puntos",
-                "Puntos tenues por toda la pantalla, sobre el fondo difuminado.",
+        c.addView(switchRow(Tr.t("Rejilla de puntos"),
+                Tr.t("Puntos tenues por toda la pantalla, sobre el fondo difuminado."),
                 prefs.getBoolean("grid", true), true, new Toggle() {
                     @Override
                     public void on(boolean v) {
@@ -370,8 +390,8 @@ public class SettingsActivity extends Activity {
                 }));
         if (Build.VERSION.SDK_INT >= 31 && th.lucent) {
             c.addView(dots());
-            c.addView(body("Desenfoque del fondo"));
-            c.addView(segmented(new String[] {"NO", "SUAVE", "NORMAL"}, prefs.getInt("blur", 2),
+            c.addView(body(Tr.t("Desenfoque del fondo")));
+            c.addView(segmented(new String[] {"NO", Tr.t("SUAVE"), "NORMAL"}, prefs.getInt("blur", 2),
                     new Pick() {
                         @Override
                         public void on(int v) {
@@ -382,8 +402,8 @@ public class SettingsActivity extends Activity {
         }
 
         // ICONO
-        c = card(list, "ICONO DE LA APP");
-        c.addView(muted("Elige el icono del lanzador. Puede tardar unos segundos en cambiar."));
+        c = card(list, Tr.t("ICONO DE LA APP"));
+        c.addView(muted(Tr.t("Elige el icono del lanzador. Puede tardar unos segundos en cambiar.")));
         iconCells = new ImageView[ICON_COUNT];
         for (int r = 0; r < 2; r++) {
             LinearLayout row = new LinearLayout(this);
@@ -415,7 +435,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.28");
+        about.setText("SCRATCH 0.29");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);

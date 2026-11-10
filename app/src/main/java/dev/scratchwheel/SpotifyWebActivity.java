@@ -59,7 +59,7 @@ public class SpotifyWebActivity extends Activity {
         root.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
         hint = new TextView(this);
-        hint.setText("INICIA SESIÓN EN SPOTIFY · SE CERRARÁ SOLA");
+        hint.setText(Tr.t("INICIA SESIÓN EN SPOTIFY · SE CERRARÁ SOLA"));
         hint.setTextColor(Color.WHITE);
         hint.setBackgroundColor(0xCC000000);
         hint.setGravity(Gravity.CENTER);

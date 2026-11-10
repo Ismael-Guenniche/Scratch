@@ -45,7 +45,7 @@ public class WrappedActivity extends Activity {
         long[] r = StatsActivity.range(period);
         build(st, st.summary(r[0], r[1]), st.top(Stats.TRACK, r[0], r[1], 5),
                 st.top(Stats.ARTIST, r[0], r[1], 1), st.top(Stats.ALBUM, r[0], r[1], 1),
-                StatsActivity.PERIODS[period]);
+                StatsActivity.periods()[period]);
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
@@ -122,43 +122,43 @@ public class WrappedActivity extends Activity {
     private void build(Stats st, Stats.Summary s, List<Stats.Row> tracks, List<Stats.Row> art,
                        List<Stats.Row> alb, String per) {
         LinearLayout p = page("SCRATCH · WRAPPED");
-        bigDot(p, "TU MUSICA", 4.4f, th.accent);
+        bigDot(p, Tr.t("TU MUSICA"), 4.4f, th.accent);
         line(p, per, 22, Color.WHITE);
-        line(p, "Toca para avanzar", 13, 0xFF8A8A8F);
+        line(p, Tr.t("Toca para avanzar"), 13, 0xFF8A8A8F);
         pages.add(p);
 
         if (s.plays == 0 && s.secs == 0) {
-            LinearLayout e = page("SIN DATOS");
-            line(e, "Aún no has escuchado nada en este periodo. Vuelve cuando hayas puesto música.", 17, Color.WHITE);
+            LinearLayout e = page(Tr.t("SIN DATOS"));
+            line(e, Tr.t("Aún no has escuchado nada en este periodo. Vuelve cuando hayas puesto música."), 17, Color.WHITE);
             pages.add(e);
             return;
         }
 
-        p = page("HAS ESCUCHADO");
+        p = page(Tr.t("HAS ESCUCHADO"));
         bigDot(p, StatsActivity.bigTime(s.secs), 5f, th.accent);
-        line(p, s.plays + " reproducciones · " + s.tracks + " canciones", 16, Color.WHITE);
-        line(p, s.activeDays + " días con música", 13, 0xFF8A8A8F);
+        line(p, s.plays + Tr.t(" reproducciones · ") + s.tracks + Tr.t(" canciones"), 16, Color.WHITE);
+        line(p, s.activeDays + Tr.t(" días con música"), 13, 0xFF8A8A8F);
         pages.add(p);
 
         if (!art.isEmpty()) {
-            p = page("ARTISTA Nº 1");
+            p = page(Tr.t("ARTISTA Nº 1"));
             bigDot(p, "01", 6f, th.accent);
             line(p, art.get(0).name, 28, Color.WHITE);
-            line(p, Stats.duration(art.get(0).secs) + " · " + art.get(0).plays + " reproducciones", 14, 0xFF8A8A8F);
+            line(p, Stats.duration(art.get(0).secs) + " · " + art.get(0).plays + Tr.t(" reproducciones"), 14, 0xFF8A8A8F);
             pages.add(p);
         }
         if (!tracks.isEmpty()) {
-            p = page("CANCIÓN Nº 1");
+            p = page(Tr.t("CANCIÓN Nº 1"));
             bigDot(p, "01", 6f, th.accent);
             line(p, tracks.get(0).name, 28, Color.WHITE);
             if (tracks.get(0).sub.length() > 0) {
                 line(p, tracks.get(0).sub, 15, 0xFFB5B5BA);
             }
-            line(p, tracks.get(0).plays + " reproducciones · " + Stats.duration(tracks.get(0).secs), 14, 0xFF8A8A8F);
+            line(p, tracks.get(0).plays + Tr.t(" reproducciones · ") + Stats.duration(tracks.get(0).secs), 14, 0xFF8A8A8F);
             pages.add(p);
         }
         if (!alb.isEmpty()) {
-            p = page("ÁLBUM Nº 1");
+            p = page(Tr.t("ÁLBUM Nº 1"));
             bigDot(p, "01", 6f, th.accent);
             line(p, alb.get(0).name, 28, Color.WHITE);
             if (alb.get(0).sub.length() > 0) {
@@ -185,9 +185,9 @@ public class WrappedActivity extends Activity {
             pages.add(p);
         }
         if (s.favHour >= 0) {
-            p = page("TU HORA");
+            p = page(Tr.t("TU HORA"));
             bigDot(p, s.favHour + ":00", 5f, th.accent);
-            line(p, "Es cuando más escuchas música.", 16, Color.WHITE);
+            line(p, Tr.t("Es cuando más escuchas música."), 16, Color.WHITE);
             Hist h = new Hist(this, s.byHour);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                     LinearLayout.LayoutParams.MATCH_PARENT, th.dp(110));
@@ -195,11 +195,11 @@ public class WrappedActivity extends Activity {
             p.addView(h, lp);
             pages.add(p);
         }
-        p = page("CONSTANCIA");
+        p = page(Tr.t("CONSTANCIA"));
         bigDot(p, s.bestStreak + " D", 5f, th.accent);
-        line(p, "Tu racha más larga seguida escuchando.", 16, Color.WHITE);
+        line(p, Tr.t("Tu racha más larga seguida escuchando."), 16, Color.WHITE);
         if (s.discoveries > 0) {
-            line(p, s.discoveries + " canciones descubiertas en este periodo.", 14, 0xFF8A8A8F);
+            line(p, s.discoveries + Tr.t(" canciones descubiertas en este periodo."), 14, 0xFF8A8A8F);
         }
         pages.add(p);
     }

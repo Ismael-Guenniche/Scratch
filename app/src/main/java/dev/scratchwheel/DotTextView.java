@@ -35,7 +35,7 @@ public class DotTextView extends View {
     }
 
     public void setText(String s) {
-        String v = s == null ? "" : s;
+        String v = Tr.dot(s == null ? "" : s);
         if (!v.equals(text)) {
             boolean relayout = DotFont.cols(v) != DotFont.cols(text);
             text = v;

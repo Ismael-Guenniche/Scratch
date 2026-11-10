@@ -192,7 +192,7 @@ final class Player {
             load(tracks.get(last).uri, tracks.get(last).display(), last, false,
                     prefs.getFloat("pos", 0f));
         } else {
-            load(null, "DEMO · BEAT DE PRUEBA", -1, false, 0);
+            load(null, Tr.t("DEMO · BEAT DE PRUEBA"), -1, false, 0);
         }
     }
 
@@ -419,7 +419,7 @@ final class Player {
         loading = false;
         if (err != null || pcm == null) {
             String m = err == null ? null : err.getMessage();
-            toast("No se pudo abrir: " + name + (m == null ? "" : " (" + m + ")"));
+            toast(Tr.t("No se pudo abrir: ") + name + (m == null ? "" : " (" + m + ")"));
             if (playWhenReady && tracks.size() > 1 && ++errorStreak <= 5) {
                 next();
                 return;
@@ -505,7 +505,7 @@ final class Player {
                     main.post(new Runnable() {
                         @Override
                         public void run() {
-                            toast("Otra app está usando el audio");
+                            toast(Tr.t("Otra app está usando el audio"));
                             pauseInternal(false);
                         }
                     });
@@ -898,7 +898,7 @@ final class Player {
                 t = tb.build();
                 t.play();
             } catch (RuntimeException e) {
-                toast("No se pudo iniciar el audio");
+                toast(Tr.t("No se pudo iniciar el audio"));
                 return;
             }
             track = t;
@@ -1119,16 +1119,16 @@ final class Player {
             return;
         }
         if (queue.size() >= 500) {
-            toast("La cola está llena (500)");
+            toast(Tr.t("La cola está llena (500)"));
             return;
         }
         Track t = tracks.get(libIdx);
         if (atFront) {
             queue.add(0, t);
-            toast("Suena a continuación");
+            toast(Tr.t("Suena a continuación"));
         } else {
             queue.add(t);
-            toast("Añadida a la cola (" + queue.size() + ")");
+            toast(Tr.t("Añadida a la cola (") + queue.size() + ")");
         }
         changed();
     }
@@ -1172,7 +1172,7 @@ final class Player {
 
     void toggleFav(Uri u) {
         if (u == null) {
-            toast("Esta pista no se puede guardar en favoritas");
+            toast(Tr.t("Esta pista no se puede guardar en favoritas"));
             return;
         }
         String k = u.toString();
@@ -1365,7 +1365,7 @@ final class Player {
         scanning = false;
         scanCount = found.size();
         if (found.isEmpty()) {
-            toast("No se encontró audio · mira MENÚ → DIAGNÓSTICO");
+            toast(Tr.t("No se encontró audio · mira MENÚ → DIAGNÓSTICO"));
             changed();
             return;
         }

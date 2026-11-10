@@ -20,9 +20,31 @@ final class Privacy {
         {"CONTACTO", "Dudas o peticiones: https://github.com/Ismael-Guenniche/Scratch/issues"},
     };
 
+    static final String DATE_EN = "November 10, 2026";
+
+    static final String[][] SECTIONS_EN = {
+        {"WHAT SCRATCH IS", "Scratch is a local music player for Android. It plays the audio files you have on your phone. It has no user accounts, no servers of its own, no ads and no analytics."},
+        {"WHAT DATA IT KEEPS", "Everything is stored only on your device: the music folder you choose, the list of scanned songs, your playlists, favorites, listening history and statistics, song tags and your settings. None of this leaves your phone or is sent to anyone."},
+        {"PERMISSIONS IT USES", "Music: Scratch does not ask for access to all your storage. You pick a folder with the system file picker and the app only reads that folder.\nNotifications: to show the playback controls in the status bar and on the lock screen.\nForeground service and keep-awake: so the music keeps playing with the screen off.\nInternet: only for the optional Spotify feature and to open search links in your browser."},
+        {"SPOTIFY (OPTIONAL)", "If you use \"Import from Spotify\", the app connects to Spotify with your account to read only your playlists (song and artist names) and match them with your local files. Credentials and tokens are stored only on your phone and you can delete them by signing out in the app or uninstalling it. Scratch does not download audio from Spotify or any other service. Spotify is a third party with its own privacy policy."},
+        {"SHARING DATA", "Scratch does not sell, share or transmit your data to third parties."},
+        {"DELETING YOUR DATA", "You can delete everything from system Settings → Apps → Scratch → Storage → Clear data, or by uninstalling the app. Your music files are never touched."},
+        {"CHILDREN", "Scratch is not aimed at children and does not collect data from anyone."},
+        {"CHANGES", "If this policy changes in a significant way, the app will ask you to accept it again."},
+        {"CONTACT", "Questions or requests: https://github.com/Ismael-Guenniche/Scratch/issues"},
+    };
+
+    static String[][] sections() {
+        return Tr.ES.equals(Tr.lang) ? SECTIONS : SECTIONS_EN;
+    }
+
+    static String date() {
+        return Tr.ES.equals(Tr.lang) ? DATE : DATE_EN;
+    }
+
     static String text() {
         StringBuilder sb = new StringBuilder();
-        for (String[] s : SECTIONS) {
+        for (String[] s : sections()) {
             sb.append(s[0]).append("\n").append(s[1]).append("\n\n");
         }
         return sb.toString().trim();

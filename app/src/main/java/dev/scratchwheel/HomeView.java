@@ -82,11 +82,11 @@ final class HomeView extends ScrollView {
         LinearLayout topRow = new LinearLayout(getContext());
         topRow.setGravity(Gravity.BOTTOM);
         topRow.setPadding(dp(4), dp(6), dp(4), 0);
-        TextView hi = text(h < 6 ? "Buenas noches" : h < 13 ? "Buenos días" : h < 21 ? "Buenas tardes" : "Buenas noches",
+        TextView hi = text(h < 6 ? Tr.t("Buenas noches") : h < 13 ? Tr.t("Buenos días") : h < 21 ? Tr.t("Buenas tardes") : Tr.t("Buenas noches"),
                 16, th.ink2, th.regular);
         topRow.addView(hi, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        java.text.SimpleDateFormat df = new java.text.SimpleDateFormat("EEEE\nd MMM yyyy", new java.util.Locale("es"));
-        TextView date = text(df.format(new java.util.Date()).toUpperCase(new java.util.Locale("es")), 11, th.ink2, th.mono);
+        java.text.SimpleDateFormat df = new java.text.SimpleDateFormat("EEEE\nd MMM yyyy", Tr.locale());
+        TextView date = text(df.format(new java.util.Date()).toUpperCase(Tr.locale()), 11, th.ink2, th.mono);
         date.setLetterSpacing(0.12f);
         date.setGravity(Gravity.END);
         date.setLineSpacing(0, 1.3f);
@@ -97,7 +97,7 @@ final class HomeView extends ScrollView {
         big.setText(String.valueOf(p.tracks.size()));
         big.setPadding(dp(4), dp(10), 0, 0);
         col.addView(big);
-        TextView lib = text("CANCIONES EN TU BIBLIOTECA", 10, th.ink2, th.mono);
+        TextView lib = text(Tr.t("CANCIONES EN TU BIBLIOTECA"), 10, th.ink2, th.mono);
         lib.setLetterSpacing(0.12f);
         lib.setPadding(dp(4), dp(8), 0, dp(14));
         col.addView(lib);
@@ -116,7 +116,7 @@ final class HomeView extends ScrollView {
             dg.setColor(th.accent);
             dot.setBackground(dg);
             lab.addView(dot, new LinearLayout.LayoutParams(dp(10), dp(10)));
-            TextView lt = text("REPRODUCIENDO", 11, th.ink2, th.mono);
+            TextView lt = text(Tr.t("REPRODUCIENDO"), 11, th.ink2, th.mono);
             lt.setLetterSpacing(0.12f);
             lt.setPadding(dp(10), 0, 0, 0);
             lab.addView(lt);
@@ -138,9 +138,9 @@ final class HomeView extends ScrollView {
                     LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         }
 
-        col.addView(section("ESCUCHADO RECIENTEMENTE"));
+        col.addView(section(Tr.t("ESCUCHADO RECIENTEMENTE")));
         if (rec.isEmpty()) {
-            TextView none = text("Reproduce algo y aparecerá aquí.", 13, th.ink2, th.regular);
+            TextView none = text(Tr.t("Reproduce algo y aparecerá aquí."), 13, th.ink2, th.regular);
             none.setPadding(dp(2), 0, 0, 0);
             col.addView(none);
         } else {
@@ -159,25 +159,25 @@ final class HomeView extends ScrollView {
             }
         }
 
-        col.addView(section("TUS LISTAS"));
+        col.addView(section(Tr.t("TUS LISTAS")));
         LinearLayout lists = hrow();
-        lists.addView(card("FAVORITAS", favCount(p) + " CANCIONES", false, open("FAVS")));
+        lists.addView(card(Tr.t("FAVORITAS"), favCount(p) + Tr.t(" CANCIONES"), false, open("FAVS")));
         for (final String name : Playlists.I.names()) {
             lists.addView(card(name.toUpperCase(java.util.Locale.ROOT),
-                    Playlists.I.size(name) + " CANCIONES", false, open("LIST:" + name)));
+                    Playlists.I.size(name) + Tr.t(" CANCIONES"), false, open("LIST:" + name)));
         }
 
-        col.addView(section("EXPLORAR"));
+        col.addView(section(Tr.t("EXPLORAR")));
         int missing = Imports.missing(getContext(), p.tracks).size();
         String[][] tiles = {
-            {"CANCIONES", String.valueOf(p.tracks.size()), "ALL"},
-            {"ALEATORIO", "TODA LA BIBLIOTECA", "SHUFFLE"},
-            {"MÁS ESCUCHADAS", "", "TOP"},
-            {"RECIENTES", "", "RECENT"},
-            {"CARPETAS", "", "FOLDERS"},
-            {"PENDIENTES", missing > 0 ? String.valueOf(missing) : "AL DÍA", "MISSING"},
-            {"ESTADÍSTICAS", "WRAPPED", "STATS"},
-            {"AJUSTES", "", "SETTINGS"}};
+            {Tr.t("CANCIONES"), String.valueOf(p.tracks.size()), "ALL"},
+            {Tr.t("ALEATORIO"), Tr.t("TODA LA BIBLIOTECA"), "SHUFFLE"},
+            {Tr.t("MÁS ESCUCHADAS"), "", "TOP"},
+            {Tr.t("RECIENTES"), "", "RECENT"},
+            {Tr.t("CARPETAS"), "", "FOLDERS"},
+            {Tr.t("PENDIENTES"), missing > 0 ? String.valueOf(missing) : Tr.t("AL DÍA"), "MISSING"},
+            {Tr.t("ESTADÍSTICAS"), "WRAPPED", "STATS"},
+            {Tr.t("AJUSTES"), "", "SETTINGS"}};
         String[][] icons = {{"QUEUE"}, {"SHUFFLE"}, {"PITCH"}, {"DISC"}, {"FOLDER"}, {"DOWN"}, {"PITCH"}, {"MENU"}};
         for (int r = 0; r < tiles.length; r += 2) {
             LinearLayout row = new LinearLayout(getContext());

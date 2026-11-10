@@ -459,7 +459,7 @@ public class ScratchActivity extends Activity {
 
         LinearLayout opts = row();
         shuffleBtn = icon(DotIcons.SHUFFLE, th.ink);
-        LinearLayout shuffleChip = chip(shuffleBtn, tag("ALEATORIO"));
+        LinearLayout shuffleChip = chip(shuffleBtn, tag(Tr.t("ALEATORIO")));
         shuffleChip.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -479,7 +479,7 @@ public class ScratchActivity extends Activity {
             }
         });
         coverBtn = icon(DotIcons.COVER, th.ink);
-        coverLabel = tag("PORTADA");
+        coverLabel = tag(Tr.t("PORTADA"));
         LinearLayout coverChip = chip(coverBtn, coverLabel);
         coverChip.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -495,7 +495,7 @@ public class ScratchActivity extends Activity {
         });
         djMode = Lucent.prefs(this).getBoolean("djmode", false);
         modeBtn = icon(DotIcons.DISC, th.ink);
-        modeLabel = tag("ESTÁNDAR");
+        modeLabel = tag(Tr.t("ESTÁNDAR"));
         LinearLayout modeChip = chip(modeBtn, modeLabel);
         modeChip.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -622,11 +622,11 @@ public class ScratchActivity extends Activity {
     private void refreshMode() {
         applyScrollBar();
         lockBtn.set(locked ? DotIcons.LOCK : DotIcons.DISC, locked ? th.ink : th.accent);
-        lockLabel.setText(locked ? "BLOQUEADA" : "SCRATCH");
+        lockLabel.setText(locked ? Tr.t("BLOQUEADA") : "SCRATCH");
         coverBtn.set(DotIcons.COVER, coverOn ? th.accent : th.ink);
-        coverLabel.setText(coverOn ? "PORTADA" : "PUNTOS");
+        coverLabel.setText(coverOn ? Tr.t("PORTADA") : Tr.t("PUNTOS"));
         modeBtn.set(DotIcons.PITCH, djMode ? th.accent : th.ink);
-        modeLabel.setText(djMode ? "DJ" : "ESTÁNDAR");
+        modeLabel.setText(djMode ? "DJ" : Tr.t("ESTÁNDAR"));
         if (djCard != null) {
             djCard.setVisibility(djMode ? View.VISIBLE : View.GONE);
         }
@@ -735,11 +735,11 @@ public class ScratchActivity extends Activity {
             meter = null;
         }
 
-        final double[] eq = {fv("GRAVES", 1 / 1.6) * 1.6, fv("MEDIOS", 1 / 1.6) * 1.6,
-                fv("AGUDOS", 1 / 1.6) * 1.6};
+        final double[] eq = {fv(Tr.t("GRAVES"), 1 / 1.6) * 1.6, fv(Tr.t("MEDIOS"), 1 / 1.6) * 1.6,
+                fv(Tr.t("AGUDOS"), 1 / 1.6) * 1.6};
         LinearLayout faders = row();
         faders.setGravity(Gravity.CENTER);
-        FaderView filter = fader(faders, "FILTRO", 0.5, new FaderView.Listener() {
+        FaderView filter = fader(faders, Tr.t("FILTRO"), 0.5, new FaderView.Listener() {
             @Override
             public void onValue(double v) {
                 en.setFilter((v - 0.5) * 2);
@@ -755,7 +755,7 @@ public class ScratchActivity extends Activity {
                 return (v < 0.5 ? "LP " : "HP ") + Math.round(Math.abs(v - 0.5) * 200) + "%";
             }
         });
-        String[] eqNames = {"GRAVES", "MEDIOS", "AGUDOS"};
+        String[] eqNames = {Tr.t("GRAVES"), Tr.t("MEDIOS"), Tr.t("AGUDOS")};
         for (int k = 0; k < 3; k++) {
             final int idx = k;
             FaderView f = fader(faders, eqNames[k], 1 / 1.6, new FaderView.Listener() {
@@ -774,7 +774,7 @@ public class ScratchActivity extends Activity {
                 }
             });
         }
-        FaderView echo = fader(faders, "ECO", 0, new FaderView.Listener() {
+        FaderView echo = fader(faders, Tr.t("ECO"), 0, new FaderView.Listener() {
             @Override
             public void onValue(double v) {
                 en.setEcho(v);
@@ -820,13 +820,13 @@ public class ScratchActivity extends Activity {
             }
         });
         br.addView(back, padLp());
-        final TextView brake = pad("FRENADO " + brakeText(), false);
+        final TextView brake = pad(Tr.t("FRENADO ") + brakeText(), false);
         brake.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 brakeSecs = brakeSecs < 0.5 ? 0.7 : brakeSecs < 1.0 ? 2.0 : 0.3;
                 en.setBrake(brakeSecs);
-                brake.setText("FRENADO " + brakeText());
+                brake.setText(Tr.t("FRENADO ") + brakeText());
             }
         });
         br.addView(brake, padLp());
@@ -843,7 +843,7 @@ public class ScratchActivity extends Activity {
         card.addView(br);
 
         if (opt("dj_cues", true)) {
-            card.addView(sectionTag("HOT CUES · TOCA PARA GUARDAR / SALTAR · LARGO BORRA"));
+            card.addView(sectionTag(Tr.t("HOT CUES · TOCA PARA GUARDAR / SALTAR · LARGO BORRA")));
             LinearLayout cr = padRow();
             final TextView[] cp = new TextView[4];
             for (int k = 0; k < 4; k++) {
@@ -873,7 +873,7 @@ public class ScratchActivity extends Activity {
         }
 
         if (opt("dj_loop", true) || opt("dj_slip", true)) {
-            card.addView(sectionTag("BUCLE"));
+            card.addView(sectionTag(Tr.t("BUCLE")));
             LinearLayout lr = padRow();
             if (opt("dj_loop", true)) {
                 final TextView loop = pad("", false);
@@ -949,7 +949,7 @@ public class ScratchActivity extends Activity {
         }
 
         if (opt("dj_jump", true)) {
-            card.addView(sectionTag("SALTO"));
+            card.addView(sectionTag(Tr.t("SALTO")));
             LinearLayout jr = padRow();
             final double[] js = {-16, -4, 4, 16};
             for (int k = 0; k < 4; k++) {
@@ -967,7 +967,7 @@ public class ScratchActivity extends Activity {
         }
 
         if (opt("dj_fx", true)) {
-            card.addView(sectionTag("EFECTOS"));
+            card.addView(sectionTag(Tr.t("EFECTOS")));
             LinearLayout fr = padRow();
             final TextView fl = pad("FLANGER", false);
             padOn(fl, en.isFlanger());
@@ -1024,7 +1024,7 @@ public class ScratchActivity extends Activity {
         if (opt("dj_sampler", true)) {
             card.addView(sectionTag("SAMPLER"));
             LinearLayout sr = padRow();
-            String[] sn = {"BOCINA", "SIRENA", "LÁSER", "RISER"};
+            String[] sn = {Tr.t("BOCINA"), Tr.t("SIRENA"), Tr.t("LÁSER"), "RISER"};
             for (int k = 0; k < 4; k++) {
                 final int id = k;
                 TextView sp = pad(sn[k], true);
@@ -1040,7 +1040,7 @@ public class ScratchActivity extends Activity {
         }
 
         if (opt("dj_cut", true)) {
-            card.addView(sectionTag("MANTÉN PULSADO"));
+            card.addView(sectionTag(Tr.t("MANTÉN PULSADO")));
             LinearLayout xr = padRow();
             TextView cutB = pad("CUT", true);
             hold(cutB, new Runnable() {
@@ -1082,7 +1082,7 @@ public class ScratchActivity extends Activity {
 
     private void loopText(TextView t, ScratchEngine en) {
         boolean on = en.isLoopOn();
-        t.setText(on ? "SALIR" : en.hasLoopIn() ? "OUT" : "IN");
+        t.setText(on ? Tr.t("SALIR") : en.hasLoopIn() ? "OUT" : "IN");
         padOn(t, on || en.hasLoopIn());
     }
 
@@ -1280,8 +1280,8 @@ public class ScratchActivity extends Activity {
 
     private void showMenu(final View anchor) {
         int left = Player.I.sleepMinutes();
-        DotMenu.show(this, th, anchor, new String[] {"COLA",
-            left > 0 ? "TEMPORIZADOR · " + left + " MIN" : "TEMPORIZADOR", "ABRIR ARCHIVO", "AJUSTES"},
+        DotMenu.show(this, th, anchor, new String[] {Tr.t("COLA"),
+            left > 0 ? Tr.t("TEMPORIZADOR · ") + left + " MIN" : Tr.t("TEMPORIZADOR"), Tr.t("ABRIR ARCHIVO"), Tr.t("AJUSTES")},
                 new DotMenu.Picked() {
                     @Override
                     public void onPick(int id) {
@@ -1308,8 +1308,8 @@ public class ScratchActivity extends Activity {
 
     private void showSleepMenu(View anchor) {
         final int[] mins = {0, 15, 30, 60, 90};
-        String[] labels = {"SIN TEMPORIZADOR", "APAGAR EN 15 MIN", "APAGAR EN 30 MIN",
-            "APAGAR EN 60 MIN", "APAGAR EN 90 MIN"};
+        String[] labels = {Tr.t("SIN TEMPORIZADOR"), Tr.t("APAGAR EN 15 MIN"), Tr.t("APAGAR EN 30 MIN"),
+            Tr.t("APAGAR EN 60 MIN"), Tr.t("APAGAR EN 90 MIN")};
         DotMenu.show(this, th, anchor, labels, new DotMenu.Picked() {
             @Override
             public void onPick(int id) {
@@ -1429,8 +1429,8 @@ public class ScratchActivity extends Activity {
 
     private void refresh() {
         Player p = Player.I;
-        String t = p.isLoading() ? "CARGANDO…" : p.title();
-        nameView.setText(t.toUpperCase(Locale.ROOT) + (p.isTruncated() ? " (RECORTADA)" : ""));
+        String t = p.isLoading() ? Tr.t("CARGANDO…") : p.title();
+        nameView.setText(t.toUpperCase(Locale.ROOT) + (p.isTruncated() ? Tr.t(" (RECORTADA)") : ""));
         StringBuilder meta = new StringBuilder();
         if (p.index() >= 0) {
             meta.append(p.index() + 1).append(" / ").append(p.count());
@@ -1438,9 +1438,9 @@ public class ScratchActivity extends Activity {
                 meta.append("  ·  ").append(p.libraryLabel().toUpperCase(Locale.ROOT));
             }
         } else if (p.count() > 0) {
-            meta.append(p.count()).append(" CANCIONES EN LA BIBLIOTECA");
+            meta.append(p.count()).append(Tr.t(" CANCIONES EN LA BIBLIOTECA"));
         } else {
-            meta.append("SIN BIBLIOTECA · PULSA BIBLIOTECA");
+            meta.append(Tr.t("SIN BIBLIOTECA · PULSA BIBLIOTECA"));
         }
         metaView.setText(meta.toString());
         boolean playing = p.isPlayingOrPending();

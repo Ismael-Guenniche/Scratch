@@ -94,7 +94,7 @@ final class SpotifyApi {
         String code = data.getQueryParameter("code");
         String state = data.getQueryParameter("state");
         if (code == null || state == null || !state.equals(sp(c).getString("state", ""))) {
-            throw new IOException("Respuesta de Spotify no válida");
+            throw new IOException(Tr.t("Respuesta de Spotify no válida"));
         }
         String body = "grant_type=authorization_code&code=" + URLEncoder.encode(code, "UTF-8")
                 + "&redirect_uri=" + URLEncoder.encode(REDIRECT, "UTF-8")
@@ -230,7 +230,7 @@ final class SpotifyApi {
             r.close();
         }
         if (code >= 400) {
-            throw new IOException("Spotify " + code + (code == 403 ? " (¿Premium / usuario añadido en el panel?)" : "")
+            throw new IOException("Spotify " + code + (code == 403 ? Tr.t(" (¿Premium / usuario añadido en el panel?)") : "")
                     + ": " + (sb.length() > 160 ? sb.substring(0, 160) : sb.toString()).trim());
         }
         return sb.toString();
