@@ -180,7 +180,17 @@ public class ScratchActivity extends Activity {
         DotTextView title = new DotTextView(this, 3.2f, th);
         title.setText("SCRATCH");
         title.setPadding(dp(6), 0, 0, 0);
-        header.addView(title, new LinearLayout.LayoutParams(0,
+        header.addView(title, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        String ver = "";
+        try {
+            ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception ignored) {
+        }
+        TextView beta = text("BETA " + ver, 11, th.accent, th.mono);
+        beta.setLetterSpacing(0.1f);
+        beta.setPadding(dp(10), dp(14), 0, 0);
+        header.addView(beta, new LinearLayout.LayoutParams(0,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         final DotIconView menu = icon(DotIcons.MENU, th.ink);
         menu.setOnClickListener(new View.OnClickListener() {
