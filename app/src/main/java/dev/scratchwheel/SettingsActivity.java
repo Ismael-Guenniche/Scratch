@@ -331,6 +331,24 @@ public class SettingsActivity extends Activity {
                     }
                 }));
 
+        // ECUALIZADOR (5 bandas)
+        c = card(list, Tr.t("ECUALIZADOR"));
+        c.addView(switchRow(Tr.t("Ecualizador"),
+                Tr.t("Ajusta graves, medios y agudos de todo lo que suena, sin cortes entre canciones."),
+                prefs.getBoolean("eq_on", false), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("eq_on", v).apply();
+                        Player.I.applyWheelPrefs();
+                    }
+                }));
+        c.addView(dots());
+        c.addView(eqPresets());
+        final String[] bands = {"60 HZ", "230 HZ", "910 HZ", "3.6 KHZ", "14 KHZ"};
+        for (int i = 0; i < 5; i++) {
+            c.addView(eqBand(i, bands[i]));
+        }
+
         // PERMISOS Y PRIVACIDAD
         c = card(list, Tr.t("PERMISOS Y PRIVACIDAD"));
         c.addView(muted(Tr.t("Scratch solo lee la carpeta de música que eliges (sin permiso de almacenamiento amplio) ")
@@ -435,7 +453,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.29");
+        about.setText("SCRATCH 0.30");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);
@@ -567,6 +585,91 @@ public class SettingsActivity extends Activity {
         lp.bottomMargin = dp(14);
         v.setLayoutParams(lp);
         return v;
+    }
+
+    private static final String[] EQ_NAMES = {"PLANO", "GRAVES+", "VOZ", "AGUDOS+", "ROCK", "ELECTRÓNICA"};
+    private static final int[][] EQ_PRESETS = {
+        {0, 0, 0, 0, 0}, {6, 4, 0, 0, 0}, {-2, 0, 4, 3, -1}, {0, 0, 0, 4, 6}, {5, 3, -2, 3, 5}, {6, 3, 0, 2, 5}};
+
+    private View eqPresets() {
+        HorizontalScrollView hs = new HorizontalScrollView(this);
+        hs.setHorizontalScrollBarEnabled(false);
+        LinearLayout row = new LinearLayout(this);
+        row.setPadding(0, dp(6), 0, dp(6));
+        int sel = prefs.getInt("eq_preset", 0);
+        for (int i = 0; i < EQ_NAMES.length; i++) {
+            final int k = i;
+            TextView b = th.chip(this, Tr.t(EQ_NAMES[i]), i == sel, 14);
+            b.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    SharedPreferences.Editor e = prefs.edit().putInt("eq_preset", k).putBoolean("eq_on", true);
+                    for (int j = 0; j < 5; j++) {
+                        e.putInt("eq" + j, EQ_PRESETS[k][j]);
+                    }
+                    e.apply();
+                    Player.I.applyWheelPrefs();
+                    redo();
+                }
+            });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            lp.rightMargin = dp(8);
+            row.addView(b, lp);
+        }
+        hs.addView(row);
+        return hs;
+    }
+
+    private View eqBand(final int band, String label) {
+        LinearLayout row = new LinearLayout(this);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(0, dp(4), 0, dp(4));
+        TextView name = new TextView(this);
+        name.setText(label);
+        name.setTextSize(11);
+        name.setTextColor(th.ink2);
+        name.setTypeface(th.mono);
+        row.addView(name, new LinearLayout.LayoutParams(dp(62), LinearLayout.LayoutParams.WRAP_CONTENT));
+        final TextView val = new TextView(this);
+        val.setTextSize(12);
+        val.setTextColor(th.ink);
+        val.setTypeface(th.mono);
+        val.setGravity(Gravity.END);
+        int db = prefs.getInt("eq" + band, 0);
+        val.setText(eqText(db));
+        android.widget.SeekBar sb = new android.widget.SeekBar(this);
+        sb.setMax(24);
+        sb.setProgress(db + 12);
+        sb.setProgressTintList(android.content.res.ColorStateList.valueOf(th.accent));
+        sb.setThumbTintList(android.content.res.ColorStateList.valueOf(th.accent));
+        sb.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(android.widget.SeekBar s, int p, boolean user) {
+                if (!user) {
+                    return;
+                }
+                int d = p - 12;
+                val.setText(eqText(d));
+                prefs.edit().putInt("eq" + band, d).putInt("eq_preset", -1).putBoolean("eq_on", true).apply();
+                Player.I.applyWheelPrefs();
+            }
+
+            @Override
+            public void onStartTrackingTouch(android.widget.SeekBar s) {
+            }
+
+            @Override
+            public void onStopTrackingTouch(android.widget.SeekBar s) {
+            }
+        });
+        row.addView(sb, new LinearLayout.LayoutParams(0, dp(40), 1f));
+        row.addView(val, new LinearLayout.LayoutParams(dp(58), LinearLayout.LayoutParams.WRAP_CONTENT));
+        return row;
+    }
+
+    private static String eqText(int db) {
+        return (db > 0 ? "+" : "") + db + " dB";
     }
 
     private View segmented(String[] opts, int selected, final Pick pick) {

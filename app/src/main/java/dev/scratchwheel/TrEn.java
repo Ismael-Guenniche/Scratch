@@ -11,6 +11,15 @@ final class TrEn {
     }
 
     static {
+        M.put("ECUALIZADOR", "EQUALIZER");
+        M.put("Ecualizador", "Equalizer");
+        M.put("Ajusta graves, medios y agudos de todo lo que suena, sin cortes entre canciones.", "Adjust bass, mids and treble for everything you play, with no gaps between songs.");
+        M.put("PLANO", "FLAT");
+        M.put("GRAVES+", "BASS BOOST");
+        M.put("VOZ", "VOCAL");
+        M.put("AGUDOS+", "TREBLE BOOST");
+        M.put("ROCK", "ROCK");
+        M.put("ELECTRÓNICA", "ELECTRONIC");
         M.put("IDIOMA", "LANGUAGE");
         M.put("No se pudo abrir el archivo", "Could not open the file");
         M.put("El archivo no tiene audio", "The file has no audio");

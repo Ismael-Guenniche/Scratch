@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.30: reproducción sin huecos (precarga y empalme sample a sample de la siguiente pista); ecualizador de 5 bandas con presets en Ajustes; más kana en el japonés experimental y fuente de puntos con kana (rasterizado) en dos líneas
 - 0.29: app en inglés por defecto y español opcional; el idioma es lo primero que se pregunta al abrir; sabores `play` / `personal` (el japonés experimental en kana solo existe en `personal`)
 - 0.28: bienvenida con política de privacidad, ajustes básicos y permisos; targetSdk 36 (servicio multimedia, notificaciones, gesto atrás); barra de scroll en modo DJ; portada cuadrada con scratch bloqueado
 - Tutorial para publicar en Google Play y .gitignore de claves de firma

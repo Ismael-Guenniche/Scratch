@@ -823,6 +823,77 @@ public class Check {
             }
             double secs = n * 256 / 44100.0;
             ok(secs > 0.8 && secs < 1.3, "vinyl stop ~1 s (" + secs + ")");
+
+            // sin huecos: al acabar la pista el motor entra solo en la siguiente, sin silencio ni "ended"
+            PcmData.Builder gb = new PcmData.Builder();
+            for (int i = 0; i < 44100; i++) {
+                short tv = (short) (12000 * Math.sin(2 * Math.PI * 440 * i / 44100.0));
+                gb.append(tv, tv);
+            }
+            PcmData tone = gb.build(44100);
+            ScratchEngine gp = new ScratchEngine();
+            gp.setOutputRate(44100);
+            gp.load(tone);
+            gp.queueNext(tone);
+            gp.seekTo(0.95);
+            gp.setPlaying(true);
+            int zeroRun = 0;
+            int maxZero = 0;
+            boolean swappedOk = false;
+            boolean endedBad = false;
+            int aft = 0;
+            for (int i = 0; i < 600 && aft < 40; i++) {
+                if (swappedOk) {
+                    aft++;
+                }
+                gp.render(b, 256);
+                for (int k = 0; k < 256; k++) {
+                    if (b[2 * k] == 0 && b[2 * k + 1] == 0) {
+                        zeroRun++;
+                        maxZero = Math.max(maxZero, zeroRun);
+                    } else {
+                        zeroRun = 0;
+                    }
+                }
+                swappedOk |= gp.consumeSwapped();
+                endedBad |= gp.consumeEnded();
+            }
+            ok(swappedOk, "sin huecos: el motor salta solo a la pista encolada");
+            ok(!endedBad, "sin huecos: no se marca fin de pista");
+            ok(maxZero < 40, "sin huecos: sin silencio entre pistas (racha de ceros " + maxZero + ")");
+            ok(gp.getPositionSeconds() > 0, "sin huecos: sigue sonando en la nueva pista");
+
+            // ecualizador gráfico: +12 dB sube un tono de 60 Hz y -12 dB lo baja
+            PcmData.Builder eb = new PcmData.Builder();
+            for (int i = 0; i < 44100 * 2; i++) {
+                short lv = (short) (6000 * Math.sin(2 * Math.PI * 60 * i / 44100.0));
+                eb.append(lv, lv);
+            }
+            PcmData low = eb.build(44100);
+            double[] rms = new double[3];
+            double[][] gains = {{0, 0, 0, 0, 0}, {12, 0, 0, 0, 0}, {-12, 0, 0, 0, 0}};
+            for (int gi = 0; gi < 3; gi++) {
+                ScratchEngine ge = new ScratchEngine();
+                ge.setOutputRate(44100);
+                ge.setGraphicEq(gains[gi]);
+                ge.load(low);
+                ge.seekTo(0.2);
+                ge.setPlaying(true);
+                double sum = 0;
+                int cnt = 0;
+                for (int i = 0; i < 200; i++) {
+                    ge.render(b, 256);
+                    if (i > 60) {
+                        for (int k = 0; k < 512; k++) {
+                            sum += (double) b[k] * b[k];
+                            cnt++;
+                        }
+                    }
+                }
+                rms[gi] = Math.sqrt(sum / cnt);
+            }
+            ok(rms[1] > rms[0] * 1.5, "EQ gráfico: +12 dB en 60 Hz sube el nivel (" + rms[0] + " → " + rms[1] + ")");
+            ok(rms[2] < rms[0] * 0.5, "EQ gráfico: −12 dB en 60 Hz baja el nivel (" + rms[2] + ")");
         }
         System.out.println(fails == 0 ? "TODO OK" : (fails + " FALLOS"));
         System.exit(fails == 0 ? 0 : 1);

@@ -108,6 +108,22 @@ final class Player {
     private boolean playWhenReady;
     private boolean truncated;
     private int loadGen;
+
+    // ---- reproducción sin huecos: se decodifica la siguiente pista y el motor la empalma al terminar
+    private PcmData prepPcm;
+    private Track prepTrack;
+    private String prepKey;
+    private String prepFailed;
+    private int prepGen;
+    private boolean prepScheduled;
+    private volatile boolean swapPosted;
+    private final Runnable prepRun = new Runnable() {
+        @Override
+        public void run() {
+            prepScheduled = false;
+            prepNext();
+        }
+    };
     private int errorStreak;
     private boolean shuffle;
     private int repeat;
@@ -209,9 +225,134 @@ final class Player {
     }
 
     private void changed() {
+        if (!prepScheduled) {
+            prepScheduled = true;
+            main.postDelayed(prepRun, 1500);
+        }
         for (Listener l : new ArrayList<Listener>(listeners)) {
             l.onChanged();
         }
+    }
+
+    // ---------------------------------------------------------------- sin huecos
+
+    private Track peekNext() {
+        if (!queue.isEmpty()) {
+            return queue.get(0);
+        }
+        int n = tracks.size();
+        if (repeat == 2 || index < 0 || n < 2) {
+            return null;
+        }
+        if (shuffle) {
+            ensureOrder();
+            int k = orderPos + 1;
+            return order != null && k < order.length ? tracks.get(order[k]) : null;
+        }
+        int i = index + 1;
+        if (i >= n) {
+            if (repeat != 1) {
+                return null;
+            }
+            i = 0;
+        }
+        return tracks.get(i);
+    }
+
+    private void dropPrep() {
+        prepGen++;
+        prepPcm = null;
+        prepTrack = null;
+        prepKey = null;
+        engine.clearNext();
+    }
+
+    private void prepNext() {
+        if (loading || engine.getDurationSeconds() <= 0) {
+            return;
+        }
+        if (engine.consumeSwapped()) {
+            onGapless();
+        }
+        Track t = peekNext();
+        if (t == null || t.uri == null) {
+            if (prepKey != null) {
+                dropPrep();
+            }
+            return;
+        }
+        final String key = t.uri.toString();
+        if (key.equals(prepKey) || key.equals(prepFailed)) {
+            return;
+        }
+        dropPrep();
+        prepKey = key;
+        prepTrack = t;
+        final int g = prepGen;
+        final Uri u = t.uri;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                PcmData pcm = null;
+                try {
+                    pcm = AudioLoader.load(app, u);
+                } catch (Throwable ignored) {
+                }
+                final PcmData fp = pcm;
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (g != prepGen) {
+                            return;
+                        }
+                        if (fp == null) {
+                            prepFailed = key;
+                            prepKey = null;
+                            prepTrack = null;
+                            return;
+                        }
+                        prepFailed = null;
+                        prepPcm = fp;
+                        engine.queueNext(fp);
+                    }
+                });
+            }
+        }, "prep").start();
+    }
+
+    /** El motor ya está sonando la pista encolada: se pone al día la lista, el título y la notificación. */
+    private void onGapless() {
+        Track t = prepTrack;
+        PcmData pcm = prepPcm;
+        prepTrack = null;
+        prepPcm = null;
+        prepKey = null;
+        prepGen++;
+        if (t == null || pcm == null) {
+            return;
+        }
+        pushHistory();
+        if (!queue.isEmpty() && queue.get(0).uri.equals(t.uri)) {
+            queue.remove(0);
+        }
+        int idx = indexOf(t.uri);
+        if (shuffle && idx >= 0 && order != null) {
+            for (int k = 0; k < order.length; k++) {
+                if (order[k] == idx) {
+                    orderPos = k;
+                }
+            }
+        }
+        index = idx;
+        title = t.display();
+        currentUri = t.uri;
+        truncated = pcm.truncated;
+        startListen(t.uri);
+        loadCoverAsync(++loadGen);
+        savePos();
+        updateSession();
+        syncService();
+        changed();
     }
 
     private void toast(String msg) {
@@ -382,6 +523,11 @@ final class Player {
 
     private void load(final Uri uri, final String name, final int idx, boolean autoplay,
                       final double startSec) {
+        if (engine.consumeSwapped()) {
+            onGapless();
+        }
+        final PcmData reuse = uri != null && prepPcm != null && uri.toString().equals(prepKey) ? prepPcm : null;
+        dropPrep();
         final int gen = ++loadGen;
         playWhenReady = autoplay;
         loading = true;
@@ -390,6 +536,15 @@ final class Player {
         startListen(uri);
         currentUri = uri;
         changed();
+        if (reuse != null) {
+            main.post(new Runnable() {
+                @Override
+                public void run() {
+                    finishLoad(gen, reuse, null, name, startSec);
+                }
+            });
+            return;
+        }
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -825,6 +980,12 @@ final class Player {
     void applyWheelPrefs() {
         android.content.SharedPreferences sp = Lucent.prefs(app);
         engine.setKeyLock(sp.getBoolean("keylock", false));
+        boolean eqOn = sp.getBoolean("eq_on", false);
+        double[] eqDb = new double[5];
+        for (int i = 0; i < 5; i++) {
+            eqDb[i] = eqOn ? sp.getInt("eq" + i, 0) : 0;
+        }
+        engine.setGraphicEq(eqDb);
         int sens = sp.getInt("wsens", 1);
         engine.setSecondsPerRev(sens == 0 ? 3.6 : sens == 2 ? 0.9 : ScratchEngine.SECONDS_PER_REV);
         engine.setInvert(sp.getBoolean("winvert", false));
@@ -926,6 +1087,18 @@ final class Player {
                     }
                 } else {
                     errors = 0;
+                }
+                if (engine.hasSwapped() && !swapPosted) {
+                    swapPosted = true;
+                    main.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            swapPosted = false;
+                            if (engine.consumeSwapped()) {
+                                onGapless();
+                            }
+                        }
+                    });
                 }
                 if (engine.consumeEnded()) {
                     main.post(new Runnable() {

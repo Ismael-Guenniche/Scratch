@@ -59,6 +59,14 @@ public final class ScratchEngine {
     private int backspinLeft;
     private int backspinTotal;
     private boolean fxActive;
+    private PcmData nextPcm;
+    private boolean swapped;
+    // Ecualizador gráfico de 5 bandas (siempre activo si alguna banda no es 0 dB).
+    public static final double[] EQ_HZ = {60, 230, 910, 3600, 14000};
+    private final double[] geqDb = new double[5];
+    private double geqPre = 1;
+    private boolean geqOn;
+    private final Biquad[][] geq = new Biquad[5][2];
     // ----- gimmicks de DJ
     private final double[] cues = {-1, -1, -1, -1};
     private boolean loopOn;
@@ -126,6 +134,19 @@ public final class ScratchEngine {
             a2 = (1 - al) / a0;
         }
 
+        void peak(double fc, double q, double db, double fs) {
+            double a = Math.pow(10, db / 40);
+            double w = 2 * Math.PI * Math.min(fc, fs * 0.45) / fs;
+            double cs = Math.cos(w);
+            double al = Math.sin(w) / (2 * q);
+            double a0 = 1 + al / a;
+            b0 = (1 + al * a) / a0;
+            b1 = -2 * cs / a0;
+            b2 = (1 - al * a) / a0;
+            a1 = -2 * cs / a0;
+            a2 = (1 - al / a) / a0;
+        }
+
         void bypass() {
             b0 = 1;
             b1 = b2 = a1 = a2 = 0;
@@ -136,6 +157,64 @@ public final class ScratchEngine {
             z1 = b1 * x - a1 * y + z2;
             z2 = b2 * x - a2 * y;
             return y;
+        }
+    }
+
+    /** Ecualizador gráfico: ganancia en dB (−12…+12) de cada banda de EQ_HZ. */
+    public synchronized void setGraphicEq(double[] db) {
+        boolean on = false;
+        double max = 0;
+        for (int i = 0; i < 5; i++) {
+            geqDb[i] = db == null || i >= db.length ? 0 : Math.max(-12, Math.min(12, db[i]));
+            on |= Math.abs(geqDb[i]) > 0.05;
+            max = Math.max(max, geqDb[i]);
+        }
+        geqOn = on;
+        geqPre = Math.pow(10, -(max * 0.7) / 20); // evita saturar al subir bandas
+        refreshFx();
+    }
+
+    /** Encola la siguiente pista: al acabar la actual entra sin hueco. */
+    public synchronized void queueNext(PcmData pcm) {
+        nextPcm = pcm;
+    }
+
+    public synchronized void clearNext() {
+        nextPcm = null;
+    }
+
+    public synchronized boolean hasNext() {
+        return nextPcm != null;
+    }
+
+    public synchronized boolean hasSwapped() {
+        return swapped;
+    }
+
+    /** true una vez cuando el motor ha saltado solo a la pista encolada. */
+    public synchronized boolean consumeSwapped() {
+        boolean e = swapped;
+        swapped = false;
+        return e;
+    }
+
+    private void swapToNext() {
+        PcmData n = nextPcm;
+        nextPcm = null;
+        data = n.stereo;
+        frames = n.frames;
+        sampleRate = n.sampleRate;
+        pos = 0;
+        swapped = true;
+        for (int i = 0; i < cues.length; i++) {
+            cues[i] = -1;
+        }
+        loopOn = false;
+        rolling = false;
+        loopIn = -1;
+        slipping = false;
+        for (int i = 0; i < gAge.length; i++) {
+            gAge[i] = Integer.MAX_VALUE / 2;
         }
     }
 
@@ -488,9 +567,15 @@ public final class ScratchEngine {
 
     private void refreshFx() {
         boolean eq = eqLow != 1 || eqMid != 1 || eqHigh != 1;
-        fxActive = eq || filter != 0 || echo > 0 || flanger || phaser || echoOutLeft > 0;
+        fxActive = eq || geqOn || filter != 0 || echo > 0 || flanger || phaser || echoOutLeft > 0;
         double fs = outRate;
         for (int c = 0; c < 2; c++) {
+            for (int b = 0; b < 5; b++) {
+                if (geq[b][c] == null) {
+                    geq[b][c] = new Biquad();
+                }
+                geq[b][c].peak(EQ_HZ[b], 1.1, geqDb[b], fs);
+            }
             lpEq[c].set(false, 250, 0.7071, fs);
             hpEq[c].set(true, 2500, 0.7071, fs);
             if (filter < 0) {
@@ -513,6 +598,14 @@ public final class ScratchEngine {
     private void fx(double[] lr) {
         double l = lr[0];
         double r = lr[1];
+        if (geqOn) {
+            for (int b = 0; b < 5; b++) {
+                l = geq[b][0].run(l);
+                r = geq[b][1].run(r);
+            }
+            l *= geqPre;
+            r *= geqPre;
+        }
         if (eqLow != 1 || eqMid != 1 || eqHigh != 1) {
             double lowL = lpEq[0].run(l);
             double highL = hpEq[0].run(l);
@@ -607,6 +700,8 @@ public final class ScratchEngine {
     private final double[] tmp = new double[2];
 
     public synchronized void load(PcmData pcm) {
+        nextPcm = null;
+        swapped = false;
         data = pcm.stereo;
         frames = pcm.frames;
         sampleRate = pcm.sampleRate;
@@ -775,10 +870,10 @@ public final class ScratchEngine {
 
     /** Rellena out con n frames estéreo intercalados a la frecuencia de salida. */
     public synchronized void render(short[] out, int n) {
-        final double ratio = (double) sampleRate / outRate;
-        final double tau = 0.02 * sampleRate;
+        double ratio = (double) sampleRate / outRate;
+        double tau = 0.02 * sampleRate;
         final double aScale = 44100.0 / outRate;
-        final int last = Math.max(frames - 1, 0);
+        int last = Math.max(frames - 1, 0);
         for (int i = 0; i < n; i++) {
             double target;
             double alpha;
@@ -856,7 +951,12 @@ public final class ScratchEngine {
                     rate = 0;
                 }
             }
-            if (pos > last) {
+            if (pos > last && playing && !scratching && nextPcm != null && !reverse) {
+                swapToNext();
+                ratio = (double) sampleRate / outRate;
+                tau = 0.02 * sampleRate;
+                last = Math.max(frames - 1, 0);
+            } else if (pos > last) {
                 pos = last;
                 rate = 0;
                 if (!scratching) {
