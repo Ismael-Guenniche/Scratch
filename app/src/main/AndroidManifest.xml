@@ -133,8 +133,9 @@
 
         <activity
             android:name=".ScratchActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:exported="false"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="fullUser" />
 
         <activity
             android:name=".QueueActivity"

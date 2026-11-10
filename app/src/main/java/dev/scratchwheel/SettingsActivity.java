@@ -226,6 +226,90 @@ public class SettingsActivity extends Activity {
                     }
                 }));
 
+        // MODO DJ
+        c = card(list, "MODO DJ");
+        c.addView(muted("Elige qué funciones aparecen al activar el modo DJ."));
+        c.addView(switchRow("Hot cues",
+                "4 pads: toca para guardar un punto y vuelve a tocar para saltar. Pulsación larga lo borra.",
+                prefs.getBoolean("dj_cues", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("dj_cues", v).apply();
+                    }
+                }));
+        c.addView(dots());
+        c.addView(switchRow("Bucles y roll",
+                "Bucle manual (IN / OUT / ½ / ×2) y roll de ¼, ½ y 1 s mientras mantienes.",
+                prefs.getBoolean("dj_loop", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("dj_loop", v).apply();
+                    }
+                }));
+        c.addView(dots());
+        c.addView(switchRow("Slip",
+                "Botón SLIP: mientras haces scratch o bucle, la canción sigue por debajo y al soltar vuelve a donde estaría.",
+                prefs.getBoolean("dj_slip", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("dj_slip", v).apply();
+                    }
+                }));
+        c.addView(dots());
+        c.addView(switchRow("Saltos",
+                "Botones para saltar ±4 y ±16 segundos.",
+                prefs.getBoolean("dj_jump", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("dj_jump", v).apply();
+                    }
+                }));
+        c.addView(dots());
+        c.addView(switchRow("Efectos",
+                "Flanger, phaser, trans (gate), echo out y vinyl stop.",
+                prefs.getBoolean("dj_fx", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("dj_fx", v).apply();
+                    }
+                }));
+        c.addView(dots());
+        c.addView(switchRow("Sampler",
+                "Pads con sonidos sintetizados: bocina, sirena, láser y riser.",
+                prefs.getBoolean("dj_sampler", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("dj_sampler", v).apply();
+                    }
+                }));
+        c.addView(dots());
+        c.addView(switchRow("Cut y reverse",
+                "Mantén CUT para silenciar a golpes y REVERSE para oír la canción hacia atrás.",
+                prefs.getBoolean("dj_cut", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("dj_cut", v).apply();
+                    }
+                }));
+        c.addView(dots());
+        c.addView(switchRow("Vúmetro de puntos",
+                "Medidor de nivel de puntos arriba del panel DJ.",
+                prefs.getBoolean("dj_meter", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("dj_meter", v).apply();
+                    }
+                }));
+        c.addView(dots());
+        c.addView(switchRow("Modo disco",
+                "La rueda y el vúmetro cambian de color y pulsan con el volumen.",
+                prefs.getBoolean("dj_disco", false), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("dj_disco", v).apply();
+                    }
+                }));
+
         // TEMPORIZADOR
         int left = Player.I.sleepMinutes();
         c = card(list, "TEMPORIZADOR DE APAGADO");
@@ -308,7 +392,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.26");
+        about.setText("SCRATCH 0.27");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);

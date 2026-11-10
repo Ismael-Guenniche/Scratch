@@ -622,6 +622,208 @@ public class Check {
             }
             ok(ne.getRate() > 5, "sin inercia: frenado lineal de siempre, sigue girando (" + ne.getRate() + ")");
         }
+        // ---- gimmicks de DJ
+        {
+            ScratchEngine g = new ScratchEngine();
+            g.setOutputRate(44100);
+            g.load(p);
+            short[] b = new short[512];
+            g.seekTo(3.0);
+            g.setCue(0);
+            g.seekTo(10.0);
+            ok(g.jumpCue(0) && Math.abs(g.getPositionSeconds() - 3.0) < 0.01, "hot cue: guarda y salta");
+            ok(!g.jumpCue(2), "hot cue vacío no salta");
+            g.jump(4);
+            ok(Math.abs(g.getPositionSeconds() - 7.0) < 0.01, "beat jump +4 s");
+            g.jump(-100);
+            ok(g.getPositionSeconds() == 0, "beat jump se queda en 0");
+
+            // bucle manual
+            g.seekTo(5.0);
+            g.setPlaying(true);
+            for (int i = 0; i < 40; i++) {
+                g.render(b, 256);
+            }
+            g.loopIn();
+            double lo = g.getPositionSeconds();
+            for (int i = 0; i < 172; i++) {
+                g.render(b, 256);
+            }
+            g.loopOut();
+            boolean inside = true;
+            for (int i = 0; i < 700; i++) {
+                g.render(b, 256);
+                double qq = g.getPositionSeconds();
+                if (qq < lo - 0.05 || qq > lo + 1.1) {
+                    inside = false;
+                }
+            }
+            ok(inside && g.isLoopOn(), "bucle: la posición se queda dentro");
+            g.loopExit();
+            for (int i = 0; i < 400; i++) {
+                g.render(b, 256);
+            }
+            ok(g.getPositionSeconds() > lo + 2, "bucle: al salir sigue adelante");
+
+            // roll + slip: al soltar vuelve a donde estaría
+            ScratchEngine r = new ScratchEngine();
+            r.setOutputRate(44100);
+            r.load(p);
+            r.seekTo(2.0);
+            r.setPlaying(true);
+            for (int i = 0; i < 300; i++) {
+                r.render(b, 256);
+            }
+            double bef = r.getPositionSeconds();
+            r.rollStart(0.25);
+            for (int i = 0; i < 172; i++) {
+                r.render(b, 256);
+            }
+            double during = r.getPositionSeconds();
+            r.rollEnd();
+            double after = r.getPositionSeconds();
+            ok(during < bef + 0.4, "roll: repite un trozo corto (" + during + ")");
+            ok(after > bef + 0.9, "roll: al soltar salta a donde habría llegado (" + after + ")");
+
+            // reverse suena hacia atrás
+            ScratchEngine v = new ScratchEngine();
+            v.setOutputRate(44100);
+            v.load(p);
+            v.seekTo(8.0);
+            v.setPlaying(true);
+            for (int i = 0; i < 200; i++) {
+                v.render(b, 256);
+            }
+            double pa = v.getPositionSeconds();
+            v.setReverse(true);
+            for (int i = 0; i < 100; i++) {
+                v.render(b, 256);
+            }
+            ok(v.getPositionSeconds() < pa, "reverse: retrocede");
+            v.setReverse(false);
+
+            // cut silencia
+            ScratchEngine c = new ScratchEngine();
+            c.setOutputRate(44100);
+            c.load(p);
+            c.seekTo(4.0);
+            c.setPlaying(true);
+            for (int i = 0; i < 100; i++) {
+                c.render(b, 256);
+            }
+            double eOn = avgEnergy(c, b, 20);
+            c.setCut(true);
+            for (int i = 0; i < 20; i++) {
+                c.render(b, 256);
+            }
+            double eCut = avgEnergy(c, b, 20);
+            ok(eOn > 100 && eCut < eOn * 0.02, "cut: silencia (" + eOn + " -> " + eCut + ")");
+            c.setCut(false);
+            c.setGate(4);
+            double mn = 1e18;
+            double mx = 0;
+            for (int i = 0; i < 100; i++) {
+                c.render(b, 256);
+                double en = 0;
+                for (int k = 0; k < 512; k++) {
+                    en += Math.abs(b[k]);
+                }
+                mn = Math.min(mn, en);
+                mx = Math.max(mx, en);
+            }
+            ok(mx > 1000 && mn < mx * 0.05, "trans/gate: corta a ritmo");
+            c.setGate(0);
+
+            // efectos no rompen y no desbordan
+            for (int mode = 0; mode < 3; mode++) {
+                ScratchEngine f = new ScratchEngine();
+                f.setOutputRate(48000);
+                f.load(p);
+                f.seekTo(4.0);
+                f.setPlaying(true);
+                if (mode == 0) {
+                    f.setFlanger(true);
+                } else if (mode == 1) {
+                    f.setPhaser(true);
+                } else {
+                    f.echoOut();
+                }
+                boolean fin = true;
+                double maxAbs = 0;
+                for (int i = 0; i < 700; i++) {
+                    f.render(b, 256);
+                    for (int k = 0; k < 512; k++) {
+                        maxAbs = Math.max(maxAbs, Math.abs(b[k]));
+                    }
+                }
+                ok(maxAbs > 500, "efecto " + (mode == 0 ? "flanger" : mode == 1 ? "phaser" : "echo out") + " suena (" + maxAbs + ")");
+            }
+            // echo out: se calla y vuelve
+            ScratchEngine eo = new ScratchEngine();
+            eo.setOutputRate(44100);
+            eo.load(p);
+            eo.seekTo(4.0);
+            eo.setPlaying(true);
+            eo.echoOut();
+            double midE = 0;
+            double endE = 0;
+            for (int i = 0; i < 700; i++) {
+                eo.render(b, 256);
+                double en = 0;
+                for (int k = 0; k < 512; k++) {
+                    en += Math.abs(b[k]);
+                }
+                if (i == 340) {
+                    midE = en;
+                }
+                if (i == 690) {
+                    endE = en;
+                }
+            }
+            ok(endE > 2000, "echo out: el sonido vuelve (" + endE + ")");
+
+            // sampler suena aunque no haya pista reproduciendo y mantiene el motor activo
+            ScratchEngine sm = new ScratchEngine();
+            sm.setOutputRate(44100);
+            sm.load(p);
+            for (int id = 0; id < 4; id++) {
+                sm.triggerSample(id);
+                double pk = 0;
+                for (int i = 0; i < 120; i++) {
+                    sm.render(b, 256);
+                    for (int k = 0; k < 512; k++) {
+                        pk = Math.max(pk, Math.abs(b[k]));
+                    }
+                }
+                ok(pk > 1500, "sampler " + id + " suena (" + pk + ")");
+                ok(sm.getLevel() >= 0, "nivel ok");
+            }
+            sm.triggerSample(0);
+            ok(!sm.isIdle(), "sampler activo: el motor no se duerme");
+            for (int i = 0; i < 400; i++) {
+                sm.render(b, 256);
+            }
+            ok(sm.isIdle(), "sampler terminado: el motor puede dormir");
+
+            // vinyl stop dura lo pedido
+            ScratchEngine vs = new ScratchEngine();
+            vs.setOutputRate(44100);
+            vs.load(p);
+            vs.seekTo(3.0);
+            vs.setPlaying(true);
+            for (int i = 0; i < 100; i++) {
+                vs.render(b, 256);
+            }
+            vs.armVinylStop(1.0);
+            vs.setPlaying(false);
+            int n = 0;
+            while (vs.getRate() != 0 && n < 400) {
+                vs.render(b, 256);
+                n++;
+            }
+            double secs = n * 256 / 44100.0;
+            ok(secs > 0.8 && secs < 1.3, "vinyl stop ~1 s (" + secs + ")");
+        }
         System.out.println(fails == 0 ? "TODO OK" : (fails + " FALLOS"));
         System.exit(fails == 0 ? 0 : 1);
     }

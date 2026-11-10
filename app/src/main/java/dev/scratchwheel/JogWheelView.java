@@ -100,6 +100,33 @@ public class JogWheelView extends View {
         listener = l;
     }
 
+    private boolean disco;
+    private float level;
+    private final float[] hsv = {0f, 0.85f, 1f};
+    private int baseDots;
+    private boolean baseDotsSet;
+
+    /** Modo disco: los puntos y el aro cambian de color y pulsan con el volumen. */
+    public void setDisco(boolean on) {
+        if (disco != on) {
+            disco = on;
+            if (!on) {
+                level = 0;
+                if (baseDotsSet) {
+                    dots.setColor(baseDots);
+                }
+            }
+            invalidate();
+        }
+    }
+
+    public void setLevel(float l) {
+        if (disco) {
+            level = l;
+            invalidate();
+        }
+    }
+
     public void setPlayingState(boolean p) {
         if (p != playing) {
             playing = p;
@@ -115,6 +142,11 @@ public class JogWheelView extends View {
         }
     }
 
+    private void baseDot() {
+        baseDots = dots.getColor();
+        baseDotsSet = true;
+    }
+
     private float dp(float v) {
         return v * density;
     }
@@ -127,7 +159,19 @@ public class JogWheelView extends View {
         float cy = h / 2f;
         float r = Math.min(w, h) / 2f - dp(6);
 
-        ring.setColor(touching ? accentColor : ringIdle);
+        int dc = 0;
+        if (disco) {
+            if (!baseDotsSet) {
+                baseDot();
+            }
+            hsv[0] = (System.nanoTime() / 6000000L) % 360;
+            dc = android.graphics.Color.HSVToColor(hsv);
+            dots.setColor(dc);
+            accent.setColor(dc);
+        } else if (accent.getColor() != accentColor) {
+            accent.setColor(accentColor);
+        }
+        ring.setColor(touching ? accentColor : (disco ? dc : ringIdle));
         c.drawCircle(cx, cy, r, ring);
 
         boolean showCover = coverOn && cover != null;
@@ -143,7 +187,7 @@ public class JogWheelView extends View {
             scrim.setColor(0x55000000);
             c.drawCircle(cx, cy, r - dp(2), scrim);
         } else {
-            float dotR = dp(1.7f);
+            float dotR = dp(1.7f) * (1f + level * 1.2f);
             int rings = 7;
             for (int k = 0; k < rings; k++) {
                 float rad = r * (0.38f + 0.085f * k);

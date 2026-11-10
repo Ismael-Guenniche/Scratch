@@ -12,6 +12,14 @@ final class FaderView extends View {
         void onValue(double v);
     }
 
+    /** Texto del valor en vivo que se dibuja encima de la barra. */
+    interface Readout {
+        String text(double v);
+    }
+
+    private double[] tickPos = new double[0];
+    private String[] tickTxt = new String[0];
+    private Readout readout;
     private final Lucent th;
     private final String label;
     private final double neutral;
@@ -31,13 +39,25 @@ final class FaderView extends View {
         listener = l;
     }
 
+    /** Numeración: posición 0..1 de cada marca y su texto. */
+    void setTicks(double[] pos, String[] txt) {
+        tickPos = pos;
+        tickTxt = txt;
+        invalidate();
+    }
+
+    void setReadout(Readout r) {
+        readout = r;
+        invalidate();
+    }
+
     void setValue(double v) {
         value = Math.max(0, Math.min(1, v));
         invalidate();
     }
 
     private float top() {
-        return th.dp(14);
+        return th.dp(28);
     }
 
     private float bottom() {
@@ -69,6 +89,22 @@ final class FaderView extends View {
         p.setTextAlign(Paint.Align.CENTER);
         p.setLetterSpacing(0.06f);
         c.drawText(label, cx, getHeight() - th.dp(8), p);
+        // numeración a la izquierda de la barra
+        p.setTextSize(th.dp(7.5f));
+        p.setLetterSpacing(0f);
+        p.setTextAlign(Paint.Align.RIGHT);
+        for (int i = 0; i < tickPos.length && i < tickTxt.length; i++) {
+            float y = yOf(tickPos[i]);
+            p.setColor(th.ink2);
+            c.drawRect(cx - 7 * d, y - d / 4, cx - 4 * d, y + d / 4, p);
+            c.drawText(tickTxt[i], cx - 11 * d, y + th.dp(2.6f), p);
+        }
+        if (readout != null) {
+            p.setColor(th.accent);
+            p.setTextSize(th.dp(10));
+            p.setTextAlign(Paint.Align.CENTER);
+            c.drawText(readout.text(value), cx, th.dp(11), p);
+        }
     }
 
     @Override

@@ -72,7 +72,7 @@ public class ScratchActivity extends Activity {
             // o arrancando; en reposo 5 fps para ahorrar batería.
             ScratchEngine e = Player.I.engine;
             boolean busy = Player.I.isPlayingOrPending() || e.isScratching()
-                    || Math.abs(e.getRate()) > 0.001;
+                    || Math.abs(e.getRate()) > 0.001 || (djMode && e.getLevel() > 0.004);
             if (busy) {
                 wheel.postOnAnimation(this);
             } else {
@@ -97,6 +97,19 @@ public class ScratchActivity extends Activity {
                     .setInterpolator(new android.view.animation.DecelerateInterpolator(1.8f)).start();
         }
         overridePendingTransition(0, 0);
+    }
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration cfg) {
+        super.onConfigurationChanged(cfg);
+        // Giro automático: se vuelve a montar la pantalla con el diseño vertical u horizontal.
+        ui.removeCallbacks(ticker);
+        coverKey = "";
+        lastVol = -1;
+        setContentView(buildUi());
+        refresh();
+        volBar.setProgress(audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC));
+        ui.post(ticker);
     }
 
     private boolean closing;
@@ -131,6 +144,9 @@ public class ScratchActivity extends Activity {
             return;
         }
         Player.I.addListener(listener);
+        if (djMode) {
+            rebuildDj();
+        }
         refresh();
         volBar.setProgress(audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC));
         ui.post(ticker);
@@ -202,6 +218,33 @@ public class ScratchActivity extends Activity {
         header.addView(menu, new LinearLayout.LayoutParams(dp(48), dp(48)));
         root.addView(header);
 
+        final boolean land = getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        LinearLayout leftCol = root;
+        LinearLayout rightCol = root;
+        if (land) {
+            LinearLayout body = new LinearLayout(this);
+            body.setOrientation(LinearLayout.HORIZONTAL);
+            leftCol = new LinearLayout(this);
+            leftCol.setOrientation(LinearLayout.VERTICAL);
+            rightCol = new LinearLayout(this);
+            rightCol.setOrientation(LinearLayout.VERTICAL);
+            body.addView(leftCol, new LinearLayout.LayoutParams(0,
+                    LinearLayout.LayoutParams.MATCH_PARENT, 1f));
+            android.widget.ScrollView rs = new android.widget.ScrollView(this);
+            rs.setVerticalScrollBarEnabled(false);
+            rs.setOverScrollMode(View.OVER_SCROLL_NEVER);
+            rs.addView(rightCol, new android.widget.FrameLayout.LayoutParams(
+                    android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.FrameLayout.LayoutParams.WRAP_CONTENT));
+            LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(0,
+                    LinearLayout.LayoutParams.MATCH_PARENT, 1.25f);
+            rlp.leftMargin = dp(10);
+            body.addView(rs, rlp);
+            root.addView(body, new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        }
+
         LinearLayout info = card();
         info.setPadding(dp(18), dp(14), dp(18), dp(8));
         nameView = text("", 17, th.ink, th.semi);
@@ -253,7 +296,7 @@ public class ScratchActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(32));
         plp.topMargin = dp(6);
         info.addView(progress, plp);
-        root.addView(info);
+        rightCol.addView(info);
 
         wheel = new JogWheelView(this, th);
         wheel.setListener(new JogWheelView.Listener() {
@@ -290,8 +333,12 @@ public class ScratchActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
         wlp.topMargin = dp(10);
         wlp.bottomMargin = dp(10);
-        wheelCard.setMinimumHeight(dp(340));
-        root.addView(wheelCard, wlp);
+        wheelCard.setMinimumHeight(land ? dp(120) : dp(340));
+        if (land) {
+            wlp.topMargin = 0;
+            wlp.bottomMargin = 0;
+        }
+        leftCol.addView(wheelCard, wlp);
 
         LinearLayout controls = card();
         controls.setPadding(dp(10), dp(10), dp(10), dp(12));
@@ -330,10 +377,13 @@ public class ScratchActivity extends Activity {
         addIcon(transport, next, 1f, 48);
         controls.addView(transport);
 
-        root.addView(controls);
-        root.addView(buildOptions());
-        root.addView(buildDj());
+        rightCol.addView(controls);
+        rightCol.addView(buildOptions());
+        rightCol.addView(buildDj());
         refreshMode();
+        if (land) {
+            return root;
+        }
         // En modo DJ hay más controles que alto de pantalla: la rueda mantiene su tamaño y se desplaza.
         android.widget.ScrollView sv = new android.widget.ScrollView(this);
         sv.setFillViewport(true);
@@ -550,6 +600,8 @@ public class ScratchActivity extends Activity {
         Lucent.prefs(this).edit().putBoolean("djmode", on).apply();
         if (!on) {
             Player.I.engine.resetFx();
+            faderVals.clear();
+            wheel.setDisco(false);
         }
         if (on) {
             Player.I.engine.setBrake(brakeSecs);
@@ -585,49 +637,113 @@ public class ScratchActivity extends Activity {
         return djHost;
     }
 
-    /** Efectos DJ compactos: fadders verticales (filtro, EQ, eco, pitch) y backspin/frenado. */
+    private final java.util.HashMap<String, Double> faderVals = new java.util.HashMap<String, Double>();
+    private DotMeterView meter;
+    private boolean discoOn;
+    private boolean meterOn;
+
+    private boolean opt(String key, boolean def) {
+        return Lucent.prefs(this).getBoolean(key, def);
+    }
+
+    private double fv(String key, double def) {
+        Double d = faderVals.get(key);
+        return d == null ? def : d;
+    }
+
+    private static String dbText(double gain) {
+        if (gain < 0.01) {
+            return "-∞";
+        }
+        double db = 20 * Math.log10(gain);
+        return (db > 0.05 ? "+" : "") + String.format(java.util.Locale.US, "%.1f", db);
+    }
+
+    /** Panel DJ: faders numerados, vúmetro, cues, bucles, efectos, sampler. Cada grupo se puede apagar en Ajustes. */
     private LinearLayout buildDjCard() {
         final LinearLayout card = card();
-        card.setPadding(dp(10), dp(8), dp(10), dp(8));
+        card.setPadding(dp(8), dp(8), dp(8), dp(8));
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         clp.topMargin = dp(10);
         card.setLayoutParams(clp);
-        final double[] eq = {1, 1, 1};
         final ScratchEngine en = Player.I.engine;
+        meterOn = opt("dj_meter", true);
+        discoOn = opt("dj_disco", false);
+        wheel.setDisco(discoOn);
+        if (!opt("dj_fx", true)) {
+            en.setFlanger(false);
+            en.setPhaser(false);
+            en.setGate(0);
+        }
+        if (!opt("dj_cut", true)) {
+            en.setCut(false);
+            en.setReverse(false);
+        }
+        if (!opt("dj_loop", true)) {
+            en.loopExit();
+        }
+        en.setSlip(opt("dj_slip", true) && Lucent.prefs(this).getBoolean("slip_on", false));
+
+        if (meterOn) {
+            meter = new DotMeterView(this, th);
+            meter.setDisco(discoOn);
+            card.addView(meter, new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(22)));
+        } else {
+            meter = null;
+        }
+
+        final double[] eq = {fv("GRAVES", 1 / 1.6) * 1.6, fv("MEDIOS", 1 / 1.6) * 1.6,
+                fv("AGUDOS", 1 / 1.6) * 1.6};
         LinearLayout faders = row();
         faders.setGravity(Gravity.CENTER);
-        final FaderView filter = fader(faders, "FILTRO", 0.5, new FaderView.Listener() {
+        FaderView filter = fader(faders, "FILTRO", 0.5, new FaderView.Listener() {
             @Override
             public void onValue(double v) {
                 en.setFilter((v - 0.5) * 2);
             }
         });
-        fader(faders, "GRAVES", 1 / 1.6, new FaderView.Listener() {
+        filter.setTicks(new double[] {0, 0.25, 0.5, 0.75, 1}, new String[] {"LP", "", "OFF", "", "HP"});
+        filter.setReadout(new FaderView.Readout() {
             @Override
-            public void onValue(double v) {
-                eq[0] = v * 1.6;
-                en.setEq(eq[0], eq[1], eq[2]);
+            public String text(double v) {
+                if (Math.abs(v - 0.5) < 0.02) {
+                    return "OFF";
+                }
+                return (v < 0.5 ? "LP " : "HP ") + Math.round(Math.abs(v - 0.5) * 200) + "%";
             }
         });
-        fader(faders, "MEDIOS", 1 / 1.6, new FaderView.Listener() {
-            @Override
-            public void onValue(double v) {
-                eq[1] = v * 1.6;
-                en.setEq(eq[0], eq[1], eq[2]);
-            }
-        });
-        fader(faders, "AGUDOS", 1 / 1.6, new FaderView.Listener() {
-            @Override
-            public void onValue(double v) {
-                eq[2] = v * 1.6;
-                en.setEq(eq[0], eq[1], eq[2]);
-            }
-        });
-        fader(faders, "ECO", 0, new FaderView.Listener() {
+        String[] eqNames = {"GRAVES", "MEDIOS", "AGUDOS"};
+        for (int k = 0; k < 3; k++) {
+            final int idx = k;
+            FaderView f = fader(faders, eqNames[k], 1 / 1.6, new FaderView.Listener() {
+                @Override
+                public void onValue(double v) {
+                    eq[idx] = v * 1.6;
+                    en.setEq(eq[0], eq[1], eq[2]);
+                }
+            });
+            f.setTicks(new double[] {1, 0.625, 0.3125, 0.156, 0},
+                    new String[] {"+4", "0", "-6", "-12", "-∞"});
+            f.setReadout(new FaderView.Readout() {
+                @Override
+                public String text(double v) {
+                    return dbText(v * 1.6) + "dB";
+                }
+            });
+        }
+        FaderView echo = fader(faders, "ECO", 0, new FaderView.Listener() {
             @Override
             public void onValue(double v) {
                 en.setEcho(v);
+            }
+        });
+        echo.setTicks(new double[] {1, 0.5, 0}, new String[] {"100", "50", "0"});
+        echo.setReadout(new FaderView.Readout() {
+            @Override
+            public String text(double v) {
+                return Math.round(v * 100) + "%";
             }
         });
         FaderView pitch = fader(faders, "PITCH", 0.5, new FaderView.Listener() {
@@ -643,26 +759,27 @@ public class ScratchActivity extends Activity {
                 }
             }
         });
+        pitch.setTicks(new double[] {1, 0.75, 0.5, 0.25, 0}, new String[] {"+20", "+10", "0", "-10", "-20"});
+        pitch.setReadout(new FaderView.Readout() {
+            @Override
+            public String text(double v) {
+                return pitchText(v == 0.5 ? 1.0 : 0.8 + v * 0.4);
+            }
+        });
         pitch.setValue((Player.I.pitch() - 0.8) / 0.4);
         card.addView(faders);
 
-        LinearLayout br = row();
-        br.setGravity(Gravity.CENTER_VERTICAL);
-        br.setPadding(dp(6), dp(2), 0, 0);
-        final TextView back = text("BACKSPIN", 12, th.accent, th.mono);
-        btnStyle(back);
-        back.setClickable(true);
+        // --- frenado / backspin / vinyl stop
+        LinearLayout br = padRow();
+        final TextView back = pad("BACKSPIN", true);
         back.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 en.backspin();
             }
         });
-        br.addView(back);
-        final TextView brake = text("", 12, th.ink, th.mono);
-        btnStyle(brake);
-        brake.setClickable(true);
-        brake.setText("FRENADO " + brakeText());
+        br.addView(back, padLp());
+        final TextView brake = pad("FRENADO " + brakeText(), false);
         brake.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -671,9 +788,334 @@ public class ScratchActivity extends Activity {
                 brake.setText("FRENADO " + brakeText());
             }
         });
-        br.addView(brake);
+        br.addView(brake, padLp());
+        if (opt("dj_fx", true)) {
+            TextView vs = pad("VINYL STOP", true);
+            vs.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Player.I.vinylStop(1.2);
+                }
+            });
+            br.addView(vs, padLp());
+        }
         card.addView(br);
+
+        if (opt("dj_cues", true)) {
+            card.addView(sectionTag("HOT CUES · TOCA PARA GUARDAR / SALTAR · LARGO BORRA"));
+            LinearLayout cr = padRow();
+            final TextView[] cp = new TextView[4];
+            for (int k = 0; k < 4; k++) {
+                final int idx = k;
+                cp[k] = pad("", false);
+                cueText(cp[k], idx);
+                cp[k].setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (!en.jumpCue(idx)) {
+                            en.setCue(idx);
+                        }
+                        cueText(cp[idx], idx);
+                    }
+                });
+                cp[k].setOnLongClickListener(new View.OnLongClickListener() {
+                    @Override
+                    public boolean onLongClick(View v) {
+                        en.clearCue(idx);
+                        cueText(cp[idx], idx);
+                        return true;
+                    }
+                });
+                cr.addView(cp[k], padLp());
+            }
+            card.addView(cr);
+        }
+
+        if (opt("dj_loop", true) || opt("dj_slip", true)) {
+            card.addView(sectionTag("BUCLE"));
+            LinearLayout lr = padRow();
+            if (opt("dj_loop", true)) {
+                final TextView loop = pad("", false);
+                loopText(loop, en);
+                loop.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (en.isLoopOn()) {
+                            en.loopExit();
+                        } else if (en.hasLoopIn()) {
+                            en.loopOut();
+                        } else {
+                            en.loopIn();
+                        }
+                        loopText(loop, en);
+                    }
+                });
+                lr.addView(loop, padLp());
+                TextView half = pad("½", false);
+                half.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        en.loopScale(0.5);
+                    }
+                });
+                lr.addView(half, padLp());
+                TextView twice = pad("×2", false);
+                twice.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        en.loopScale(2.0);
+                    }
+                });
+                lr.addView(twice, padLp());
+            }
+            if (opt("dj_slip", true)) {
+                final TextView slip = pad("SLIP", false);
+                padOn(slip, Lucent.prefs(this).getBoolean("slip_on", false));
+                slip.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        boolean on = !Lucent.prefs(ScratchActivity.this).getBoolean("slip_on", false);
+                        Lucent.prefs(ScratchActivity.this).edit().putBoolean("slip_on", on).apply();
+                        en.setSlip(on);
+                        padOn(slip, on);
+                    }
+                });
+                lr.addView(slip, padLp());
+            }
+            card.addView(lr);
+        }
+        if (opt("dj_loop", true)) {
+            LinearLayout rr = padRow();
+            double[] secs = {0.25, 0.5, 1.0};
+            String[] names = {"ROLL ¼", "ROLL ½", "ROLL 1"};
+            for (int k = 0; k < 3; k++) {
+                final double sc = secs[k];
+                TextView roll = pad(names[k], false);
+                hold(roll, new Runnable() {
+                    @Override
+                    public void run() {
+                        en.rollStart(sc);
+                    }
+                }, new Runnable() {
+                    @Override
+                    public void run() {
+                        en.rollEnd();
+                    }
+                });
+                rr.addView(roll, padLp());
+            }
+            card.addView(rr);
+        }
+
+        if (opt("dj_jump", true)) {
+            card.addView(sectionTag("SALTO"));
+            LinearLayout jr = padRow();
+            final double[] js = {-16, -4, 4, 16};
+            for (int k = 0; k < 4; k++) {
+                final double sec = js[k];
+                TextView j = pad((sec > 0 ? "+" : "−") + (int) Math.abs(sec) + "S", false);
+                j.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        en.jump(sec);
+                    }
+                });
+                jr.addView(j, padLp());
+            }
+            card.addView(jr);
+        }
+
+        if (opt("dj_fx", true)) {
+            card.addView(sectionTag("EFECTOS"));
+            LinearLayout fr = padRow();
+            final TextView fl = pad("FLANGER", false);
+            padOn(fl, en.isFlanger());
+            fl.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    en.setFlanger(!en.isFlanger());
+                    padOn(fl, en.isFlanger());
+                }
+            });
+            fr.addView(fl, padLp());
+            final TextView ph = pad("PHASER", false);
+            padOn(ph, en.isPhaser());
+            ph.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    en.setPhaser(!en.isPhaser());
+                    padOn(ph, en.isPhaser());
+                }
+            });
+            fr.addView(ph, padLp());
+            final TextView tr = pad("", false);
+            transText(tr, en);
+            tr.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    en.setGate(en.getGate() > 0 ? 0 : transHz);
+                    transText(tr, en);
+                }
+            });
+            tr.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    transHz = transHz < 3 ? 4 : transHz < 6 ? 8 : transHz < 12 ? 16 : 2;
+                    if (en.getGate() > 0) {
+                        en.setGate(transHz);
+                    }
+                    transText(tr, en);
+                    return true;
+                }
+            });
+            fr.addView(tr, padLp());
+            TextView eo = pad("ECHO OUT", true);
+            eo.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    en.echoOut();
+                }
+            });
+            fr.addView(eo, padLp());
+            card.addView(fr);
+        }
+
+        if (opt("dj_sampler", true)) {
+            card.addView(sectionTag("SAMPLER"));
+            LinearLayout sr = padRow();
+            String[] sn = {"BOCINA", "SIRENA", "LÁSER", "RISER"};
+            for (int k = 0; k < 4; k++) {
+                final int id = k;
+                TextView sp = pad(sn[k], true);
+                sp.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        Player.I.sample(id);
+                    }
+                });
+                sr.addView(sp, padLp());
+            }
+            card.addView(sr);
+        }
+
+        if (opt("dj_cut", true)) {
+            card.addView(sectionTag("MANTÉN PULSADO"));
+            LinearLayout xr = padRow();
+            TextView cutB = pad("CUT", true);
+            hold(cutB, new Runnable() {
+                @Override
+                public void run() {
+                    en.setCut(true);
+                }
+            }, new Runnable() {
+                @Override
+                public void run() {
+                    en.setCut(false);
+                }
+            });
+            xr.addView(cutB, padLp());
+            TextView rev = pad("REVERSE", true);
+            hold(rev, new Runnable() {
+                @Override
+                public void run() {
+                    en.setReverse(true);
+                }
+            }, new Runnable() {
+                @Override
+                public void run() {
+                    en.setReverse(false);
+                }
+            });
+            xr.addView(rev, padLp());
+            card.addView(xr);
+        }
         return card;
+    }
+
+    private double transHz = 4;
+
+    private void transText(TextView t, ScratchEngine en) {
+        t.setText("TRANS " + (int) transHz + "HZ");
+        padOn(t, en.getGate() > 0);
+    }
+
+    private void loopText(TextView t, ScratchEngine en) {
+        boolean on = en.isLoopOn();
+        t.setText(on ? "SALIR" : en.hasLoopIn() ? "OUT" : "IN");
+        padOn(t, on || en.hasLoopIn());
+    }
+
+    private void cueText(TextView t, int i) {
+        double c = Player.I.engine.getCue(i);
+        t.setText(c < 0 ? (i + 1) + " · —" : (i + 1) + " · " + fmt((int) c));
+        padOn(t, c >= 0);
+    }
+
+    /** Pulsa y mantén: acción al apretar y otra al soltar. */
+    private void hold(final TextView t, final Runnable down, final Runnable up) {
+        t.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, android.view.MotionEvent e) {
+                switch (e.getActionMasked()) {
+                    case android.view.MotionEvent.ACTION_DOWN:
+                        if (v.getParent() != null) {
+                            v.getParent().requestDisallowInterceptTouchEvent(true);
+                        }
+                        padOn(t, true);
+                        down.run();
+                        return true;
+                    case android.view.MotionEvent.ACTION_UP:
+                    case android.view.MotionEvent.ACTION_CANCEL:
+                        padOn(t, false);
+                        up.run();
+                        return true;
+                    default:
+                        return true;
+                }
+            }
+        });
+    }
+
+    private TextView sectionTag(String s) {
+        TextView t = text(s, 9, th.ink2, th.mono);
+        t.setLetterSpacing(0.1f);
+        t.setPadding(dp(6), dp(8), 0, dp(2));
+        return t;
+    }
+
+    private LinearLayout padRow() {
+        LinearLayout r = new LinearLayout(this);
+        r.setOrientation(LinearLayout.HORIZONTAL);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        return r;
+    }
+
+    private LinearLayout.LayoutParams padLp() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(52), 1f);
+        lp.setMargins(dp(3), dp(3), dp(3), dp(3));
+        return lp;
+    }
+
+    /** Pad de cristal con hit box de toda la casilla. */
+    private TextView pad(String label, boolean accentText) {
+        TextView t = text(label, 11, accentText ? th.accent : th.ink, th.mono);
+        t.setGravity(Gravity.CENTER);
+        t.setSingleLine(true);
+        t.setClickable(true);
+        t.setFocusable(true);
+        t.setTag(accentText ? Boolean.TRUE : Boolean.FALSE);
+        padOn(t, false);
+        return t;
+    }
+
+    private void padOn(TextView t, boolean on) {
+        boolean acc = Boolean.TRUE.equals(t.getTag());
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+        g.setCornerRadius(dp(Lucent.R_M));
+        g.setColor(on ? Lucent.withAlpha(th.accent, 0.22f) : th.glass);
+        g.setStroke(dp(1), on ? th.accent : th.glassLine);
+        t.setBackground(g);
+        t.setTextColor(on || acc ? th.accent : th.ink);
     }
 
     /** Botón de texto grande (≥48dp) con fondo de cristal. */
@@ -692,10 +1134,21 @@ public class ScratchActivity extends Activity {
         t.setLayoutParams(lp);
     }
 
-    private FaderView fader(LinearLayout row, String label, double neutral, FaderView.Listener l) {
+    private FaderView fader(LinearLayout row, final String label, double neutral,
+            final FaderView.Listener inner) {
         FaderView f = new FaderView(this, th, label, neutral);
-        f.setListener(l);
-        row.addView(f, new LinearLayout.LayoutParams(0, dp(150), 1f));
+        f.setListener(new FaderView.Listener() {
+            @Override
+            public void onValue(double v) {
+                faderVals.put(label, v);
+                inner.onValue(v);
+            }
+        });
+        Double saved = faderVals.get(label);
+        if (saved != null) {
+            f.setValue(saved);
+        }
+        row.addView(f, new LinearLayout.LayoutParams(0, dp(176), 1f));
         return f;
     }
 
@@ -969,6 +1422,15 @@ public class ScratchActivity extends Activity {
             }
         }
         ScratchEngine e = Player.I.engine;
+        if (djMode) {
+            float lv = (float) e.getLevel();
+            if (meter != null) {
+                meter.setLevel(lv);
+            }
+            if (discoOn) {
+                wheel.setLevel(lv);
+            }
+        }
         double pos = e.getPositionSeconds();
         wheel.setAngle((float) (pos / Player.I.engine.getSecondsPerRev() * 2 * Math.PI * (Player.I.engine.isInverted() ? -1 : 1)));
         double total = e.getDurationSeconds();

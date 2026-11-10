@@ -59,6 +59,44 @@ public final class ScratchEngine {
     private int backspinLeft;
     private int backspinTotal;
     private boolean fxActive;
+    // ----- gimmicks de DJ
+    private final double[] cues = {-1, -1, -1, -1};
+    private boolean loopOn;
+    private boolean rolling;
+    private double loopStart;
+    private double loopEnd;
+    private double loopIn = -1;
+    private boolean slip;
+    private boolean slipping;
+    private double slipPos;
+    private boolean reverse;
+    private boolean cut;
+    private double gateHz;
+    private double gatePhase;
+    private double cutGain = 1;
+    private boolean flanger;
+    private boolean phaser;
+    private double lfoPh;
+    private int echoOutLeft;
+    private double stopSecs;
+    private boolean stopFlag;
+    private double level;
+    private double levelAcc;
+    private static final int NV = 4;
+    private final int[] svType = new int[NV];
+    private final double[] svT = new double[NV];
+    private final double[] svPh = new double[NV];
+    private final boolean[] svOn = new boolean[NV];
+    private long rnd = 12345;
+    private float[] flBufL = new float[0];
+    private float[] flBufR = new float[0];
+    private int flPos;
+    private final double[] apL = new double[4];
+    private final double[] apR = new double[4];
+    private double apCoef;
+    private double phFbL;
+    private double phFbR;
+    private int phCnt;
     private final Biquad[] lpEq = {new Biquad(), new Biquad()};
     private final Biquad[] hpEq = {new Biquad(), new Biquad()};
     private final Biquad[] sweep = {new Biquad(), new Biquad()};
@@ -137,12 +175,320 @@ public final class ScratchEngine {
         echo = 0;
         spinDown = SPIN_DOWN;
         backspinLeft = 0;
+        resetGimmicks();
         refreshFx();
+    }
+
+    // ================= gimmicks de DJ =================
+
+    /** Hot cue: guarda la posición actual en el pad i (0..3). */
+    public synchronized void setCue(int i) {
+        if (i >= 0 && i < cues.length && frames > 0) {
+            cues[i] = pos / sampleRate;
+        }
+    }
+
+    /** Salta al hot cue i. Devuelve false si el pad está vacío. */
+    public synchronized boolean jumpCue(int i) {
+        if (i < 0 || i >= cues.length || cues[i] < 0) {
+            return false;
+        }
+        jumpTo(cues[i] * sampleRate);
+        return true;
+    }
+
+    public synchronized void clearCue(int i) {
+        if (i >= 0 && i < cues.length) {
+            cues[i] = -1;
+        }
+    }
+
+    /** Segundos del cue i, o -1 si está vacío. */
+    public synchronized double getCue(int i) {
+        return i >= 0 && i < cues.length ? cues[i] : -1;
+    }
+
+    private void jumpTo(double f) {
+        f = Math.max(0, Math.min(Math.max(frames - 1, 0), f));
+        if (slipping) {
+            slipPos = f;
+        }
+        pos = f;
+        scratchTarget = f;
+    }
+
+    /** Salto relativo en segundos (beat jump a mano). */
+    public synchronized void jump(double seconds) {
+        jumpTo(pos + seconds * sampleRate);
+    }
+
+    // ----- bucles
+    public synchronized void loopIn() {
+        loopIn = pos;
+    }
+
+    public synchronized void loopOut() {
+        if (loopIn >= 0 && pos > loopIn + 0.05 * sampleRate) {
+            loopStart = loopIn;
+            loopEnd = pos;
+            loopOn = true;
+            rolling = false;
+            slipBegin(false);
+        }
+    }
+
+    public synchronized void loopExit() {
+        loopOn = false;
+        rolling = false;
+        loopIn = -1;
+        slipEnd();
+    }
+
+    /** Multiplica la longitud del bucle (0,5 o 2). */
+    public synchronized void loopScale(double f) {
+        if (loopOn) {
+            double len = (loopEnd - loopStart) * f;
+            if (len > 0.03 * sampleRate) {
+                loopEnd = Math.min(Math.max(frames - 1, 0), loopStart + len);
+            }
+        }
+    }
+
+    public synchronized boolean isLoopOn() {
+        return loopOn && !rolling;
+    }
+
+    public synchronized boolean hasLoopIn() {
+        return loopIn >= 0 && !loopOn;
+    }
+
+    /** Loop roll: mientras se mantiene, repite los últimos segundos; al soltar vuelve a donde habría llegado la canción. */
+    public synchronized void rollStart(double seconds) {
+        if (!playing || frames == 0 || (loopOn && !rolling)) {
+            return;
+        }
+        loopStart = pos;
+        loopEnd = Math.min(Math.max(frames - 1, 0), pos + seconds * sampleRate);
+        if (loopEnd <= loopStart + 100) {
+            return;
+        }
+        if (!rolling) {
+            rolling = true;
+            slipBegin(true);
+        }
+        loopOn = true;
+    }
+
+    public synchronized void rollEnd() {
+        if (rolling) {
+            rolling = false;
+            loopOn = false;
+            slipEnd();
+        }
+    }
+
+    // ----- slip
+    public synchronized void setSlip(boolean on) {
+        slip = on;
+        if (!on) {
+            slipEnd();
+        }
+    }
+
+    private void slipBegin(boolean force) {
+        if (!slipping && playing && (slip || force)) {
+            slipping = true;
+            slipPos = pos;
+        }
+    }
+
+    private void slipEnd() {
+        if (slipping && !scratching && !rolling && !reverse && !loopOn) {
+            pos = Math.max(0, Math.min(Math.max(frames - 1, 0), slipPos));
+            scratchTarget = pos;
+            slipping = false;
+        }
+    }
+
+    // ----- reverse / cut / gate
+    public synchronized void setReverse(boolean on) {
+        if (on == reverse) {
+            return;
+        }
+        reverse = on;
+        if (on) {
+            slipBegin(false);
+        } else {
+            slipEnd();
+        }
+    }
+
+    public synchronized void setCut(boolean on) {
+        cut = on;
+    }
+
+    /** Trans/gate rítmico: hz = 0 apagado. */
+    public synchronized void setGate(double hz) {
+        gateHz = Math.max(0, Math.min(30, hz));
+    }
+
+    public synchronized double getGate() {
+        return gateHz;
+    }
+
+    // ----- efectos
+    public synchronized void setFlanger(boolean on) {
+        flanger = on;
+        if (on && flBufL.length == 0) {
+            int n = (int) (0.012 * outRate) + 8;
+            flBufL = new float[n];
+            flBufR = new float[n];
+        }
+        refreshFx();
+    }
+
+    public synchronized void setPhaser(boolean on) {
+        phaser = on;
+        refreshFx();
+    }
+
+    public synchronized boolean isFlanger() {
+        return flanger;
+    }
+
+    public synchronized boolean isPhaser() {
+        return phaser;
+    }
+
+    /** Echo out: el sonido se va en ecos y vuelve a los 3 s. */
+    public synchronized void echoOut() {
+        int need = (int) (0.36 * outRate) + 1;
+        if (delayL.length != need) {
+            delayL = new float[need];
+            delayR = new float[need];
+            delayPos = 0;
+        }
+        echoOutLeft = (int) (3.0 * outRate);
+        refreshFx();
+    }
+
+    /** Parada de vinilo: la próxima pausa frena en esta duración (se borra al volver a reproducir). */
+    public synchronized void armVinylStop(double seconds) {
+        stopSecs = Math.max(0.2, seconds);
+        stopFlag = true;
+    }
+
+    /** Dispara un sonido del sampler: 0 bocina, 1 sirena, 2 láser, 3 riser. */
+    public synchronized void triggerSample(int id) {
+        for (int v = 0; v < NV; v++) {
+            if (!svOn[v]) {
+                svOn[v] = true;
+                svType[v] = id;
+                svT[v] = 0;
+                svPh[v] = 0;
+                return;
+            }
+        }
+        svType[0] = id;
+        svT[0] = 0;
+        svPh[0] = 0;
+    }
+
+    private boolean samplerActive() {
+        for (int v = 0; v < NV; v++) {
+            if (svOn[v]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Nivel de salida 0..1 (para el vúmetro). */
+    public synchronized double getLevel() {
+        return level;
+    }
+
+    /** Deja los gimmicks en reposo (al salir del modo DJ o al cargar otra pista). */
+    public synchronized void resetGimmicks() {
+        for (int i = 0; i < cues.length; i++) {
+            cues[i] = -1;
+        }
+        loopOn = false;
+        rolling = false;
+        loopIn = -1;
+        slipping = false;
+        reverse = false;
+        cut = false;
+        gateHz = 0;
+        flanger = false;
+        phaser = false;
+        echoOutLeft = 0;
+        stopFlag = false;
+        slip = false;
+    }
+
+    /** Un paso del sampler: suma las voces activas (frecuencia de salida). */
+    private double sampler() {
+        double sum = 0;
+        for (int v = 0; v < NV; v++) {
+            if (!svOn[v]) {
+                continue;
+            }
+            double t = svT[v];
+            double dur;
+            double s;
+            switch (svType[v]) {
+                case 0: { // bocina: acorde de ondas casi cuadradas
+                    dur = 0.9;
+                    double a = 0;
+                    double[] fr = {415.3, 523.3, 622.3};
+                    for (double f : fr) {
+                        double ph = (t * f * (1 + 0.004 * Math.sin(t * 40))) % 1.0;
+                        double saw = 2 * ph - 1;
+                        a += Math.max(-1, Math.min(1, 3 * saw));
+                    }
+                    s = a / 3 * Math.min(1, t / 0.02) * Math.min(1, (dur - t) / 0.15);
+                    break;
+                }
+                case 1: { // sirena
+                    dur = 1.8;
+                    double f = 760 + 360 * Math.sin(2 * Math.PI * 1.4 * t);
+                    svPh[v] += f / outRate;
+                    s = (Math.sin(2 * Math.PI * svPh[v]) + 0.3 * Math.sin(4 * Math.PI * svPh[v]))
+                            * 0.75 * Math.min(1, t / 0.03) * Math.min(1, (dur - t) / 0.3);
+                    break;
+                }
+                case 2: { // láser
+                    dur = 0.35;
+                    double f = 3200 * Math.exp(-t * 9) + 120;
+                    svPh[v] += f / outRate;
+                    double ph = svPh[v] % 1.0;
+                    s = (2 * ph - 1) * (1 - t / dur);
+                    break;
+                }
+                default: { // riser: tono y ruido que suben y se cortan
+                    dur = 2.0;
+                    double f = 150 * Math.exp(t * 1.8);
+                    svPh[v] += f / outRate;
+                    rnd = rnd * 6364136223846793005L + 1442695040888963407L;
+                    double noise = ((rnd >>> 40) / (double) (1L << 24)) * 2 - 1;
+                    double env = t / dur;
+                    s = (0.7 * Math.sin(2 * Math.PI * svPh[v]) + 0.3 * noise) * env;
+                    break;
+                }
+            }
+            sum += s;
+            svT[v] += 1.0 / outRate;
+            if (svT[v] >= dur) {
+                svOn[v] = false;
+            }
+        }
+        return sum * 9500;
     }
 
     private void refreshFx() {
         boolean eq = eqLow != 1 || eqMid != 1 || eqHigh != 1;
-        fxActive = eq || filter != 0 || echo > 0;
+        fxActive = eq || filter != 0 || echo > 0 || flanger || phaser || echoOutLeft > 0;
         double fs = outRate;
         for (int c = 0; c < 2; c++) {
             lpEq[c].set(false, 250, 0.7071, fs);
@@ -156,7 +502,7 @@ public final class ScratchEngine {
             }
         }
         int need = (int) (0.36 * outRate) + 1;
-        if (echo > 0 && delayL.length != need) {
+        if ((echo > 0 || echoOutLeft > 0) && delayL.length != need) {
             delayL = new float[need];
             delayR = new float[need];
             delayPos = 0;
@@ -179,15 +525,80 @@ public final class ScratchEngine {
             l = sweep[0].run(l);
             r = sweep[1].run(r);
         }
-        if (echo > 0 && delayL.length > 0) {
+        boolean eo = echoOutLeft > 0;
+        if ((echo > 0 || eo) && delayL.length > 0) {
             int len = delayL.length;
             double dl = delayL[delayPos];
             double dr = delayR[delayPos];
-            delayL[delayPos] = (float) (l + dl * 0.5);
-            delayR[delayPos] = (float) (r + dr * 0.5);
+            double fb = 0.5;
+            double inG = 1;
+            double dry = 1;
+            double mix = echo;
+            if (eo) {
+                double t = (3.0 * outRate - echoOutLeft) / outRate;
+                inG = t < 0.3 ? 1 - t / 0.3 : 0;
+                dry = t < 0.3 ? inG : (t < 2.4 ? 0 : (t < 3.0 ? (t - 2.4) / 0.6 : 1));
+                fb = 0.72;
+                mix = 1;
+                echoOutLeft--;
+                if (echoOutLeft == 0) {
+                    java.util.Arrays.fill(delayL, 0f);
+                    java.util.Arrays.fill(delayR, 0f);
+                }
+            }
+            delayL[delayPos] = (float) (l * inG + dl * fb);
+            delayR[delayPos] = (float) (r * inG + dr * fb);
             delayPos = (delayPos + 1) % len;
-            l += dl * echo;
-            r += dr * echo;
+            l = l * dry + dl * mix;
+            r = r * dry + dr * mix;
+        }
+        if (flanger && flBufL.length > 0) {
+            int n = flBufL.length;
+            lfoPh += 0.28 / outRate;
+            if (lfoPh >= 1) {
+                lfoPh -= 1;
+            }
+            double d = (0.0006 + 0.0034 * (0.5 + 0.5 * Math.sin(2 * Math.PI * lfoPh))) * outRate;
+            double rp = flPos - d;
+            while (rp < 0) {
+                rp += n;
+            }
+            int i0 = (int) rp;
+            int i1 = (i0 + 1) % n;
+            double f = rp - i0;
+            double wl = flBufL[i0] + (flBufL[i1] - flBufL[i0]) * f;
+            double wr = flBufR[i0] + (flBufR[i1] - flBufR[i0]) * f;
+            flBufL[flPos] = (float) (l + wl * 0.4);
+            flBufR[flPos] = (float) (r + wr * 0.4);
+            flPos = (flPos + 1) % n;
+            l = (l + wl) * 0.5;
+            r = (r + wr) * 0.5;
+        }
+        if (phaser) {
+            if (phCnt-- <= 0) {
+                phCnt = 31;
+                lfoPh += 32.0 * 0.35 / outRate;
+                if (lfoPh >= 1) {
+                    lfoPh -= 1;
+                }
+                double fc = 350 * Math.pow(8.0, 0.5 + 0.5 * Math.sin(2 * Math.PI * lfoPh));
+                double tn = Math.tan(Math.PI * Math.min(fc, outRate * 0.45) / outRate);
+                apCoef = (tn - 1) / (tn + 1);
+            }
+            double xl = l + phFbL * 0.5;
+            double xr = r + phFbR * 0.5;
+            for (int k = 0; k < 4; k++) {
+                double yl = apCoef * xl + apL[k];
+                apL[k] = xl - apCoef * yl;
+                xl = yl;
+                double yr = apCoef * xr + apR[k];
+                apR[k] = xr - apCoef * yr;
+                xr = yr;
+            }
+            phFbL = xl;
+            phFbR = xr;
+            l = (l + xl) * 0.5;
+            r = (r + xr) * 0.5;
         }
         lr[0] = l;
         lr[1] = r;
@@ -206,6 +617,14 @@ public final class ScratchEngine {
         playing = false;
         ended = false;
         seek = 0;
+        for (int i = 0; i < cues.length; i++) {
+            cues[i] = -1;
+        }
+        loopOn = false;
+        rolling = false;
+        loopIn = -1;
+        slipping = false;
+        reverse = false;
     }
 
     public synchronized void setOutputRate(int hz) {
@@ -233,6 +652,9 @@ public final class ScratchEngine {
         playing = p && frames > 0;
         if (playing) {
             ended = false;
+            stopFlag = false;
+        } else {
+            slipping = false;
         }
     }
 
@@ -246,7 +668,7 @@ public final class ScratchEngine {
 
     /** true si no hay nada que sonar: se puede parar el hilo de audio. */
     public synchronized boolean isIdle() {
-        return !playing && !scratching && seek == 0 && rate == 0;
+        return !playing && !scratching && seek == 0 && rate == 0 && echoOutLeft == 0 && !samplerActive();
     }
 
     /** true una vez cuando la pista llega al final reproduciéndose. */
@@ -312,6 +734,7 @@ public final class ScratchEngine {
 
     public synchronized void touchDown() {
         freeSpin = false;
+        slipBegin(false);
         scratching = true;
         scratchTarget = pos;
     }
@@ -335,6 +758,7 @@ public final class ScratchEngine {
             freeSpin = true;
         }
         scratching = false;
+        slipEnd();
     }
 
     public synchronized double getPositionSeconds() {
@@ -370,6 +794,9 @@ public final class ScratchEngine {
                 target = -6.0 * backspinLeft / backspinTotal;
                 alpha = 0.01 * aScale;
                 backspinLeft--;
+            } else if (reverse && playing) {
+                target = -pitch;
+                alpha = 0.012 * aScale;
             } else if (seek != 0) {
                 target = seek;
                 alpha = 0.004 * aScale;
@@ -396,9 +823,10 @@ public final class ScratchEngine {
                 }
             } else if (!scratching && seek == 0 && !playing && backspinLeft == 0) {
                 // Frenado tipo vinilo: baja la velocidad de forma lineal hasta parar (el tono cae).
-                double step = 1.0 / (spinDown * outRate);
+                double step = 1.0 / ((stopFlag ? stopSecs : spinDown) * outRate);
                 if (Math.abs(rate) <= step) {
                     rate = 0;
+                    stopFlag = false;
                 } else {
                     rate -= Math.signum(rate) * step;
                 }
@@ -409,6 +837,19 @@ public final class ScratchEngine {
                 rate = 0;
             }
             pos += rate * ratio;
+            if (slipping && playing) {
+                slipPos += pitch * ratio;
+                if (slipPos > last) {
+                    slipPos = last;
+                }
+            }
+            if (loopOn && !scratching) {
+                if (rate > 0 && pos >= loopEnd) {
+                    pos = loopStart + (pos - loopEnd);
+                } else if (rate < 0 && pos < loopStart) {
+                    pos = loopEnd - (loopStart - pos);
+                }
+            }
             if (pos < 0) {
                 pos = 0;
                 if (rate < 0) {
@@ -426,27 +867,24 @@ public final class ScratchEngine {
                 }
             }
 
-            if (frames == 0) {
-                out[2 * i] = 0;
-                out[2 * i + 1] = 0;
-                continue;
-            }
-            double g = Math.min(1.0, Math.abs(rate) * 8.0) * volume;
-            double vl;
-            double vr;
-            if (keyLock) {
-                double[] s = grains(ratio, last);
-                vl = s[0] * g;
-                vr = s[1] * g;
-            } else {
-                int i0 = (int) pos;
-                double f = pos - i0;
-                int im = Math.max(i0 - 1, 0);
-                int ip = Math.min(i0 + 1, last);
-                int ip2 = Math.min(i0 + 2, last);
-                vl = cubic(data[2 * im], data[2 * i0], data[2 * ip], data[2 * ip2], f) * g;
-                vr = cubic(data[2 * im + 1], data[2 * i0 + 1], data[2 * ip + 1],
-                        data[2 * ip2 + 1], f) * g;
+            double vl = 0;
+            double vr = 0;
+            if (frames > 0) {
+                double g = Math.min(1.0, Math.abs(rate) * 8.0) * volume;
+                if (keyLock) {
+                    double[] s = grains(ratio, last);
+                    vl = s[0] * g;
+                    vr = s[1] * g;
+                } else {
+                    int i0 = (int) pos;
+                    double f = pos - i0;
+                    int im = Math.max(i0 - 1, 0);
+                    int ip = Math.min(i0 + 1, last);
+                    int ip2 = Math.min(i0 + 2, last);
+                    vl = cubic(data[2 * im], data[2 * i0], data[2 * ip], data[2 * ip2], f) * g;
+                    vr = cubic(data[2 * im + 1], data[2 * i0 + 1], data[2 * ip + 1],
+                            data[2 * ip2 + 1], f) * g;
+                }
             }
             if (fxActive) {
                 tmp[0] = vl;
@@ -455,9 +893,44 @@ public final class ScratchEngine {
                 vl = tmp[0];
                 vr = tmp[1];
             }
+            // corte (transformer) y trans/gate: ganancia suavizada para que no haya clics
+            double gt = cut ? 0 : 1;
+            if (gateHz > 0) {
+                gatePhase += gateHz / outRate;
+                if (gatePhase >= 1) {
+                    gatePhase -= 1;
+                }
+                if (gatePhase >= 0.5) {
+                    gt = 0;
+                }
+            }
+            if (gt != cutGain) {
+                cutGain += (gt - cutGain) * Math.min(1.0, 1.0 / (0.002 * outRate));
+                if (Math.abs(gt - cutGain) < 1e-4) {
+                    cutGain = gt;
+                }
+            }
+            vl *= cutGain;
+            vr *= cutGain;
+            if (samplerActiveFlag()) {
+                double sm = sampler();
+                vl += sm;
+                vr += sm;
+            }
+            double pk = Math.max(Math.abs(vl), Math.abs(vr));
+            if (pk > levelAcc) {
+                levelAcc = pk;
+            }
             out[2 * i] = clip(vl);
             out[2 * i + 1] = clip(vr);
         }
+        double lv = Math.min(1.0, levelAcc / 24000.0);
+        level = Math.max(lv, level * 0.8);
+        levelAcc = 0;
+    }
+
+    private boolean samplerActiveFlag() {
+        return svOn[0] || svOn[1] || svOn[2] || svOn[3];
     }
 
     private final double[] gOut = new double[2];
