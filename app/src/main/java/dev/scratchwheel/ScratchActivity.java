@@ -1197,6 +1197,7 @@ public class ScratchActivity extends Activity {
         TextView t = text(label, 11, accentText ? th.accent : th.ink, th.mono);
         t.setGravity(Gravity.CENTER);
         t.setSingleLine(true);
+        Lucent.fit(t);
         t.setClickable(true);
         t.setFocusable(true);
         t.setTag(accentText ? Boolean.TRUE : Boolean.FALSE);

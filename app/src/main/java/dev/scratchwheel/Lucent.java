@@ -364,9 +364,24 @@ public final class Lucent {
             g.setStroke(dp(1), stroke);
         }
         b.setBackground(new RippleDrawable(ColorStateList.valueOf(withAlpha(text, 0.18f)), g, null));
+        fit(b);
     }
 
     /** Chip en píldora como en Dot Calendar: seleccionado = tinta sólida con texto invertido; si no, cristal con borde. */
+    /** Textos de dos lineas (kana + ingles): reduce y permite 2 lineas en vez de salirse del hueco. */
+    public static void fit(android.widget.TextView t) {
+        CharSequence s = t.getText();
+        if (s != null && s.toString().indexOf('\n') >= 0) {
+            t.setSingleLine(false);
+            t.setMaxLines(2);
+            t.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            t.setGravity(android.view.Gravity.CENTER);
+            t.setTextSize(9.5f);
+            t.setLetterSpacing(0f);
+            t.setPadding(t.getPaddingLeft(), Math.min(t.getPaddingTop(), 6), t.getPaddingRight(), Math.min(t.getPaddingBottom(), 6));
+        }
+    }
+
     public android.widget.TextView chip(Context c, String label, boolean on, int padH) {
         android.widget.TextView t = new android.widget.TextView(c);
         t.setText(label);
@@ -387,6 +402,7 @@ public final class Lucent {
             t.setTextColor(ink);
         }
         t.setBackground(new RippleDrawable(ColorStateList.valueOf(withAlpha(ink, 0.15f)), g, null));
+        fit(t);
         return t;
     }
 

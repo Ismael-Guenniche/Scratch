@@ -61,7 +61,7 @@ final class FaderView extends View {
     }
 
     private float bottom() {
-        return getHeight() - th.dp(26);
+        return getHeight() - th.dp(26) - (label.split("\n").length - 1) * th.dp(10);
     }
 
     private float yOf(double v) {
@@ -88,7 +88,17 @@ final class FaderView extends View {
         p.setTextSize(th.dp(9));
         p.setTextAlign(Paint.Align.CENTER);
         p.setLetterSpacing(0.06f);
-        c.drawText(label, cx, getHeight() - th.dp(8), p);
+        String[] ls = label.split("\n");
+        float maxW = getWidth() - th.dp(2);
+        for (int i = 0; i < ls.length; i++) {
+            float sz = th.dp(9);
+            p.setTextSize(sz);
+            float w = p.measureText(ls[i]);
+            if (w > maxW) {
+                p.setTextSize(sz * maxW / w);
+            }
+            c.drawText(ls[i], cx, getHeight() - th.dp(8) - (ls.length - 1 - i) * th.dp(10), p);
+        }
         // numeración a la izquierda de la barra
         p.setTextSize(th.dp(7.5f));
         p.setLetterSpacing(0f);

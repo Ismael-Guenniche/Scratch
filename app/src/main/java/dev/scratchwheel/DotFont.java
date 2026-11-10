@@ -75,58 +75,12 @@ public final class DotFont {
         }
     }
 
-    /** Hiragana y katakana: no hay glifos a mano, se rasterizan 7x7 desde la fuente del sistema. */
+    /** Hiragana y katakana: no se dibujan con puntos (ilegible); las vistas los pintan con la fuente normal. */
     public static boolean isKana(char c) {
         return (c >= 0x3041 && c <= 0x30FF) || c == 0x30FC;
     }
 
-    private static final Map<Character, String> K = new HashMap<Character, String>();
-
-    private static synchronized String kana(char c) {
-        String v = K.get(c);
-        if (v != null) {
-            return v;
-        }
-        final int px = 28;
-        final int n = 7;
-        StringBuilder sb = new StringBuilder();
-        try {
-            android.graphics.Bitmap bmp = android.graphics.Bitmap.createBitmap(px, px, android.graphics.Bitmap.Config.ARGB_8888);
-            android.graphics.Canvas cv = new android.graphics.Canvas(bmp);
-            android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-            p.setColor(0xFF000000);
-            p.setTextSize(px * 0.96f);
-            p.setFakeBoldText(true);
-            p.setTextAlign(android.graphics.Paint.Align.CENTER);
-            cv.drawText(String.valueOf(c), px / 2f, px * 0.84f, p);
-            int step = px / n;
-            for (int row = 0; row < n; row++) {
-                for (int col = 0; col < n; col++) {
-                    int sum = 0;
-                    for (int y = 0; y < step; y++) {
-                        for (int x = 0; x < step; x++) {
-                            sum += android.graphics.Color.alpha(bmp.getPixel(col * step + x, row * step + y));
-                        }
-                    }
-                    sb.append(sum > step * step * 255 * 0.30 ? '1' : '0');
-                }
-            }
-            bmp.recycle();
-        } catch (RuntimeException e) {
-            sb.setLength(0);
-            for (int i = 0; i < n * n; i++) {
-                sb.append('0');
-            }
-        }
-        v = sb.toString();
-        K.put(c, v);
-        return v;
-    }
-
     public static String pattern(char c) {
-        if (isKana(c)) {
-            return kana(c);
-        }
         return G.get(fold(c));
     }
 

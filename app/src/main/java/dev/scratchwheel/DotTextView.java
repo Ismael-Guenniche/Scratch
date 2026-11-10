@@ -16,6 +16,7 @@ public class DotTextView extends View {
     private String text = "";
     private String[] lines = {""};
     private float cell;
+    private int oldLines = 1;
 
     public DotTextView(Context c, float cellDp, Lucent t) {
         super(c);
@@ -38,10 +39,12 @@ public class DotTextView extends View {
     public void setText(String s) {
         String v = s == null ? "" : s;
         if (!v.equals(text)) {
-            boolean relayout = DotFont.cols(v) != DotFont.cols(text)
-                    || v.split("\n", -1).length != lines.length;
+            String[] nl = v.split("\n", -1);
+            float oldW = width();
             text = v;
-            lines = v.split("\n", -1);
+            lines = nl;
+            boolean relayout = oldW != width() || nl.length != oldLines;
+            oldLines = nl.length;
             if (relayout) {
                 requestLayout();
             }
@@ -51,18 +54,37 @@ public class DotTextView extends View {
 
     @Override
     protected void onMeasure(int wSpec, int hSpec) {
-        int w = (dots ? (int) Math.ceil(DotFont.cols(text) * cell) : (int) Math.ceil(textWidth()))
-                + getPaddingLeft() + getPaddingRight();
+        int w = (int) Math.ceil(width()) + getPaddingLeft() + getPaddingRight();
         int h = (int) Math.ceil((DotFont.ROWS + (lines.length - 1) * (DotFont.ROWS + 2)) * cell)
                 + getPaddingTop() + getPaddingBottom();
         setMeasuredDimension(resolveSize(w, wSpec), resolveSize(h, hSpec));
     }
 
-    private float textWidth() {
+    private static boolean hasKana(String line) {
+        for (int i = 0; i < line.length(); i++) {
+            if (DotFont.isKana(line.charAt(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private float lineWidth(String line) {
+        if (hasKana(line)) {
+            on.setTextSize(cell * 6.2f);
+            return on.measureText(line);
+        }
+        if (dots) {
+            return DotFont.cols(line) * cell;
+        }
         on.setTextSize(cell * 7f);
+        return on.measureText(DotFont.upper(line));
+    }
+
+    private float width() {
         float best = 0;
         for (String line : lines) {
-            best = Math.max(best, on.measureText(DotFont.upper(line)));
+            best = Math.max(best, lineWidth(line));
         }
         return best;
     }
@@ -75,6 +97,10 @@ public class DotTextView extends View {
             on.setTextSize(cell * 7f);
             acc.setTextSize(cell * 7f);
             for (int li = 0; li < lines.length; li++) {
+                if (hasKana(lines[li])) {
+                    drawKana(c, lines[li], li);
+                    continue;
+                }
                 float x = 0;
                 float base = cell * 7f * 0.92f + li * (DotFont.ROWS + 2) * cell;
                 String up = DotFont.upper(lines[li]);
@@ -90,13 +116,17 @@ public class DotTextView extends View {
         float r = cell * 0.36f;
         for (int li = 0; li < lines.length; li++) {
             String line = lines[li];
+            if (hasKana(line)) {
+                drawKana(c, line, li);
+                continue;
+            }
             float yo = li * (DotFont.ROWS + 2) * cell;
             int col = 0;
             for (int i = 0; i < line.length(); i++) {
                 char ch = line.charAt(i);
                 int w = DotFont.width(ch);
                 boolean colon = DotFont.fold(ch) == ':';
-                boolean blank = DotFont.fold(ch) == ' ' && !DotFont.isKana(ch);
+                boolean blank = DotFont.fold(ch) == ' ';
                 for (int y = 0; y < DotFont.ROWS; y++) {
                     for (int x = 0; x < w; x++) {
                         if (blank) {
@@ -109,5 +139,10 @@ public class DotTextView extends View {
                 col += w + 1;
             }
         }
+    }
+
+    private void drawKana(Canvas c, String line, int li) {
+        on.setTextSize(cell * 6.2f);
+        c.drawText(line, 0, cell * 6.2f * 0.92f + li * (DotFont.ROWS + 2) * cell, on);
     }
 }
