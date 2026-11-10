@@ -52,6 +52,7 @@ public final class Lucent {
     public boolean dark;
     public boolean dotTitles;
     public int blur;
+    public boolean grid;
     public int glass;
     public int glassLine;
     public int ink;
@@ -123,6 +124,7 @@ public final class Lucent {
         boolean accWall = p.getBoolean("wall", false);
         int font = p.getInt("font", defaultLucent() ? 0 : 2);
         t.blur = p.getInt("blur", 2);
+        t.grid = p.getBoolean("grid", true);
         loadFonts(ctx);
         if (mode == 1) {
             t.dark = false;
@@ -265,7 +267,7 @@ public final class Lucent {
         if (lucent && blur > 0 && Build.VERSION.SDK_INT >= 31) {
             WindowManager wm = (WindowManager) a.getSystemService(Context.WINDOW_SERVICE);
             if (wm != null && wm.isCrossWindowBlurEnabled()) {
-                w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                setBg(w, new ColorDrawable(Color.TRANSPARENT));
                 w.setBackgroundBlurRadius(dp(blur == 1 ? 16 : 28));
                 blurred = true;
             }
@@ -279,11 +281,23 @@ public final class Lucent {
             GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                     new int[] {top, bot});
             g.setAlpha(blurred ? 222 : 255);
-            w.setBackgroundDrawable(g);
+            setBg(w, g);
         } else if (!blurred) {
-            w.setBackgroundDrawable(new ColorDrawable(veil));
+            setBg(w, new ColorDrawable(veil));
         } else {
-            w.setBackgroundDrawable(new ColorDrawable(withAlpha(veil, 0.80f)));
+            setBg(w, new ColorDrawable(withAlpha(veil, 0.80f)));
+        }
+    }
+
+    /** Fondo de ventana: la base (velo/degradado/transparente) más la rejilla de puntos encima. */
+    @SuppressWarnings("deprecation")
+    private void setBg(Window w, android.graphics.drawable.Drawable base) {
+        if (grid) {
+            android.graphics.drawable.LayerDrawable l = new android.graphics.drawable.LayerDrawable(
+                    new android.graphics.drawable.Drawable[] {base, new DotGrid(withAlpha(ink, dark ? 0.16f : 0.14f), density)});
+            w.setBackgroundDrawable(l);
+        } else {
+            w.setBackgroundDrawable(base);
         }
     }
 

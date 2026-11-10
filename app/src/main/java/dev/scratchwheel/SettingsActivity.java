@@ -39,8 +39,18 @@ public class SettingsActivity extends Activity {
     protected void onResume() {
         super.onResume();
         if (th.myStamp != Lucent.stamp) {
-            recreate();
+            redo();
         }
+    }
+
+    private ScrollView scroll;
+    private static int savedScroll = -1;
+
+    /** Recrea la pantalla (para aplicar el tema) sin perder la posición del scroll ni parpadear. */
+    private void redo() {
+        savedScroll = scroll != null ? scroll.getScrollY() : -1;
+        recreate();
+        overridePendingTransition(0, 0);
     }
 
     private int dp(float v) {
@@ -49,7 +59,7 @@ public class SettingsActivity extends Activity {
 
     private void changed() {
         Lucent.stamp++;
-        recreate();
+        redo();
     }
 
     private View buildUi() {
@@ -106,9 +116,10 @@ public class SettingsActivity extends Activity {
                 }));
         DotTextView prev = new DotTextView(this, 4f, th);
         prev.setText("AA 0123");
-        prev.setPadding(0, dp(18), 0, dp(6));
+        prev.setPadding(0, dp(24), 0, dp(10));
         c.addView(prev);
         TextView sample = body("The quick brown fox jumps over the lazy dog.");
+        sample.setPadding(0, dp(4), 0, dp(8));
         c.addView(sample);
 
         // RUEDA
@@ -141,7 +152,7 @@ public class SettingsActivity extends Activity {
                     @Override
                     public void on(int v) {
                         Player.I.setSleepMinutes(mins[v]);
-                        recreate();
+                        redo();
                     }
                 }));
 
@@ -153,6 +164,16 @@ public class SettingsActivity extends Activity {
                     @Override
                     public void on(boolean v) {
                         prefs.edit().putBoolean("lucent", v).apply();
+                        changed();
+                    }
+                }));
+        c.addView(dots());
+        c.addView(switchRow("Rejilla de puntos",
+                "Puntos tenues por toda la pantalla, sobre el fondo difuminado.",
+                prefs.getBoolean("grid", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("grid", v).apply();
                         changed();
                     }
                 }));
@@ -203,7 +224,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.20");
+        about.setText("SCRATCH 0.21");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);
@@ -217,6 +238,17 @@ public class SettingsActivity extends Activity {
         sv.setVerticalScrollBarEnabled(false);
         sv.setOverScrollMode(View.OVER_SCROLL_NEVER);
         sv.addView(list);
+        scroll = sv;
+        if (savedScroll > 0) {
+            final int y = savedScroll;
+            savedScroll = -1;
+            sv.post(new Runnable() {
+                @Override
+                public void run() {
+                    scroll.scrollTo(0, y);
+                }
+            });
+        }
         root.addView(sv, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         return root;
