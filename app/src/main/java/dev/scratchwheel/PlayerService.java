@@ -24,6 +24,7 @@ public class PlayerService extends MediaBrowserService {
     private static final String A_TOGGLE = "dev.scratchwheel.TOGGLE";
     private static final String A_NEXT = "dev.scratchwheel.NEXT";
     private static final String A_PREV = "dev.scratchwheel.PREV";
+    private static final String A_STOP = "dev.scratchwheel.STOP";
 
     @Override
     public BrowserRoot onGetRoot(String clientPackageName, int clientUid, Bundle rootHints) {
@@ -93,6 +94,12 @@ public class PlayerService extends MediaBrowserService {
         Player p = Player.I;
         p.init(this);
         String a = intent == null ? null : intent.getAction();
+        if (A_STOP.equals(a)) {
+            // la notificación en pausa se ha descartado con el dedo
+            stopForeground(true);
+            stopSelf();
+            return START_NOT_STICKY;
+        }
         if (A_TOGGLE.equals(a)) {
             p.toggle();
         } else if (A_NEXT.equals(a)) {
@@ -108,8 +115,13 @@ public class PlayerService extends MediaBrowserService {
             return START_NOT_STICKY;
         }
         if (!p.isPlayingOrPending()) {
+            // En pausa la notificación se queda (para poder reanudar); el servicio sigue vivo
+            // y solo desaparece si se descarta con el dedo o se cierra la app.
             stopForeground(false);
-            stopSelf();
+            try {
+                ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(ID, n);
+            } catch (RuntimeException ignored) {
+            }
         }
         return START_NOT_STICKY;
     }
@@ -125,6 +137,7 @@ public class PlayerService extends MediaBrowserService {
                 .setContentText(sub)
                 .setContentIntent(openApp())
                 .setOngoing(playing)
+                .setDeleteIntent(stopIntent())
                 .setShowWhen(false)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .addAction(action(android.R.drawable.ic_media_previous, "Anterior", A_PREV))
@@ -138,6 +151,12 @@ public class PlayerService extends MediaBrowserService {
         }
         b.setStyle(style);
         return b.build();
+    }
+
+    private PendingIntent stopIntent() {
+        Intent i = new Intent(this, PlayerService.class);
+        i.setAction(A_STOP);
+        return PendingIntent.getService(this, A_STOP.hashCode(), i, piFlags());
     }
 
     private int piFlags() {

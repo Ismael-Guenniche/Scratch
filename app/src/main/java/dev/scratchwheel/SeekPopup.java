@@ -38,10 +38,16 @@ final class SeekPopup {
             float h = getHeight();
             float d = th.dp(1);
             p.setStyle(Paint.Style.FILL);
-            p.setColor(th.dotOff);
+            p.setColor(th.solid);
             p.setAlpha(255);
             r.set(0, 0, w, h);
             c.drawRoundRect(r, th.dp(18), th.dp(18), p);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(th.dp(1));
+            p.setColor(th.glassLine);
+            r.set(d / 2, d / 2, w - d / 2, h - d / 2);
+            c.drawRoundRect(r, th.dp(18), th.dp(18), p);
+            p.setStyle(Paint.Style.FILL);
             // etiqueta
             p.setColor(th.ink);
             p.setTypeface(th.mono);
