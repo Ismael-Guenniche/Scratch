@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.33: etiquetas de los botones del reproductor en dos líneas (kana arriba, inglés abajo)
 - 0.32: el kana ya no se dibuja con puntos (ilegible), usa fuente normal con el inglés en puntos; textos de dos líneas ajustados en faders, pads, chips y botones
 - 0.31: BPM y sincronía en el modo DJ (detección de tempo, pulsos, SYNC, ½/×2); corrige build.gradle (flavorDimensions fuera de defaultConfig)
 - 0.30: reproducción sin huecos (precarga y empalme sample a sample de la siguiente pista); ecualizador de 5 bandas con presets en Ajustes; más kana en el japonés experimental y fuente de puntos con kana (rasterizado) en dos líneas

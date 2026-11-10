@@ -443,8 +443,11 @@ public class ScratchActivity extends Activity {
             }
         });
         c.addView(icon, new LinearLayout.LayoutParams(dp(40), dp(40)));
-        label.setSingleLine(true);
+        // dos lineas: kana arriba, ingles abajo (setSingleLine(true) convertiria el salto en espacio)
+        label.setSingleLine(false);
+        label.setMaxLines(2);
         label.setGravity(Gravity.CENTER);
+        label.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
         c.addView(label);
         return c;
     }
