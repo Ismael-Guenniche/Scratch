@@ -1,0 +1,160 @@
+package dev.scratchwheel;
+
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.Intent;
+import android.graphics.drawable.Icon;
+import android.media.MediaDescription;
+import android.media.browse.MediaBrowser;
+import android.media.session.MediaSession;
+import android.service.media.MediaBrowserService;
+import android.os.Build;
+import android.os.Bundle;
+import java.util.ArrayList;
+import java.util.List;
+
+/** Servicio en primer plano: mantiene viva la música con la pantalla apagada y muestra los controles. */
+public class PlayerService extends MediaBrowserService {
+    static volatile boolean active;
+
+    private static final String CHANNEL = "scratch_playback";
+    private static final int ID = 7;
+    private static final String A_TOGGLE = "dev.scratchwheel.TOGGLE";
+    private static final String A_NEXT = "dev.scratchwheel.NEXT";
+    private static final String A_PREV = "dev.scratchwheel.PREV";
+
+    @Override
+    public BrowserRoot onGetRoot(String clientPackageName, int clientUid, Bundle rootHints) {
+        return new BrowserRoot("root", null);
+    }
+
+    @Override
+    public void onLoadChildren(String parentId, Result<List<MediaBrowser.MediaItem>> result) {
+        Player p = Player.I;
+        List<MediaBrowser.MediaItem> out = new ArrayList<MediaBrowser.MediaItem>();
+        if ("root".equals(parentId)) {
+            out.add(folder("ALL", "Canciones"));
+            out.add(folder("FAV", "Favoritas"));
+            out.add(folder("REC", "Recientes"));
+            List<String> names = Playlists.I.names();
+            for (int i = 0; i < names.size() && i < 20; i++) {
+                out.add(folder("PL:" + names.get(i), names.get(i)));
+            }
+        } else {
+            List<Integer> idx = p.listFor(parentId);
+            for (int k = 0; k < idx.size() && k < 300; k++) {
+                Player.Track t = p.tracks.get(idx.get(k));
+                out.add(new MediaBrowser.MediaItem(new MediaDescription.Builder()
+                        .setMediaId(parentId + "|" + t.uri)
+                        .setTitle(t.display())
+                        .setSubtitle(t.artist.length() > 0 ? t.artist : null)
+                        .build(), MediaBrowser.MediaItem.FLAG_PLAYABLE));
+            }
+        }
+        result.sendResult(out);
+    }
+
+    private MediaBrowser.MediaItem folder(String id, String title) {
+        return new MediaBrowser.MediaItem(new MediaDescription.Builder()
+                .setMediaId(id).setTitle(title).build(), MediaBrowser.MediaItem.FLAG_BROWSABLE);
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        try {
+            Player.I.init(this);
+            MediaSession.Token t = Player.I.sessionToken();
+            if (t != null) {
+                setSessionToken(t);
+            }
+        } catch (RuntimeException ignored) {
+        }
+        active = true;
+        if (Build.VERSION.SDK_INT >= 26) {
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            NotificationChannel ch = new NotificationChannel(CHANNEL, "Reproducción",
+                    NotificationManager.IMPORTANCE_LOW);
+            ch.setShowBadge(false);
+            nm.createNotificationChannel(ch);
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        active = false;
+        super.onDestroy();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        Player p = Player.I;
+        p.init(this);
+        String a = intent == null ? null : intent.getAction();
+        if (A_TOGGLE.equals(a)) {
+            p.toggle();
+        } else if (A_NEXT.equals(a)) {
+            p.next();
+        } else if (A_PREV.equals(a)) {
+            p.prev();
+        }
+        Notification n = build(p);
+        try {
+            startForeground(ID, n);
+        } catch (RuntimeException e) {
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        if (!p.isPlayingOrPending()) {
+            stopForeground(false);
+            stopSelf();
+        }
+        return START_NOT_STICKY;
+    }
+
+    private Notification build(Player p) {
+        boolean playing = p.isPlayingOrPending();
+        Notification.Builder b = Build.VERSION.SDK_INT >= 26
+                ? new Notification.Builder(this, CHANNEL) : new Notification.Builder(this);
+        String title = p.title().length() == 0 ? "Scratch" : p.title();
+        String sub = p.index() >= 0 ? (p.index() + 1) + " / " + p.count() : "Scratch";
+        b.setSmallIcon(android.R.drawable.ic_media_play)
+                .setContentTitle(title)
+                .setContentText(sub)
+                .setContentIntent(openApp())
+                .setOngoing(playing)
+                .setShowWhen(false)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .addAction(action(android.R.drawable.ic_media_previous, "Anterior", A_PREV))
+                .addAction(action(playing ? android.R.drawable.ic_media_pause
+                        : android.R.drawable.ic_media_play, playing ? "Pausa" : "Play", A_TOGGLE))
+                .addAction(action(android.R.drawable.ic_media_next, "Siguiente", A_NEXT));
+        Notification.MediaStyle style = new Notification.MediaStyle().setShowActionsInCompactView(0, 1, 2);
+        MediaSession.Token token = p.sessionToken();
+        if (token != null) {
+            style.setMediaSession(token);
+        }
+        b.setStyle(style);
+        return b.build();
+    }
+
+    private int piFlags() {
+        return PendingIntent.FLAG_UPDATE_CURRENT
+                | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0);
+    }
+
+    private PendingIntent openApp() {
+        Intent i = new Intent(this, ScratchActivity.class);
+        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        return PendingIntent.getActivity(this, 0, i, piFlags());
+    }
+
+    private Notification.Action action(int icon, String label, String act) {
+        Intent i = new Intent(this, PlayerService.class);
+        i.setAction(act);
+        PendingIntent pi = PendingIntent.getService(this, act.hashCode(), i, piFlags());
+        return new Notification.Action.Builder(Icon.createWithResource(this, icon), label, pi).build();
+    }
+}

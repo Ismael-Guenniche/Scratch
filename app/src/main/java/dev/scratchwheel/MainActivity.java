@@ -1,0 +1,1166 @@
+package dev.scratchwheel;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.provider.OpenableColumns;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.BaseAdapter;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
+import android.widget.LinearLayout;
+import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.TreeMap;
+
+/**
+ * Pantalla de inicio: todas las canciones, listas (una por carpeta) y favoritas, con una barra flotante
+ * de la canción actual. Tocar la barra abre la vista de scratch.
+ */
+public class MainActivity extends Activity {
+    private static final int REQ_TREE = 2;
+    private static final int REQ_OPEN = 3;
+    private static final int REQ_CSV = 4;
+    private static final int REQ_WEB = 5;
+    private static final int TAB_ALL = 0;
+    private static final int TAB_FAVS = 1;
+    private static final int TAB_FOLDER = 2;
+    private static final int TAB_LIST = 3;
+    private static final int TAB_RECENT = 4;
+    private static final int TAB_TOP = 5;
+    private static final int TAB_ARTIST = 6;
+    private String artistSel = "";
+
+    private final Handler ui = new Handler(Looper.getMainLooper());
+    private final List<Integer> shown = new ArrayList<Integer>();
+    private Lucent th;
+    private TextView status;
+    private EditText search;
+    private BaseAdapter adapter;
+    private LinearLayout chips;
+    private LinearLayout empty;
+    private ListView list;
+    private TextView barTitle;
+    private TextView barTime;
+    private DotIconView barPlay;
+    private LineView barLine;
+
+    private int tab = TAB_ALL;
+    private int metaStamp;
+    private String folderSel = "";
+    private String listSel = "";
+    private java.util.HashMap<String, Integer> uriIndex = new java.util.HashMap<String, Integer>();
+    private int listVersion = -1;
+    private DotIconView searchBtn;
+    private boolean searchOpen;
+    private String[] folderOf = new String[0];
+    private int folderStamp = -1;
+    private String chipKey = "";
+    private int lastSec = -1;
+
+    private final Player.Listener listener = new Player.Listener() {
+        @Override
+        public void onChanged() {
+            refilter();
+            refreshBar();
+        }
+    };
+
+    private final Runnable ticker = new Runnable() {
+        @Override
+        public void run() {
+            tickBar();
+            ui.postDelayed(this, Player.I.isPlayingOrPending() ? 120 : 400);
+        }
+    };
+
+    /** Línea fina de progreso de la barra flotante. */
+    private static final class LineView extends View {
+        private final Paint back = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private float frac;
+
+        LineView(android.content.Context c, int backColor, int fillColor) {
+            super(c);
+            back.setColor(backColor);
+            fill.setColor(fillColor);
+        }
+
+        void set(float f) {
+            if (f != frac) {
+                frac = f;
+                invalidate();
+            }
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            float r = getHeight() / 2f;
+            c.drawRoundRect(0, 0, getWidth(), getHeight(), r, r, back);
+            if (frac > 0) {
+                c.drawRoundRect(0, 0, getWidth() * Math.min(1f, frac), getHeight(), r, r, fill);
+            }
+        }
+    }
+
+    @Override
+    protected void onCreate(Bundle state) {
+        super.onCreate(state);
+        th = Lucent.load(this);
+        th.apply(this);
+        Player.I.init(this);
+        setContentView(buildUi());
+        handleSpotifyIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        handleSpotifyIntent(intent);
+    }
+
+    // ------------------------------------------------------- sincronizar Spotify
+
+    /** Elige cómo traer las listas: con tu cuenta (API oficial) o desde un archivo CSV/M3U. */
+    private void chooseImportMethod() {
+        new DotDialog(this, th).title("IMPORTAR DE SPOTIFY")
+                .message("Elige cómo traer tus listas. Después se emparejan con tus archivos.")
+                .options(new String[] {"CON MI CUENTA · API OFICIAL (PREMIUM)",
+                        "SIN PREMIUM · SESIÓN WEB (EXPERIMENTAL)",
+                        "DESDE ARCHIVO · CSV O M3U"}, new DotMenu.Picked() {
+                    @Override
+                    public void onPick(int w) {
+                        if (w == 0) {
+                            SpotifyApi.setWebToken(null);
+                            spotifySync();
+                        } else if (w == 1) {
+                            startActivityForResult(new Intent(MainActivity.this, SpotifyWebActivity.class), REQ_WEB);
+                        } else {
+                            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                            i.addCategory(Intent.CATEGORY_OPENABLE);
+                            i.setType("*/*");
+                            i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                            startActivityForResult(i, REQ_CSV);
+                        }
+                    }
+                }).button("CANCELAR", Lucent.GLASS, null).show();
+    }
+
+    private void handleSpotifyIntent(Intent in) {
+        final Uri d = in == null ? null : in.getData();
+        if (d == null || !"scratchwheel".equals(d.getScheme())) {
+            return;
+        }
+        in.setData(null);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String err = null;
+                try {
+                    SpotifyApi.finishLogin(MainActivity.this, d);
+                } catch (Exception e) {
+                    err = String.valueOf(e.getMessage());
+                }
+                final String fe = err;
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (fe != null) {
+                            Toast.makeText(MainActivity.this, fe, Toast.LENGTH_LONG).show();
+                        } else {
+                            spotifySync();
+                        }
+                    }
+                });
+            }
+        }, "spotify-login").start();
+    }
+
+    private void spotifySync() {
+        if (SpotifyApi.clientId(this).length() == 0) {
+            final DotDialog dd = new DotDialog(this, th).title("SPOTIFY · CLIENT ID")
+                    .message("1) developer.spotify.com/dashboard → Create app.\n"
+                            + "2) Redirect URI: " + SpotifyApi.REDIRECT + "\n"
+                            + "3) En User Management añade tu email.\n"
+                            + "4) Pega aquí el Client ID.");
+            final EditText et = dd.input("Client ID");
+            dd.button("CANCELAR", Lucent.GLASS, null);
+            dd.button("GUARDAR", Lucent.ACCENT, new Runnable() {
+                @Override
+                public void run() {
+                    if (et.getText().toString().trim().length() > 0) {
+                        SpotifyApi.setClientId(MainActivity.this, et.getText().toString());
+                        spotifySync();
+                    }
+                }
+            });
+            dd.show();
+            return;
+        }
+        if (!SpotifyApi.loggedIn(this)) {
+            try {
+                startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(SpotifyApi.loginUrl(this))));
+            } catch (Exception e) {
+                Toast.makeText(this, "No se pudo abrir el navegador", Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
+        fetchPlaylistsDialog();
+    }
+
+    private void fetchPlaylistsDialog() {
+        Toast.makeText(this, "Leyendo tus listas…", Toast.LENGTH_SHORT).show();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                java.util.List<SpotifyApi.Pl> pls = null;
+                String err = null;
+                try {
+                    pls = SpotifyApi.playlists(MainActivity.this);
+                } catch (Exception e) {
+                    err = String.valueOf(e.getMessage());
+                }
+                final java.util.List<SpotifyApi.Pl> fp = pls;
+                final String fe = err;
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (fe != null) {
+                            Toast.makeText(MainActivity.this, fe, Toast.LENGTH_LONG).show();
+                        } else {
+                            choosePlaylists(fp);
+                        }
+                    }
+                });
+            }
+        }, "spotify-lists").start();
+    }
+
+    private void choosePlaylists(final java.util.List<SpotifyApi.Pl> pls) {
+        if (pls.isEmpty()) {
+            Toast.makeText(this, "No hay listas", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String[] names = new String[pls.size()];
+        final boolean[] on = new boolean[pls.size()];
+        for (int i = 0; i < names.length; i++) {
+            names[i] = pls.get(i).name;
+        }
+        new DotDialog(this, th).title("ELIGE LISTAS").multi(names, on)
+                .button("CERRAR SESIÓN", Lucent.GLASS, new Runnable() {
+                    @Override
+                    public void run() {
+                        SpotifyApi.logout(MainActivity.this);
+                    }
+                })
+                .button("CANCELAR", Lucent.GLASS, null)
+                .button("IMPORTAR", Lucent.ACCENT, new Runnable() {
+                    @Override
+                    public void run() {
+                        ArrayList<SpotifyApi.Pl> sel = new ArrayList<SpotifyApi.Pl>();
+                        for (int i = 0; i < on.length; i++) {
+                            if (on[i]) {
+                                sel.add(pls.get(i));
+                            }
+                        }
+                        importFromSpotify(sel);
+                    }
+                }).show();
+    }
+
+    private void importFromSpotify(final ArrayList<SpotifyApi.Pl> sel) {
+        if (sel.isEmpty()) {
+            return;
+        }
+        Toast.makeText(this, "Importando…", Toast.LENGTH_SHORT).show();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final StringBuilder report = new StringBuilder();
+                final StringBuilder missingAll = new StringBuilder();
+                final ArrayList<SpotifyImport.Row> missingRows = new ArrayList<SpotifyImport.Row>();
+                java.util.List<SpotifyImport.Cand> local = Imports.cands(Player.I.tracks);
+                for (SpotifyApi.Pl pl : sel) {
+                    try {
+                        java.util.List<SpotifyImport.Row> rows = SpotifyApi.items(MainActivity.this, pl.id);
+                        if (rows.isEmpty()) {
+                            report.append(pl.name).append(": sin acceso a sus canciones (¿no es tuya?)\n");
+                            continue;
+                        }
+                        Imports.save(MainActivity.this, pl.name, rows);
+                        SpotifyImport.Result r = SpotifyImport.match(rows, local);
+                        missingRows.addAll(r.missing);
+                        ArrayList<String> uu = new ArrayList<String>();
+                        for (int i : r.matched) {
+                            uu.add(Player.I.tracks.get(i).uri.toString());
+                        }
+                        if (!uu.isEmpty()) {
+                            Playlists.I.create(pl.name);
+                            Playlists.I.add(pl.name, uu);
+                        }
+                        report.append(pl.name).append(": ").append(r.matched.size()).append(" de ")
+                                .append(r.total).append("\n");
+                        for (SpotifyImport.Row m : r.missing) {
+                            missingAll.append(m).append('\n');
+                        }
+                    } catch (Exception e) {
+                        report.append(pl.name).append(": ").append(e.getMessage()).append("\n");
+                    }
+                }
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        showImportResult(report.toString(), missingAll.toString(), missingRows);
+                    }
+                });
+            }
+        }, "spotify-import").start();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (th.myStamp != Lucent.stamp) {
+            recreate();
+            return;
+        }
+        Player.I.addListener(listener);
+        refilter();
+        refreshBar();
+        ui.post(ticker);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Player.I.removeListener(listener);
+        ui.removeCallbacks(ticker);
+    }
+
+    private int dp(float v) {
+        return th.dp(v);
+    }
+
+    private View buildUi() {
+        FrameLayout root = new FrameLayout(this);
+        Lucent.insets(root, dp(14), dp(8), dp(14), dp(10));
+
+        LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        root.addView(col, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        DotTextView title = new DotTextView(this, 3.2f, th);
+        title.setText("SCRATCH");
+        title.setPadding(dp(8), 0, 0, 0);
+        head.addView(title, new LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        searchBtn = new DotIconView(this, th);
+        searchBtn.set(DotIcons.SEARCH, th.ink);
+        searchBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                toggleSearch();
+            }
+        });
+        head.addView(searchBtn, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        final DotIconView menu = new DotIconView(this, th);
+        menu.set(DotIcons.MENU, th.ink);
+        menu.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showMainMenu(menu);
+            }
+        });
+        head.addView(menu, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        col.addView(head);
+
+        HorizontalScrollView hs = new HorizontalScrollView(this);
+        hs.setHorizontalScrollBarEnabled(false);
+        hs.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        chips = new LinearLayout(this);
+        chips.setOrientation(LinearLayout.HORIZONTAL);
+        chips.setPadding(dp(2), dp(6), dp(2), dp(6));
+        hs.addView(chips);
+        col.addView(hs);
+
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setBackground(th.card(Lucent.R_L));
+        panel.setPadding(dp(16), dp(12), dp(16), dp(0));
+        LinearLayout.LayoutParams panelLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
+        panelLp.topMargin = dp(6);
+
+        status = text("", 11, th.ink2, th.mono);
+        panel.addView(status);
+
+        search = new EditText(this);
+        search.setHint("BUSCAR POR TÍTULO O CARPETA");
+        search.setVisibility(View.GONE);
+        search.setHintTextColor(th.dotOff);
+        search.setTextColor(th.ink);
+        search.setTextSize(14);
+        search.setTypeface(th.regular);
+        search.setSingleLine(true);
+        search.setBackgroundColor(0);
+        search.setPadding(0, dp(12), 0, dp(8));
+        search.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int st, int c, int af) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int st, int b, int c) {
+                refilter();
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+        panel.addView(search);
+
+        list = new ListView(this);
+        list.setDivider(new ColorDrawable(th.ghost));
+        list.setDividerHeight(1);
+        list.setClipToPadding(false);
+        list.setPadding(0, 0, 0, dp(96));
+        list.setVerticalScrollBarEnabled(false);
+        adapter = new BaseAdapter() {
+            @Override
+            public int getCount() {
+                return shown.size();
+            }
+
+            @Override
+            public Object getItem(int pos) {
+                return shown.get(pos);
+            }
+
+            @Override
+            public long getItemId(int pos) {
+                return shown.get(pos);
+            }
+
+            @Override
+            public View getView(int pos, View convert, ViewGroup parent) {
+                LinearLayout row;
+                if (convert instanceof LinearLayout) {
+                    row = (LinearLayout) convert;
+                } else {
+                    row = new LinearLayout(MainActivity.this);
+                    row.setOrientation(LinearLayout.VERTICAL);
+                    row.setPadding(0, dp(10), 0, dp(10));
+                    TextView n = text("", 14, th.ink, th.regular);
+                    n.setSingleLine(true);
+                    n.setEllipsize(TextUtils.TruncateAt.END);
+                    TextView s = text("", 11, th.ink2, th.mono);
+                    s.setSingleLine(true);
+                    s.setEllipsize(TextUtils.TruncateAt.END);
+                    row.addView(n);
+                    row.addView(s);
+                }
+                int idx = shown.get(pos);
+                Player.Track t = Player.I.tracks.get(idx);
+                TextView n = (TextView) row.getChildAt(0);
+                TextView s = (TextView) row.getChildAt(1);
+                boolean cur = idx == Player.I.index();
+                n.setText(cur ? "●  " + t.display() : t.display());
+                n.setTypeface(cur ? th.semi : th.regular);
+                String f = t.artist.length() > 0 ? t.artist
+                        + (t.album.length() > 0 ? "  ·  " + t.album : "")
+                        : (tab == TAB_FOLDER ? "" : folderLabel(idx));
+                s.setText(f);
+                s.setVisibility(f.length() == 0 ? View.GONE : View.VISIBLE);
+                return row;
+            }
+        };
+        list.setAdapter(adapter);
+        list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int pos, long id) {
+                playAt(pos);
+            }
+        });
+        list.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int pos, long id) {
+                showTrackMenu(view, shown.get(pos));
+                return true;
+            }
+        });
+        panel.addView(list, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        empty = new LinearLayout(this);
+        empty.setOrientation(LinearLayout.VERTICAL);
+        empty.setGravity(Gravity.CENTER);
+        empty.setVisibility(View.GONE);
+        DotTextView et = new DotTextView(this, 2.2f, th);
+        et.setText("SIN MÚSICA");
+        empty.addView(et);
+        TextView msg = text("Elige la carpeta donde tienes tus canciones y listas.", 13, th.ink2, th.regular);
+        msg.setGravity(Gravity.CENTER);
+        msg.setPadding(dp(20), dp(14), dp(20), dp(14));
+        empty.addView(msg);
+        Button pick = new Button(this);
+        pick.setText("ELEGIR CARPETA");
+        th.style(pick, Lucent.ACCENT);
+        pick.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                pickFolder();
+            }
+        });
+        empty.addView(pick, new LinearLayout.LayoutParams(dp(220), dp(52)));
+        panel.addView(empty, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        col.addView(panel, panelLp);
+
+        root.addView(buildBar(), new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM));
+        return root;
+    }
+
+    /** Barra flotante con la canción actual: tocarla abre la vista de scratch. */
+    private View buildBar() {
+        LinearLayout bar = new LinearLayout(this);
+        bar.setOrientation(LinearLayout.VERTICAL);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(Lucent.withAlpha(th.solid, 0.96f));
+        bg.setCornerRadius(dp(Lucent.R_L));
+        bg.setStroke(dp(1), th.glassLine);
+        bar.setBackground(bg);
+        bar.setElevation(dp(8));
+        bar.setPadding(dp(18), dp(8), dp(10), dp(12));
+        bar.setClickable(true);
+        bar.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, ScratchActivity.class));
+                overridePendingTransition(0, 0);
+            }
+        });
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        barTitle = text("", 14, th.ink, th.semi);
+        barTitle.setSingleLine(true);
+        barTitle.setEllipsize(TextUtils.TruncateAt.END);
+        barTime = text("", 11, th.ink2, th.mono);
+        barTime.setSingleLine(true);
+        texts.addView(barTitle);
+        texts.addView(barTime);
+        row.addView(texts, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        DotIconView prev = new DotIconView(this, th);
+        prev.set(DotIcons.PREV, th.ink);
+        prev.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Player.I.prev();
+            }
+        });
+        barPlay = new DotIconView(this, th).ghost(false);
+        barPlay.set(DotIcons.PLAY, th.accent);
+        barPlay.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Player.I.toggle();
+            }
+        });
+        DotIconView next = new DotIconView(this, th);
+        next.set(DotIcons.NEXT, th.ink);
+        next.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Player.I.next();
+            }
+        });
+        row.addView(prev, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        row.addView(barPlay, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        row.addView(next, new LinearLayout.LayoutParams(dp(44), dp(44)));
+        bar.addView(row);
+
+        barLine = new LineView(this, th.ghost, th.accent);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(3));
+        lp.topMargin = dp(4);
+        lp.rightMargin = dp(8);
+        bar.addView(barLine, lp);
+        return bar;
+    }
+
+    private void refreshBar() {
+        Player p = Player.I;
+        String t = p.isLoading() ? "CARGANDO…" : p.title();
+        barTitle.setText(t.toUpperCase(Locale.ROOT));
+        barPlay.set(p.isPlayingOrPending() ? DotIcons.PAUSE : DotIcons.PLAY, th.accent);
+        lastSec = -1;
+        tickBar();
+    }
+
+    private void tickBar() {
+        ScratchEngine e = Player.I.engine;
+        double pos = e.getPositionSeconds();
+        double total = e.getDurationSeconds();
+        barLine.set(total > 0 ? (float) (pos / total) : 0f);
+        int sec = (int) pos;
+        if (sec != lastSec) {
+            lastSec = sec;
+            barTime.setText(fmt(sec) + " / " + fmt((int) total));
+        }
+    }
+
+    private static String fmt(int s) {
+        return String.format(Locale.US, "%02d:%02d", s / 60, s % 60);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (searchOpen) {
+            toggleSearch();
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    private void toggleSearch() {
+        searchOpen = !searchOpen;
+        android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager)
+                getSystemService(INPUT_METHOD_SERVICE);
+        if (searchOpen) {
+            search.setVisibility(View.VISIBLE);
+            search.requestFocus();
+            imm.showSoftInput(search, 0);
+        } else {
+            search.setText("");
+            search.setVisibility(View.GONE);
+            imm.hideSoftInputFromWindow(search.getWindowToken(), 0);
+        }
+        searchBtn.set(searchOpen ? DotIcons.CLOSE : DotIcons.SEARCH, searchOpen ? th.accent : th.ink);
+    }
+
+    // ------------------------------------------------------------------ lista
+
+    private String folderLabel(int idx) {
+        return idx < folderOf.length ? folderOf[idx] : "";
+    }
+
+    private void playAt(int pos) {
+        Player p = Player.I;
+        boolean plain = tab == TAB_ALL && search.getText().toString().trim().length() == 0;
+        if (plain) {
+            p.choose(shown.get(pos));
+        } else {
+            p.playFrom(new ArrayList<Integer>(shown), pos);
+        }
+    }
+
+    private void refilter() {
+        Player p = Player.I;
+        if (folderStamp != p.tracks.size()) {
+            folderStamp = p.tracks.size();
+            folderOf = new String[folderStamp];
+            uriIndex = new java.util.HashMap<String, Integer>();
+            for (int i = 0; i < folderStamp; i++) {
+                folderOf[i] = p.tracks.get(i).folder();
+                uriIndex.put(p.tracks.get(i).uri.toString(), i);
+            }
+            chipKey = "";
+        }
+        if (listVersion != Playlists.I.version) {
+            listVersion = Playlists.I.version;
+            chipKey = "";
+            if (tab == TAB_LIST && Playlists.I.find(listSel) == null) {
+                tab = TAB_ALL;
+            }
+        }
+        buildChips();
+        String q = search == null ? "" : search.getText().toString().trim().toLowerCase(Locale.ROOT);
+        shown.clear();
+        if (tab == TAB_LIST) {
+            for (String u : Playlists.I.uris(listSel)) {
+                Integer i = uriIndex.get(u);
+                if (i != null && matches(i, q)) {
+                    shown.add(i);
+                }
+            }
+        } else if (tab == TAB_RECENT || tab == TAB_TOP) {
+            final boolean top = tab == TAB_TOP;
+            ArrayList<Integer> all = new ArrayList<Integer>();
+            for (int i = 0; i < p.tracks.size(); i++) {
+                if (Meta.count(p.tracks.get(i).uri.toString()) > 0 && matches(i, q)) {
+                    all.add(i);
+                }
+            }
+            final Player pp = p;
+            java.util.Collections.sort(all, new java.util.Comparator<Integer>() {
+                @Override
+                public int compare(Integer a, Integer b) {
+                    String ua = pp.tracks.get(a).uri.toString();
+                    String ub = pp.tracks.get(b).uri.toString();
+                    long x = top ? Meta.count(ua) : Meta.last(ua);
+                    long y = top ? Meta.count(ub) : Meta.last(ub);
+                    return x == y ? 0 : (x < y ? 1 : -1);
+                }
+            });
+            shown.addAll(all);
+        } else {
+            for (int i = 0; i < p.tracks.size(); i++) {
+                if (tab == TAB_FAVS && !p.isFav(p.tracks.get(i).uri)) {
+                    continue;
+                }
+                if (tab == TAB_FOLDER && !folderOf[i].equals(folderSel)) {
+                    continue;
+                }
+                if (matches(i, q)) {
+                    shown.add(i);
+                }
+            }
+        }
+        boolean none = p.count() == 0 && !p.isScanning();
+        empty.setVisibility(none ? View.VISIBLE : View.GONE);
+        list.setVisibility(none ? View.GONE : View.VISIBLE);
+        if (none) {
+            search.setVisibility(View.GONE);
+        }
+        if (p.isScanning()) {
+            status.setText("ESCANEANDO… " + p.scanCount());
+        } else if (p.count() == 0) {
+            status.setText("");
+        } else {
+            status.setText(shown.size() + " CANCIONES"
+                    + ((tab == TAB_RECENT || tab == TAB_TOP) && shown.isEmpty() ? " · REPRODUCE ALGO" : ""));
+        }
+        adapter.notifyDataSetChanged();
+    }
+
+    private boolean matches(int i, String q) {
+        if (q.length() == 0) {
+            return true;
+        }
+        return Player.I.tracks.get(i).lower.contains(q)
+                || folderOf[i].toLowerCase(Locale.ROOT).contains(q);
+    }
+
+    /** Pestañas: CANCIONES, FAVORITAS y una por carpeta. Solo se reconstruyen si cambia algo. */
+    private void buildChips() {
+        String key = folderStamp + "|" + metaStamp + "|" + tab + "|" + folderSel + "|" + listSel + "|" + Playlists.I.version;
+        if (key.equals(chipKey)) {
+            return;
+        }
+        chipKey = key;
+        chips.removeAllViews();
+        addChip("CANCIONES", tab == TAB_ALL, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tab = TAB_ALL;
+                refilter();
+            }
+        });
+        addChip("FAVORITAS", tab == TAB_FAVS, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tab = TAB_FAVS;
+                refilter();
+            }
+        });
+        addChip("RECIENTES", tab == TAB_RECENT, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tab = TAB_RECENT;
+                refilter();
+            }
+        });
+        addChip("MÁS ESCUCHADAS", tab == TAB_TOP, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tab = TAB_TOP;
+                refilter();
+            }
+        });
+        for (final String name : Playlists.I.names()) {
+            final String label = name.toUpperCase(Locale.ROOT) + "  " + Playlists.I.size(name);
+            TextView chip = addChip(label, tab == TAB_LIST && name.equals(listSel), new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    tab = TAB_LIST;
+                    listSel = name;
+                    refilter();
+                }
+            });
+            chip.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    DotMenu.show(MainActivity.this, th, v, new String[] {"BORRAR LISTA"}, new DotMenu.Picked() {
+                        @Override
+                        public void onPick(int id) {
+                            Playlists.I.delete(name);
+                        }
+                    });
+                    return true;
+                }
+            });
+        }
+        addChip("+ LISTA", false, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                PlaylistUi.promptName(MainActivity.this, new PlaylistUi.Name() {
+                    @Override
+                    public void onName(String name) {
+                        if (Playlists.I.create(name)) {
+                            tab = TAB_LIST;
+                            listSel = name;
+                            refilter();
+                        }
+                    }
+                });
+            }
+        });
+        TreeMap<String, Integer> folders = new TreeMap<String, Integer>(String.CASE_INSENSITIVE_ORDER);
+        for (String f : folderOf) {
+            Integer n = folders.get(f);
+            folders.put(f, n == null ? 1 : n + 1);
+        }
+        for (final java.util.Map.Entry<String, Integer> en : folders.entrySet()) {
+            final String f = en.getKey();
+            String label = (f.length() == 0 ? "RAÍZ" : f.toUpperCase(Locale.ROOT)) + "  " + en.getValue();
+            addChip(label, tab == TAB_FOLDER && f.equals(folderSel), new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    tab = TAB_FOLDER;
+                    folderSel = f;
+                    refilter();
+                }
+            });
+        }
+    }
+
+    private TextView addChip(String label, boolean selected, View.OnClickListener click) {
+        TextView t = text(label, 12, selected ? th.ink : th.ink2, selected ? th.semi : th.regular);
+        t.setLetterSpacing(0.06f);
+        t.setSingleLine(true);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(dp(16), 0, dp(16), 0);
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(Lucent.R_M));
+        if (selected) {
+            g.setColor(Lucent.withAlpha(th.ink, 0.14f));
+            g.setStroke(dp(1), th.accent);
+        } else {
+            g.setColor(Lucent.withAlpha(th.ink, 0.05f));
+            g.setStroke(dp(1), th.glassLine);
+        }
+        t.setBackground(g);
+        t.setOnClickListener(click);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, dp(40));
+        lp.rightMargin = dp(8);
+        chips.addView(t, lp);
+        return t;
+    }
+
+    // ------------------------------------------------------------------ menús
+
+    private void showMainMenu(View anchor) {
+        DotMenu.show(this, th, anchor,
+                new String[] {"ELEGIR CARPETA", "RESCANEAR", "ABRIR ARCHIVO", "IMPORTAR DE SPOTIFY", "FALTANTES", "AJUSTES"},
+                new DotMenu.Picked() {
+                    @Override
+                    public void onPick(int id) {
+                        if (id == 0) {
+                            pickFolder();
+                        } else if (id == 1) {
+                            if (Player.I.hasLibraryFolder() && !Player.I.isScanning()) {
+                                Player.I.rescan();
+                            }
+                        } else if (id == 2) {
+                            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                            i.addCategory(Intent.CATEGORY_OPENABLE);
+                            i.setType("audio/*");
+                            startActivityForResult(i, REQ_OPEN);
+                        } else if (id == 3) {
+                            chooseImportMethod();
+                        } else if (id == 4) {
+                            showMissing(Imports.missing(MainActivity.this, Player.I.tracks));
+                        } else {
+                            startActivity(new Intent(MainActivity.this, SettingsActivity.class));
+                        }
+                    }
+                });
+    }
+
+    private void pickFolder() {
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        startActivityForResult(i, REQ_TREE);
+    }
+
+    private void showTrackMenu(View anchor, final int idx) {
+        final Player p = Player.I;
+        final Player.Track t = p.tracks.get(idx);
+        final boolean inList = tab == TAB_LIST;
+        final String[] labels = inList
+                ? new String[] {"REPRODUCIR A CONTINUACIÓN", "AÑADIR A LA COLA", "AÑADIR A LISTA…",
+                    "QUITAR DE ESTA LISTA", p.isFav(t.uri) ? "QUITAR DE FAVORITAS" : "AÑADIR A FAVORITAS"}
+                : new String[] {"REPRODUCIR A CONTINUACIÓN", "AÑADIR A LA COLA", "AÑADIR A LISTA…",
+                    p.isFav(t.uri) ? "QUITAR DE FAVORITAS" : "AÑADIR A FAVORITAS"};
+        final View a = anchor;
+        DotMenu.show(this, th, anchor, labels, new DotMenu.Picked() {
+            @Override
+            public void onPick(int id) {
+                if (id == 0) {
+                    p.addToQueue(idx, true);
+                } else if (id == 1) {
+                    p.addToQueue(idx, false);
+                } else if (id == 2) {
+                    final List<String> one = new ArrayList<String>();
+                    one.add(t.uri.toString());
+                    a.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            PlaylistUi.pick(MainActivity.this, th, a, one, null);
+                        }
+                    });
+                } else if (inList && id == 3) {
+                    Playlists.I.remove(listSel, t.uri.toString());
+                } else {
+                    p.toggleFav(t.uri);
+                }
+            }
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req == REQ_WEB) {
+            if (res == RESULT_OK) {
+                fetchPlaylistsDialog();
+            }
+            return;
+        }
+        if (res == RESULT_OK && data != null && req == REQ_CSV) {
+            ArrayList<Uri> us = new ArrayList<Uri>();
+            if (data.getClipData() != null) {
+                for (int k = 0; k < data.getClipData().getItemCount(); k++) {
+                    us.add(data.getClipData().getItemAt(k).getUri());
+                }
+            } else if (data.getData() != null) {
+                us.add(data.getData());
+            }
+            importCsvs(us);
+            return;
+        }
+        if (res != RESULT_OK || data == null || data.getData() == null) {
+            return;
+        }
+        Uri uri = data.getData();
+        if (req == REQ_TREE) {
+            try {
+                getContentResolver().takePersistableUriPermission(uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (RuntimeException ignored) {
+            }
+            Player.I.scan(uri);
+        } else if (req == REQ_OPEN) {
+            Player.I.openSingle(uri, displayName(uri).toUpperCase(Locale.ROOT));
+        }
+    }
+
+    /** Importa listas de Spotify (CSV de Exportify): empareja con tus archivos y crea una lista por CSV. */
+    private void importCsvs(final ArrayList<Uri> uris) {
+        Toast.makeText(this, "Importando…", Toast.LENGTH_SHORT).show();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final StringBuilder report = new StringBuilder();
+                final StringBuilder missingAll = new StringBuilder();
+                final ArrayList<SpotifyImport.Row> missingRows = new ArrayList<SpotifyImport.Row>();
+                ArrayList<SpotifyImport.Cand> local = new ArrayList<SpotifyImport.Cand>();
+                for (Player.Track t : Player.I.tracks) {
+                    local.add(new SpotifyImport.Cand(t.title, t.artist, t.name));
+                }
+                for (Uri u : uris) {
+                    String name = displayName(u);
+                    String listName = name.replaceAll("(?i)\\.csv$", "").replace('_', ' ').trim();
+                    if (listName.length() == 0) {
+                        listName = "SPOTIFY";
+                    }
+                    try {
+                        java.io.InputStream in = getContentResolver().openInputStream(u);
+                        java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                        byte[] buf = new byte[8192];
+                        int n;
+                        while (in != null && (n = in.read(buf)) > 0) {
+                            bo.write(buf, 0, n);
+                        }
+                        if (in != null) {
+                            in.close();
+                        }
+                        java.util.List<SpotifyImport.Row> rows =
+                                SpotifyImport.parseTracks(new String(bo.toByteArray(), "UTF-8"));
+                        if (rows.isEmpty()) {
+                            report.append(listName).append(": no parece un CSV de Exportify\n");
+                            continue;
+                        }
+                        Imports.save(MainActivity.this, listName, rows);
+                        SpotifyImport.Result r = SpotifyImport.match(rows, local);
+                        missingRows.addAll(r.missing);
+                        ArrayList<String> uu = new ArrayList<String>();
+                        for (int i : r.matched) {
+                            uu.add(Player.I.tracks.get(i).uri.toString());
+                        }
+                        if (!uu.isEmpty()) {
+                            Playlists.I.create(listName);
+                            Playlists.I.add(Playlists.I.find(listName) == null ? listName
+                                    : Playlists.I.find(listName), uu);
+                        }
+                        report.append(listName).append(": ").append(r.matched.size()).append(" de ")
+                                .append(r.total).append("\n");
+                        for (SpotifyImport.Row m : r.missing) {
+                            missingAll.append(m).append('\n');
+                        }
+                    } catch (Exception e) {
+                        report.append(listName).append(": error al leer\n");
+                    }
+                }
+                ui.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        showImportResult(report.toString(), missingAll.toString(), missingRows);
+                    }
+                });
+            }
+        }, "csv").start();
+    }
+
+    private void showImportResult(String report, final String missing,
+                                  final java.util.List<SpotifyImport.Row> rows) {
+        String warn = Player.I.count() == 0
+                ? (Player.I.isScanning() ? "Aún se está escaneando tu carpeta; "
+                : "Tu biblioteca está vacía; ") + "las listas se guardaron y se rellenarán solas al terminar el escaneo.\n\n"
+                : "";
+        DotDialog d = new DotDialog(this, th).title("IMPORTACIÓN")
+                .message(warn + report + (rows.isEmpty() ? "" : "\nNo encontradas: " + rows.size()));
+        if (!rows.isEmpty()) {
+            d.button("COPIAR FALTANTES", Lucent.GLASS, new Runnable() {
+                @Override
+                public void run() {
+                    android.content.ClipboardManager cm = (android.content.ClipboardManager)
+                            getSystemService(CLIPBOARD_SERVICE);
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("faltantes", missing));
+                    Toast.makeText(MainActivity.this, "Copiado", Toast.LENGTH_SHORT).show();
+                }
+            });
+            d.button("VER FALTANTES", Lucent.ACCENT, new Runnable() {
+                @Override
+                public void run() {
+                    showMissing(rows);
+                }
+            });
+        } else {
+            d.button("OK", Lucent.ACCENT, null);
+        }
+        d.show();
+    }
+
+    /** Lista de faltantes; al tocar una se abre su búsqueda en una tienda o en YouTube Music (en su propia app). */
+    private void showMissing(final java.util.List<SpotifyImport.Row> rows) {
+        if (rows.isEmpty()) {
+            Toast.makeText(this, "No falta ninguna", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        int n = Math.min(rows.size(), 300);
+        final String[] items = new String[n];
+        for (int i = 0; i < n; i++) {
+            items[i] = rows.get(i).toString();
+        }
+        new DotDialog(this, th).title("FALTANTES · " + rows.size())
+                .options(items, new DotMenu.Picked() {
+                    @Override
+                    public void onPick(int w) {
+                        final String q = Uri.encode(items[w].replace(" - ", " "));
+                        new DotDialog(MainActivity.this, th).title(items[w])
+                                .options(new String[] {"BUSCAR EN YOUTUBE MUSIC", "BUSCAR EN BANDCAMP",
+                                        "BUSCAR EN QOBUZ"}, new DotMenu.Picked() {
+                                    @Override
+                                    public void onPick(int k) {
+                                        String url = k == 0 ? "https://music.youtube.com/search?q=" + q
+                                                : k == 1 ? "https://bandcamp.com/search?q=" + q
+                                                : "https://www.qobuz.com/es-es/search?q=" + q;
+                                        try {
+                                            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                                        } catch (RuntimeException e) {
+                                            Toast.makeText(MainActivity.this, "Sin navegador", Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                                }).button("CERRAR", Lucent.GLASS, null).show();
+                    }
+                }).button("CERRAR", Lucent.ACCENT, null).show();
+    }
+
+    private String displayName(Uri uri) {
+        Cursor c = null;
+        try {
+            c = getContentResolver().query(uri, null, null, null, null);
+            if (c != null && c.moveToFirst()) {
+                int i = c.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (i >= 0) {
+                    return c.getString(i);
+                }
+            }
+        } catch (RuntimeException ignored) {
+        } finally {
+            if (c != null) {
+                c.close();
+            }
+        }
+        String seg = uri.getLastPathSegment();
+        return seg == null ? "AUDIO" : seg;
+    }
+
+    private TextView text(String s, float sp, int color, Typeface face) {
+        TextView t = new TextView(this);
+        t.setText(s);
+        t.setTextSize(sp);
+        t.setTextColor(color);
+        t.setTypeface(face);
+        if (face == th.mono) {
+            t.setLetterSpacing(0.04f);
+            t.setLineSpacing(0, 1.25f);
+        }
+        return t;
+    }
+}

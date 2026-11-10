@@ -1,0 +1,26 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'dev.scratchwheel'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'dev.scratchwheel'
+        minSdk 24
+        targetSdk 28
+        versionCode 13
+        versionName '0.13'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
