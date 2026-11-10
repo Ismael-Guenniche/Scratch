@@ -39,6 +39,7 @@ public class JogWheelView extends View {
     private final Paint bmp = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final Paint scrim = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint hubFill = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint groove = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path clip = new Path();
     private final RectF box = new RectF();
     private Bitmap cover;
@@ -65,6 +66,9 @@ public class JogWheelView extends View {
         density = context.getResources().getDisplayMetrics().density;
         ring.setStyle(Paint.Style.STROKE);
         ring.setStrokeWidth(dp(1.5f));
+        groove.setStyle(Paint.Style.STROKE);
+        groove.setStrokeWidth(dp(0.8f));
+        groove.setColor(0x26FFFFFF);
         dots.setStyle(Paint.Style.FILL);
         dots.setColor(Lucent.withAlpha(t.ink, t.dark ? 0.62f : 0.55f));
         accent.setStyle(Paint.Style.FILL);
@@ -191,16 +195,24 @@ public class JogWheelView extends View {
             c.drawRect(box, scrim);
             c.restore();
         } else if (showCover) {
+            // Disco de vinilo: plástico negro con surcos y la carátula como etiqueta circular en el centro.
+            scrim.setColor(0xFF101010);
+            c.drawCircle(cx, cy, r - dp(2), scrim);
+            for (float g = 0.62f; g < 0.97f; g += 0.045f) {
+                c.drawCircle(cx, cy, r * g, groove);
+            }
+            float lr = r * 0.52f;
             clip.reset();
-            clip.addCircle(cx, cy, r - dp(2), Path.Direction.CW);
+            clip.addCircle(cx, cy, lr, Path.Direction.CW);
             c.save();
             c.clipPath(clip);
             c.rotate((float) Math.toDegrees(angle), cx, cy);
-            box.set(cx - r, cy - r, cx + r, cy + r);
+            box.set(cx - lr, cy - lr, cx + lr, cy + lr);
             c.drawBitmap(cover, null, box, bmp);
             c.restore();
-            scrim.setColor(0x55000000);
-            c.drawCircle(cx, cy, r - dp(2), scrim);
+            groove.setColor(0x66FFFFFF);
+            c.drawCircle(cx, cy, lr, groove);
+            groove.setColor(0x26FFFFFF);
         } else {
             float dotR = dp(1.7f) * (1f + level * 1.2f);
             int rings = 7;
