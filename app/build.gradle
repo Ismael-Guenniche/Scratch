@@ -12,10 +12,10 @@ android {
         targetSdk 36
         versionCode 30
         versionName '0.30'
-        // personal = uso propio (incluye japonés experimental). play = lo que se sube a Google Play.
-        flavorDimensions 'dist'
     }
 
+    // personal = uso propio (incluye japonés experimental). play = lo que se sube a Google Play.
+    flavorDimensions 'dist'
     productFlavors {
         play {
             dimension 'dist'
