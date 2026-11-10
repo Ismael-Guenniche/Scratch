@@ -28,6 +28,9 @@ public final class ScratchEngine {
     // ----- ajustes de la rueda
     private double secPerRev = SECONDS_PER_REV;
     private boolean invert;
+    private boolean inertia;
+    private double frictionTau = 1.5;
+    private boolean freeSpin;
     private boolean keyLock;
     private static final int MAXG = 4;
     private final double[] gPos = new double[MAXG];
@@ -308,6 +311,7 @@ public final class ScratchEngine {
     }
 
     public synchronized void touchDown() {
+        freeSpin = false;
         scratching = true;
         scratchTarget = pos;
     }
@@ -320,7 +324,16 @@ public final class ScratchEngine {
         scratchTarget = Math.max(0, Math.min(Math.max(frames - 1, 0), scratchTarget));
     }
 
+    /** Inercia: al soltar la rueda lanzada sigue girando con fricción (tau en segundos) hasta pararse. */
+    public synchronized void setInertia(boolean on, double tauSeconds) {
+        inertia = on;
+        frictionTau = Math.max(0.2, Math.min(8, tauSeconds));
+    }
+
     public synchronized void touchUp() {
+        if (scratching && inertia && !playing && backspinLeft == 0 && Math.abs(rate) > 0.15) {
+            freeSpin = true;
+        }
         scratching = false;
     }
 
@@ -368,7 +381,20 @@ public final class ScratchEngine {
                 target = 0.0;
                 alpha = 0.0;
             }
-            if (!scratching && seek == 0 && !playing && backspinLeft == 0) {
+            if (freeSpin && (playing || seek != 0 || backspinLeft > 0)) {
+                freeSpin = false;
+            }
+            if (freeSpin && !scratching) {
+                // Inercia: fricción exponencial con un pequeño rozamiento seco para que acabe parando.
+                rate -= rate * (1.0 / (frictionTau * outRate));
+                double dry = 1.0 / (6.0 * outRate);
+                if (Math.abs(rate) <= dry * 4) {
+                    rate = 0;
+                    freeSpin = false;
+                } else {
+                    rate -= Math.signum(rate) * dry;
+                }
+            } else if (!scratching && seek == 0 && !playing && backspinLeft == 0) {
                 // Frenado tipo vinilo: baja la velocidad de forma lineal hasta parar (el tono cae).
                 double step = 1.0 / (spinDown * outRate);
                 if (Math.abs(rate) <= step) {

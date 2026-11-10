@@ -178,6 +178,26 @@ public class SettingsActivity extends Activity {
         sensNote.setPadding(0, dp(8), 0, 0);
         c.addView(sensNote);
         c.addView(dots());
+        c.addView(switchRow("Inercia al soltar",
+                "Si sueltas la rueda lanzada con la música parada, sigue girando como un plato hasta frenarse.",
+                prefs.getBoolean("inertia", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("inertia", v).apply();
+                        Player.I.applyWheelPrefs();
+                    }
+                }));
+        c.addView(body("Fricción"));
+        c.addView(segmented(new String[] {"ALTA", "MEDIA", "BAJA"}, prefs.getInt("wfric", 1),
+                new Pick() {
+                    @Override
+                    public void on(int v) {
+                        prefs.edit().putInt("wfric", v).apply();
+                        Player.I.applyWheelPrefs();
+                        redo();
+                    }
+                }));
+        c.addView(dots());
         c.addView(switchRow("Invertir el sentido",
                 "Girar en sentido horario hace retroceder el audio, como en algunos platos.",
                 prefs.getBoolean("winvert", false), true, new Toggle() {
@@ -288,7 +308,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.25");
+        about.setText("SCRATCH 0.26");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);

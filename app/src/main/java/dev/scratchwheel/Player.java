@@ -828,6 +828,8 @@ final class Player {
         int sens = sp.getInt("wsens", 1);
         engine.setSecondsPerRev(sens == 0 ? 3.6 : sens == 2 ? 0.9 : ScratchEngine.SECONDS_PER_REV);
         engine.setInvert(sp.getBoolean("winvert", false));
+        int fr = sp.getInt("wfric", 1);
+        engine.setInertia(sp.getBoolean("inertia", true), fr == 0 ? 0.6 : fr == 2 ? 3.0 : 1.5);
     }
 
     void touchDown() {

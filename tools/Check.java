@@ -581,6 +581,47 @@ public class Check {
             ok(hz[0] > 600 && hz[0] < 720, "sin keylock a 1.5x el tono sube (" + hz[0] + " Hz)");
             ok(hz[1] > 410 && hz[1] < 470, "con keylock a 1.5x el tono se mantiene (" + hz[1] + " Hz)");
         }
+
+        // ---- Inercia: soltar la rueda lanzada con la música parada
+        {
+            ScratchEngine ie = new ScratchEngine();
+            ie.setOutputRate(44100);
+            ie.load(p);
+            ie.setInertia(true, 1.5);
+            ie.seekTo(5);
+            short[] b = new short[512];
+            ie.touchDown();
+            for (int i = 0; i < 60; i++) {
+                ie.rotate(0.35);
+                ie.render(b, 256);
+            }
+            double rUp = ie.getRate();
+            ie.touchUp();
+            for (int i = 0; i < 86; i++) {
+                ie.render(b, 256); // ~0.5 s
+            }
+            double rMid = ie.getRate();
+            ok(rUp > 1.0 && rMid > 0.25 * rUp, "inercia: tras soltar sigue girando (" + rUp + " -> " + rMid + ")");
+            for (int i = 0; i < 2000; i++) {
+                ie.render(b, 256);
+            }
+            ok(ie.getRate() == 0, "inercia: acaba parando (" + ie.getRate() + ")");
+            ScratchEngine ne = new ScratchEngine();
+            ne.setOutputRate(44100);
+            ne.load(p);
+            ne.setInertia(false, 1.5);
+            ne.seekTo(5);
+            ne.touchDown();
+            for (int i = 0; i < 60; i++) {
+                ne.rotate(0.35);
+                ne.render(b, 256);
+            }
+            ne.touchUp();
+            for (int i = 0; i < 86; i++) {
+                ne.render(b, 256);
+            }
+            ok(ne.getRate() > 5, "sin inercia: frenado lineal de siempre, sigue girando (" + ne.getRate() + ")");
+        }
         System.out.println(fails == 0 ? "TODO OK" : (fails + " FALLOS"));
         System.exit(fails == 0 ? 0 : 1);
     }
