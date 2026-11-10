@@ -32,6 +32,7 @@ Sin cuentas, sin streaming, sin anuncios. Tu música, tu carpeta, tu rueda.
 | [docs/COMPILAR.md](docs/COMPILAR.md) | Compilar con Android Studio, sin SDK y ejecutar los tests |
 | [docs/IMPORTAR-SPOTIFY.md](docs/IMPORTAR-SPOTIFY.md) | Importar listas de Spotify |
 | [docs/ANDROID-AUTO.md](docs/ANDROID-AUTO.md) | Activar Android Auto |
+| [docs/PUBLICAR-PLAY-STORE.md](docs/PUBLICAR-PLAY-STORE.md) | Tutorial para publicar en Google Play |
 | [docs/CAMBIOS.md](docs/CAMBIOS.md) | Historial de versiones |
 
 ## Compilar en 30 segundos
