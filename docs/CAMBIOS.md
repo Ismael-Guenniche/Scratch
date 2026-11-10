@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.34: auditoría de seguridad (ver docs/SEGURIDAD.md): servicio exportado protegido, WAV malicioso, host de Spotify, state de login de un solo uso
 - 0.33: etiquetas de los botones del reproductor en dos líneas (kana arriba, inglés abajo)
 - 0.32: el kana ya no se dibuja con puntos (ilegible), usa fuente normal con el inglés en puntos; textos de dos líneas ajustados en faders, pads, chips y botones
 - 0.31: BPM y sincronía en el modo DJ (detección de tempo, pulsos, SYNC, ½/×2); corrige build.gradle (flavorDimensions fuera de defaultConfig)

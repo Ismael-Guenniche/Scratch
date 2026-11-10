@@ -89,13 +89,14 @@ final class SpotifyApi {
     static void finishLogin(Context c, Uri data) throws Exception {
         String err = data.getQueryParameter("error");
         if (err != null) {
-            throw new IOException("Spotify: " + err);
+            throw new IOException("Spotify: " + (err.length() > 40 ? err.substring(0, 40) : err));
         }
         String code = data.getQueryParameter("code");
         String state = data.getQueryParameter("state");
         if (code == null || state == null || !state.equals(sp(c).getString("state", ""))) {
             throw new IOException(Tr.t("Respuesta de Spotify no válida"));
         }
+        sp(c).edit().remove("state").apply(); // el state vale una sola vez
         String body = "grant_type=authorization_code&code=" + URLEncoder.encode(code, "UTF-8")
                 + "&redirect_uri=" + URLEncoder.encode(REDIRECT, "UTF-8")
                 + "&client_id=" + URLEncoder.encode(clientId(c), "UTF-8")

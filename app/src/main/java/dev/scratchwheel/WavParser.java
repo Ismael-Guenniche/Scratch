@@ -59,7 +59,7 @@ public final class WavParser {
 
     private static PcmData readData(InputStream in, long size, int fmtTag, int channels,
                                     int rate, int bits) throws IOException {
-        if (channels < 1 || rate < 1000 || rate > 400000) {
+        if (channels < 1 || channels > 16 || rate < 1000 || rate > 400000) {
             throw new IOException(Tr.t("Formato WAV no válido"));
         }
         boolean isFloat = fmtTag == 3;

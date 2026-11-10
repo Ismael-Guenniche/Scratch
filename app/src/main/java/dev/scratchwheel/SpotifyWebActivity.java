@@ -39,6 +39,8 @@ public class SpotifyWebActivity extends Activity {
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
+        s.setAllowFileAccess(false);
+        s.setAllowContentAccess(false);
         s.setUserAgentString(s.getUserAgentString().replace("; wv", ""));
         CookieManager.getInstance().setAcceptCookie(true);
         web.setWebViewClient(new WebViewClient() {
@@ -48,7 +50,7 @@ public class SpotifyWebActivity extends Activity {
                     String host = r.getUrl().getHost();
                     Map<String, String> h = r.getRequestHeaders();
                     String a = h == null ? null : h.get("Authorization");
-                    if (host != null && host.endsWith("spotify.com") && a != null && a.startsWith("Bearer ")) {
+                    if (host != null && (host.equals("spotify.com") || host.endsWith(".spotify.com")) && a != null && a.startsWith("Bearer ")) {
                         tryToken(a.substring(7));
                     }
                 } catch (RuntimeException ignored) {

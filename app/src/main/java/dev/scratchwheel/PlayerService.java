@@ -28,7 +28,59 @@ public class PlayerService extends MediaBrowserService {
 
     @Override
     public BrowserRoot onGetRoot(String clientPackageName, int clientUid, Bundle rootHints) {
+        // Solo la propia app, el sistema y Android Auto / Asistente / Wear pueden explorar la biblioteca.
+        if (!trusted(clientPackageName, clientUid)) {
+            return null;
+        }
         return new BrowserRoot("root", null);
+    }
+
+    private static final String[] TRUSTED = {
+        "com.google.android.projection.gearhead", "com.google.android.autosimulator",
+        "com.google.android.googlequicksearchbox", "com.google.android.carassistant",
+        "com.google.android.wearable.app", "com.android.systemui", "android"
+    };
+
+    private boolean trusted(String pkg, int uid) {
+        if (uid == android.os.Process.myUid() || uid == android.os.Process.SYSTEM_UID || pkg == null) {
+            return true;
+        }
+        String[] owned = getPackageManager().getPackagesForUid(uid);
+        if (owned == null) {
+            return false;
+        }
+        boolean claimed = false;
+        for (String o : owned) {
+            if (o.equals(pkg)) {
+                claimed = true;
+            }
+        }
+        if (!claimed) {
+            return false;
+        }
+        for (String t : TRUSTED) {
+            if (t.equals(pkg)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Secreto por instalación: el servicio está exportado y las acciones solo valen con él. */
+    private String secret() {
+        android.content.SharedPreferences sp = getSharedPreferences("svc", MODE_PRIVATE);
+        String k = sp.getString("k", null);
+        if (k == null) {
+            byte[] b = new byte[16];
+            new java.security.SecureRandom().nextBytes(b);
+            StringBuilder sb = new StringBuilder();
+            for (byte x : b) {
+                sb.append(String.format("%02x", x));
+            }
+            k = sb.toString();
+            sp.edit().putString("k", k).apply();
+        }
+        return k;
     }
 
     @Override
@@ -94,6 +146,9 @@ public class PlayerService extends MediaBrowserService {
         Player p = Player.I;
         p.init(this);
         String a = intent == null ? null : intent.getAction();
+        if (a != null && !secret().equals(intent.getStringExtra("k"))) {
+            a = null; // acción de otra app: se ignora
+        }
         if (A_STOP.equals(a)) {
             // la notificación en pausa se ha descartado con el dedo
             if (p.isPlayingOrPending()) {
@@ -160,6 +215,7 @@ public class PlayerService extends MediaBrowserService {
     private PendingIntent stopIntent() {
         Intent i = new Intent(this, PlayerService.class);
         i.setAction(A_STOP);
+        i.putExtra("k", secret());
         return PendingIntent.getService(this, A_STOP.hashCode(), i, piFlags());
     }
 
@@ -177,6 +233,7 @@ public class PlayerService extends MediaBrowserService {
     private Notification.Action action(int icon, String label, String act) {
         Intent i = new Intent(this, PlayerService.class);
         i.setAction(act);
+        i.putExtra("k", secret());
         PendingIntent pi = PendingIntent.getService(this, act.hashCode(), i, piFlags());
         return new Notification.Action.Builder(Icon.createWithResource(this, icon), label, pi).build();
     }
