@@ -109,6 +109,135 @@ final class Player {
     private boolean truncated;
     private int loadGen;
 
+    // ---- BPM y sincronía
+    private double bpmRaw;
+    private double bpmOffset;
+    private double bpmScale = 1;
+    private boolean bpmReady;
+
+    /** BPM de la pista actual (0 = aún sin calcular o sin pulso claro). */
+    double bpm() {
+        return bpmReady ? bpmRaw * bpmScale : 0;
+    }
+
+    double beatOffset() {
+        return bpmOffset;
+    }
+
+    /** BPM efectivo con el pitch aplicado. */
+    double effectiveBpm() {
+        return bpm() * pitch();
+    }
+
+    boolean syncOn() {
+        return prefs != null && prefs.getBoolean("sync_on", false);
+    }
+
+    void setSync(boolean on) {
+        SharedPreferences.Editor e = prefs.edit().putBoolean("sync_on", on);
+        if (on && bpm() > 0) {
+            e.putFloat("sync_master", (float) effectiveBpm());
+        }
+        e.apply();
+        changed();
+    }
+
+    /** ×2 o ×0,5 cuando el detector se ha quedado con el doble o la mitad. */
+    void scaleBpm(double mult) {
+        if (!bpmReady) {
+            return;
+        }
+        double nb = bpmRaw * bpmScale * mult;
+        if (nb < 50 || nb > 220) {
+            return;
+        }
+        bpmScale *= mult;
+        storeBpm();
+        applySync();
+        changed();
+    }
+
+    private void storeBpm() {
+        if (currentUri != null) {
+            app.getSharedPreferences("bpm", 0).edit().putString(currentUri.toString(),
+                    bpmRaw + "|" + bpmOffset + "|" + bpmScale).apply();
+        }
+    }
+
+    private void analyzeBpm(final Uri uri, final PcmData pcm) {
+        bpmReady = false;
+        bpmRaw = 0;
+        bpmScale = 1;
+        bpmOffset = 0;
+        if (uri == null || pcm == null) {
+            return;
+        }
+        final int gen = loadGen;
+        String c = app.getSharedPreferences("bpm", 0).getString(uri.toString(), null);
+        if (c != null) {
+            try {
+                String[] p = c.split("\\|");
+                bpmRaw = Double.parseDouble(p[0]);
+                bpmOffset = Double.parseDouble(p[1]);
+                bpmScale = Double.parseDouble(p[2]);
+                bpmReady = bpmRaw > 0;
+                applySync();
+                return;
+            } catch (RuntimeException ignored) {
+                bpmReady = false;
+            }
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                double[] r = null;
+                try {
+                    r = BpmDetect.detect(pcm);
+                } catch (RuntimeException ignored) {
+                }
+                final double[] fr = r;
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (gen != loadGen || fr == null) {
+                            return;
+                        }
+                        bpmRaw = fr[0];
+                        bpmOffset = fr[1];
+                        bpmScale = 1;
+                        bpmReady = true;
+                        storeBpm();
+                        applySync();
+                        changed();
+                    }
+                });
+            }
+        }, "bpm").start();
+    }
+
+    /** Con SYNC activo, cada pista se ajusta de pitch (±20 %) al tempo maestro; si no cabe, a 1,0. */
+    private void applySync() {
+        if (!syncOn() || bpm() <= 0) {
+            return;
+        }
+        double master = prefs.getFloat("sync_master", 0f);
+        if (master <= 0) {
+            return;
+        }
+        double best = 1.0;
+        double bestDist = 9;
+        double[] mults = {1, 2, 0.5};
+        for (double m : mults) {
+            double p = master / (bpm() * m);
+            if (p >= 0.8 && p <= 1.2 && Math.abs(p - 1) < bestDist) {
+                best = p;
+                bestDist = Math.abs(p - 1);
+            }
+        }
+        engine.setPitch(best);
+        prefs.edit().putFloat("pitch", (float) best).apply();
+    }
+
     // ---- reproducción sin huecos: se decodifica la siguiente pista y el motor la empalma al terminar
     private PcmData prepPcm;
     private Track prepTrack;
@@ -349,6 +478,7 @@ final class Player {
         truncated = pcm.truncated;
         startListen(t.uri);
         loadCoverAsync(++loadGen);
+        analyzeBpm(t.uri, pcm);
         savePos();
         updateSession();
         syncService();
@@ -587,6 +717,7 @@ final class Player {
         errorStreak = 0;
         engine.load(pcm);
         engine.seekTo(startSec);
+        analyzeBpm(currentUri, pcm);
         truncated = pcm.truncated;
         loadCoverAsync(gen);
         if (playWhenReady) {
@@ -943,6 +1074,9 @@ final class Player {
     void setPitch(double p) {
         engine.setPitch(p);
         prefs.edit().putFloat("pitch", (float) p).apply();
+        if (syncOn() && bpm() > 0) {
+            prefs.edit().putFloat("sync_master", (float) (bpm() * p)).apply();
+        }
     }
 
     double pitch() {

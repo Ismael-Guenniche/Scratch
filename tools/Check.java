@@ -1,3 +1,4 @@
+import dev.scratchwheel.BpmDetect;
 import dev.scratchwheel.ShuffleOrder;
 import dev.scratchwheel.DotFont;
 import dev.scratchwheel.DemoTrack;
@@ -894,6 +895,34 @@ public class Check {
             }
             ok(rms[1] > rms[0] * 1.5, "EQ gráfico: +12 dB en 60 Hz sube el nivel (" + rms[0] + " → " + rms[1] + ")");
             ok(rms[2] < rms[0] * 0.5, "EQ gráfico: −12 dB en 60 Hz baja el nivel (" + rms[2] + ")");
+
+            // BPM: pistas de bombos sintéticas a 128 y 100 BPM con el primer golpe en 0,25 s
+            double[] tempos = {128, 100, 93.5};
+            for (int ti = 0; ti < tempos.length; ti++) {
+                PcmData.Builder bb = new PcmData.Builder();
+                int total = 44100 * 40;
+                double beatLen = 44100 * 60.0 / tempos[ti];
+                double next = 44100 * 0.25;
+                int age = -1;
+                for (int i = 0; i < total; i++) {
+                    if (i >= next) {
+                        age = 0;
+                        next += beatLen;
+                    }
+                    double kv = 0;
+                    if (age >= 0 && age < 4000) {
+                        kv = 20000 * Math.exp(-age / 900.0) * Math.sin(2 * Math.PI * 70 * age / 44100.0);
+                        age++;
+                    }
+                    short sv = (short) kv;
+                    bb.append(sv, sv);
+                }
+                double[] br = BpmDetect.detect(bb.build(44100));
+                ok(br != null && Math.abs(br[0] - tempos[ti]) < 0.8, "BPM " + tempos[ti] + " detectado: " + (br == null ? "null" : br[0]));
+                double beatSec = 60.0 / tempos[ti];
+                double dph = br == null ? 9 : Math.abs(((br[1] - 0.25) % beatSec + beatSec * 1.5) % beatSec - beatSec * 0.5);
+                ok(br != null && dph < 0.04, "BPM " + tempos[ti] + ": fase del pulso correcta (error " + dph + " s)");
+            }
         }
         System.out.println(fails == 0 ? "TODO OK" : (fails + " FALLOS"));
         System.exit(fails == 0 ? 0 : 1);

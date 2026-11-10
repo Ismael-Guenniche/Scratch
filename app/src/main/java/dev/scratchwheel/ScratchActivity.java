@@ -20,6 +20,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 import java.util.Locale;
 
 public class ScratchActivity extends Activity {
@@ -56,6 +57,12 @@ public class ScratchActivity extends Activity {
     private boolean dragging;
     private int lastSec = -1;
     private int lastDur = -1;
+    private TextView bpmText;
+    private TextView beatText;
+    private TextView syncPad;
+    private FaderView pitchFader;
+    private double lastPitchSeen = -1;
+    private static final String[] BEATS = {"● ○ ○ ○", "○ ● ○ ○", "○ ○ ● ○", "○ ○ ○ ●"};
 
     private final Player.Listener listener = new Player.Listener() {
         @Override
@@ -808,6 +815,7 @@ public class ScratchActivity extends Activity {
             }
         });
         pitch.setValue((Player.I.pitch() - 0.8) / 0.4);
+        pitchFader = pitch;
         card.addView(faders);
 
         // --- frenado / backspin / vinyl stop
@@ -841,6 +849,53 @@ public class ScratchActivity extends Activity {
             br.addView(vs, padLp());
         }
         card.addView(br);
+
+        bpmText = null;
+        beatText = null;
+        syncPad = null;
+        if (opt("dj_bpm", true)) {
+            card.addView(sectionTag(Tr.t("BPM Y SINCRONÍA")));
+            LinearLayout bpr = padRow();
+            bpmText = text("— BPM", 15, th.ink, th.mono);
+            bpmText.setGravity(Gravity.CENTER);
+            bpr.addView(bpmText, padLp());
+            beatText = text(BEATS[0], 13, th.accent, th.mono);
+            beatText.setGravity(Gravity.CENTER);
+            bpr.addView(beatText, padLp());
+            card.addView(bpr);
+            LinearLayout sr2 = padRow();
+            syncPad = pad("SYNC", false);
+            padOn(syncPad, Player.I.syncOn());
+            syncPad.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    boolean on = !Player.I.syncOn();
+                    Player.I.setSync(on);
+                    padOn(syncPad, on);
+                    Toast.makeText(ScratchActivity.this, on
+                            ? Tr.t("SYNC activo: las pistas siguientes se ajustan a este tempo")
+                            : Tr.t("SYNC desactivado"), Toast.LENGTH_SHORT).show();
+                }
+            });
+            sr2.addView(syncPad, padLp());
+            TextView halfB = pad("BPM ½", false);
+            halfB.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Player.I.scaleBpm(0.5);
+                }
+            });
+            sr2.addView(halfB, padLp());
+            TextView dblB = pad("BPM ×2", false);
+            dblB.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Player.I.scaleBpm(2.0);
+                }
+            });
+            sr2.addView(dblB, padLp());
+            card.addView(sr2);
+        }
 
         if (opt("dj_cues", true)) {
             card.addView(sectionTag(Tr.t("HOT CUES · TOCA PARA GUARDAR / SALTAR · LARGO BORRA")));
@@ -1470,6 +1525,40 @@ public class ScratchActivity extends Activity {
             }
             if (discoOn) {
                 wheel.setLevel(lv);
+            }
+        }
+        if (djMode) {
+            double pc = Player.I.pitch();
+            if (Math.abs(pc - lastPitchSeen) > 1e-4) {
+                lastPitchSeen = pc;
+                if (pitchBar != null) {
+                    pitchBar.setProgress((int) Math.round((pc - 0.8) * 100));
+                }
+                if (pitchLabel != null) {
+                    pitchLabel.setText(pitchText(pc));
+                }
+                if (pitchFader != null) {
+                    pitchFader.setValue((pc - 0.8) / 0.4);
+                }
+            }
+            if (bpmText != null) {
+                double bpm = Player.I.bpm();
+                String bt = bpm > 0 ? String.format(java.util.Locale.US, "%.1f BPM", bpm * pc) : "— BPM";
+                if (!bt.contentEquals(bpmText.getText())) {
+                    bpmText.setText(bt);
+                }
+                String dots = BEATS[0];
+                if (bpm > 0) {
+                    double per = 60.0 / bpm;
+                    int bi = (int) Math.floor((e.getPositionSeconds() - Player.I.beatOffset()) / per);
+                    dots = BEATS[((bi % 4) + 4) % 4];
+                }
+                if (beatText != null && !dots.contentEquals(beatText.getText())) {
+                    beatText.setText(dots);
+                }
+                if (syncPad != null) {
+                    padOn(syncPad, Player.I.syncOn());
+                }
             }
         }
         double pos = e.getPositionSeconds();

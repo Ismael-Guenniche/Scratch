@@ -234,5 +234,7 @@ final class TrJa {
         M.put("TREBLE BOOST", "こうおんぶーすと");
         M.put("ROCK", "ろっく");
         M.put("ELECTRONIC", "えれくとろにか");
+        M.put("BPM AND SYNC", "びーぴーえむとしんく");
+        M.put("SYNC off", "しんくおふ");
     }
 }

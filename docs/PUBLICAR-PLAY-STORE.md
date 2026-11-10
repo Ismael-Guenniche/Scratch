@@ -6,7 +6,7 @@ Datos de requisitos comprobados en la documentación de Google (nov. 2026). Rev�
 
 ## 0. Antes de nada: lo que bloquea la publicación
 
-Estado en la **0.30**: ya está migrada a `targetSdk 36`, con tipo de servicio, permiso de notificaciones y bienvenida con política de privacidad. Falta lo marcado «pendiente»:
+Estado en la **0.31**: ya está migrada a `targetSdk 36`, con tipo de servicio, permiso de notificaciones y bienvenida con política de privacidad. Falta lo marcado «pendiente»:
 
 | Bloqueo | Estado actual | Qué hay que hacer |
 |---|---|---|

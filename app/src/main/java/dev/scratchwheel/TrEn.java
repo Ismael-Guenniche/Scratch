@@ -11,6 +11,11 @@ final class TrEn {
     }
 
     static {
+        M.put("BPM Y SINCRONÍA", "BPM AND SYNC");
+        M.put("SYNC activo: las pistas siguientes se ajustan a este tempo", "SYNC on: following tracks are matched to this tempo");
+        M.put("SYNC desactivado", "SYNC off");
+        M.put("BPM y sincronía", "BPM and sync");
+        M.put("Detecta el tempo de cada canción, marca los pulsos y con SYNC iguala el tempo de las siguientes.", "Detects each song's tempo, shows the beats and, with SYNC, matches the tempo of the next songs.");
         M.put("ECUALIZADOR", "EQUALIZER");
         M.put("Ecualizador", "Equalizer");
         M.put("Ajusta graves, medios y agudos de todo lo que suena, sin cortes entre canciones.", "Adjust bass, mids and treble for everything you play, with no gaps between songs.");

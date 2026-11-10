@@ -313,6 +313,15 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
+        c.addView(switchRow(Tr.t("BPM y sincronía"),
+                Tr.t("Detecta el tempo de cada canción, marca los pulsos y con SYNC iguala el tempo de las siguientes."),
+                prefs.getBoolean("dj_bpm", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("dj_bpm", v).apply();
+                    }
+                }));
+        c.addView(dots());
         c.addView(switchRow(Tr.t("Vúmetro de puntos"),
                 Tr.t("Medidor de nivel de puntos arriba del panel DJ."),
                 prefs.getBoolean("dj_meter", true), true, new Toggle() {
@@ -453,7 +462,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.30");
+        about.setText("SCRATCH 0.31");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);
