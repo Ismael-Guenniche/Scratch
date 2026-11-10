@@ -26,9 +26,9 @@ import android.widget.SeekBar;
  */
 public final class Lucent {
     /** Escala de esquinas: tarjetas, controles (chips, botones, menús) y filas. */
-    public static final int R_L = 28;
-    public static final int R_M = 20;
-    public static final int R_S = 14;
+    public static final int R_L = 34;
+    public static final int R_M = 40;
+    public static final int R_S = 22;
     public static final int GLASS = 0;
     public static final int SOLID = 1;
     public static final int ACCENT = 2;
@@ -166,7 +166,7 @@ public final class Lucent {
         if (t.lucent) {
             // Cristal (guía Lucent). Si el fondo resta contraste, o no se conoce, la opacidad sube a 72 %.
             if (!t.dark) {
-                t.glassLine = 0x8CFFFFFF;
+                t.glassLine = 0x2E000000;
                 t.solid = 0xFFF9F9F9;
                 t.glass = withAlpha(0xFFFFFF, (!wallKnown || wallDark) ? 0.72f : 0.60f);
                 t.veil = 0xE6F2F2F2;
@@ -364,6 +364,30 @@ public final class Lucent {
             g.setStroke(dp(1), stroke);
         }
         b.setBackground(new RippleDrawable(ColorStateList.valueOf(withAlpha(text, 0.18f)), g, null));
+    }
+
+    /** Chip en píldora como en Dot Calendar: seleccionado = tinta sólida con texto invertido; si no, cristal con borde. */
+    public android.widget.TextView chip(Context c, String label, boolean on, int padH) {
+        android.widget.TextView t = new android.widget.TextView(c);
+        t.setText(label);
+        t.setTextSize(12);
+        t.setTypeface(mono);
+        t.setLetterSpacing(0.1f);
+        t.setSingleLine(true);
+        t.setGravity(android.view.Gravity.CENTER);
+        t.setPadding(dp(padH), dp(13), dp(padH), dp(13));
+        GradientDrawable g = new GradientDrawable();
+        g.setCornerRadius(dp(40));
+        if (on) {
+            g.setColor(ink);
+            t.setTextColor(dark ? 0xFF0B0B0B : 0xFFFFFFFF);
+        } else {
+            g.setColor(glass);
+            g.setStroke(dp(1), glassLine);
+            t.setTextColor(ink);
+        }
+        t.setBackground(new RippleDrawable(ColorStateList.valueOf(withAlpha(ink, 0.15f)), g, null));
+        return t;
     }
 
     public void styleSeek(SeekBar s) {

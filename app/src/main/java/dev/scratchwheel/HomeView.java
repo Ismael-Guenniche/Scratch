@@ -79,10 +79,64 @@ final class HomeView extends ScrollView {
         col.removeAllViews();
 
         int h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        DotTextView hi = new DotTextView(getContext(), 2.4f, th);
-        hi.setText(h < 6 ? "BUENAS NOCHES" : h < 13 ? "BUENOS DIAS" : h < 21 ? "BUENAS TARDES" : "BUENAS NOCHES");
-        hi.setPadding(dp(2), dp(4), 0, dp(2));
-        col.addView(hi);
+        LinearLayout topRow = new LinearLayout(getContext());
+        topRow.setGravity(Gravity.BOTTOM);
+        topRow.setPadding(dp(4), dp(6), dp(4), 0);
+        TextView hi = text(h < 6 ? "Buenas noches" : h < 13 ? "Buenos días" : h < 21 ? "Buenas tardes" : "Buenas noches",
+                16, th.ink2, th.regular);
+        topRow.addView(hi, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        java.text.SimpleDateFormat df = new java.text.SimpleDateFormat("EEEE\nd MMM yyyy", new java.util.Locale("es"));
+        TextView date = text(df.format(new java.util.Date()).toUpperCase(new java.util.Locale("es")), 11, th.ink2, th.mono);
+        date.setLetterSpacing(0.12f);
+        date.setGravity(Gravity.END);
+        date.setLineSpacing(0, 1.3f);
+        topRow.addView(date);
+        col.addView(topRow);
+
+        DotTextView big = new DotTextView(getContext(), 5f, th);
+        big.setText(String.valueOf(p.tracks.size()));
+        big.setPadding(dp(4), dp(10), 0, 0);
+        col.addView(big);
+        TextView lib = text("CANCIONES EN TU BIBLIOTECA", 10, th.ink2, th.mono);
+        lib.setLetterSpacing(0.12f);
+        lib.setPadding(dp(4), dp(8), 0, dp(14));
+        col.addView(lib);
+
+        if (p.index() >= 0 && p.index() < p.tracks.size()) {
+            Player.Track now = p.tracks.get(p.index());
+            LinearLayout hero = new LinearLayout(getContext());
+            hero.setOrientation(LinearLayout.VERTICAL);
+            hero.setPadding(dp(22), dp(20), dp(22), dp(22));
+            hero.setBackground(th.card(Lucent.R_L));
+            LinearLayout lab = new LinearLayout(getContext());
+            lab.setGravity(Gravity.CENTER_VERTICAL);
+            View dot = new View(getContext());
+            android.graphics.drawable.GradientDrawable dg = new android.graphics.drawable.GradientDrawable();
+            dg.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+            dg.setColor(th.accent);
+            dot.setBackground(dg);
+            lab.addView(dot, new LinearLayout.LayoutParams(dp(10), dp(10)));
+            TextView lt = text("REPRODUCIENDO", 11, th.ink2, th.mono);
+            lt.setLetterSpacing(0.12f);
+            lt.setPadding(dp(10), 0, 0, 0);
+            lab.addView(lt);
+            hero.addView(lab);
+            TextView title = text(now.display(), 24, th.ink, th.medium);
+            title.setMaxLines(2);
+            title.setEllipsize(TextUtils.TruncateAt.END);
+            title.setPadding(0, dp(18), 0, 0);
+            hero.addView(title);
+            if (now.artist.length() > 0) {
+                TextView ar = text(now.artist, 15, th.ink2, th.regular);
+                ar.setSingleLine(true);
+                ar.setEllipsize(TextUtils.TruncateAt.END);
+                ar.setPadding(0, dp(6), 0, 0);
+                hero.addView(ar);
+            }
+            hero.setOnClickListener(open("NOW"));
+            col.addView(hero, new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
 
         col.addView(section("ESCUCHADO RECIENTEMENTE"));
         if (rec.isEmpty()) {
@@ -130,7 +184,7 @@ final class HomeView extends ScrollView {
             row.setOrientation(LinearLayout.HORIZONTAL);
             for (int c = 0; c < 2; c++) {
                 int i = r + c;
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(64), 1f);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(72), 1f);
                 lp.setMargins(c == 0 ? 0 : dp(5), dp(5), c == 0 ? dp(5) : 0, 0);
                 row.addView(tile(icon(icons[i][0]), tiles[i][0], tiles[i][1], open(tiles[i][2])), lp);
             }
@@ -206,7 +260,7 @@ final class HomeView extends ScrollView {
         LinearLayout c = new LinearLayout(getContext());
         c.setOrientation(LinearLayout.VERTICAL);
         c.setPadding(dp(12), dp(12), dp(12), dp(12));
-        c.setBackground(th.card(Lucent.R_S));
+        c.setBackground(th.card(Lucent.R_L));
         TextView t = text(current ? "●  " + title : title, 13, th.ink, current ? th.semi : th.regular);
         t.setMaxLines(3);
         t.setEllipsize(TextUtils.TruncateAt.END);
@@ -228,8 +282,8 @@ final class HomeView extends ScrollView {
         LinearLayout c = new LinearLayout(getContext());
         c.setOrientation(LinearLayout.HORIZONTAL);
         c.setGravity(Gravity.CENTER_VERTICAL);
-        c.setPadding(dp(10), 0, dp(10), 0);
-        c.setBackground(th.card(Lucent.R_S));
+        c.setPadding(dp(16), 0, dp(14), 0);
+        c.setBackground(th.card(Lucent.R_L));
         DotIconView ic = new DotIconView(getContext(), th);
         ic.set(pattern, th.accent);
         c.addView(ic, new LinearLayout.LayoutParams(dp(30), dp(30)));

@@ -278,18 +278,7 @@ public class StatsActivity extends Activity {
     }
 
     private TextView chip(String s, boolean on, View.OnClickListener l) {
-        TextView t = text(s, 11, on ? th.onAccent : th.ink, th.mono);
-        t.setLetterSpacing(0.08f);
-        t.setPadding(dp(12), dp(8), dp(12), dp(8));
-        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
-        g.setCornerRadius(dp(Lucent.R_M));
-        if (on) {
-            g.setColor(th.accent);
-        } else {
-            g.setColor(th.glass);
-            g.setStroke(dp(1), th.glassLine);
-        }
-        t.setBackground(g);
+        TextView t = th.chip(this, s, on, 11);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.rightMargin = dp(6);

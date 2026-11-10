@@ -679,6 +679,10 @@ public class MainActivity extends Activity {
     /** Accesos de la pantalla de inicio. */
     private void openFromHome(String what) {
         final Player p = Player.I;
+        if (what.equals("NOW")) {
+            startActivity(new Intent(this, ScratchActivity.class));
+            return;
+        }
         if (what.equals("STATS")) {
             startActivity(new Intent(this, StatsActivity.class));
             return;
@@ -968,24 +972,10 @@ public class MainActivity extends Activity {
     }
 
     private TextView addChip(String label, boolean selected, View.OnClickListener click) {
-        TextView t = text(label, 12, selected ? th.ink : th.ink2, selected ? th.semi : th.regular);
-        t.setLetterSpacing(0.06f);
-        t.setSingleLine(true);
-        t.setGravity(Gravity.CENTER);
-        t.setPadding(dp(16), 0, dp(16), 0);
-        GradientDrawable g = new GradientDrawable();
-        g.setCornerRadius(dp(Lucent.R_M));
-        if (selected) {
-            g.setColor(Lucent.withAlpha(th.ink, 0.14f));
-            g.setStroke(dp(1), th.accent);
-        } else {
-            g.setColor(Lucent.withAlpha(th.ink, 0.05f));
-            g.setStroke(dp(1), th.glassLine);
-        }
-        t.setBackground(g);
+        TextView t = th.chip(this, label, selected, 16);
         t.setOnClickListener(click);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, dp(40));
+                LinearLayout.LayoutParams.WRAP_CONTENT, dp(44));
         lp.rightMargin = dp(8);
         chips.addView(t, lp);
         return t;

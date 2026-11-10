@@ -67,16 +67,37 @@ public class SettingsActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         Lucent.insets(root, dp(14), dp(8), dp(14), dp(10));
 
+        LinearLayout header = new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(0, dp(6), 0, dp(10));
+        TextView back = new TextView(this);
+        back.setText("‹");
+        back.setTextSize(24);
+        back.setTextColor(th.ink);
+        back.setGravity(Gravity.CENTER);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.OVAL);
+        bg.setColor(th.glass);
+        bg.setStroke(dp(1), th.glassLine);
+        back.setBackground(bg);
+        back.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
+        header.addView(back, new LinearLayout.LayoutParams(dp(52), dp(52)));
         DotTextView title = new DotTextView(this, 3.2f, th);
         title.setText("AJUSTES");
-        title.setPadding(dp(8), 0, 0, dp(6));
-        root.addView(title);
+        title.setPadding(dp(16), 0, 0, 0);
+        header.addView(title);
+        root.addView(header);
 
         LinearLayout list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
 
         // TEMA
-        LinearLayout c = card(list, "TEMA");
+        LinearLayout c = plain(list, "TEMA");
         c.addView(segmented(new String[] {"SISTEMA", "CLARO", "OSCURO"}, prefs.getInt("mode", 0),
                 new Pick() {
                     @Override
@@ -224,7 +245,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.21");
+        about.setText("SCRATCH 0.22");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);
@@ -324,7 +345,24 @@ public class SettingsActivity extends Activity {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
         c.setBackground(th.card(Lucent.R_L));
-        c.setPadding(dp(18), dp(16), dp(18), dp(16));
+        c.setPadding(dp(22), dp(18), dp(22), dp(18));
+        parent.addView(c, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        return c;
+    }
+
+    /** Grupo sin tarjeta (chips directamente sobre el fondo), como Idioma/Modo en Dot Calendar. */
+    private LinearLayout plain(LinearLayout parent, String label) {
+        TextView l = new TextView(this);
+        l.setText(label);
+        l.setTextSize(11);
+        l.setTextColor(th.ink2);
+        l.setTypeface(th.mono);
+        l.setLetterSpacing(0.12f);
+        l.setPadding(dp(8), dp(16), 0, dp(2));
+        parent.addView(l);
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
         parent.addView(c, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         return c;
@@ -347,18 +385,16 @@ public class SettingsActivity extends Activity {
         row.setPadding(0, dp(8), 0, 0);
         for (int i = 0; i < opts.length; i++) {
             final int value = i;
-            Button b = new Button(this);
-            b.setText(opts[i]);
-            th.style(b, i == selected ? Lucent.ACCENT : Lucent.SOLID);
+            TextView b = th.chip(this, opts[i], i == selected, opts.length > 4 ? 12 : 18);
             b.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     pick.on(value);
                 }
             });
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(44), 1f);
-            lp.leftMargin = dp(3);
-            lp.rightMargin = dp(3);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            lp.rightMargin = dp(8);
             row.addView(b, lp);
         }
         return row;
