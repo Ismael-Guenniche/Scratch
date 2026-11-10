@@ -340,7 +340,28 @@ public class ScratchActivity extends Activity {
         c.setOrientation(LinearLayout.VERTICAL);
         c.setGravity(Gravity.CENTER);
         c.setClickable(true);
-        c.addView(icon, new LinearLayout.LayoutParams(dp(34), dp(34)));
+        c.setFocusable(true);
+        // el icono no debe tragarse el toque: toda la casilla es el botón
+        icon.setClickable(false);
+        icon.setFocusable(false);
+        android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
+        bg.setCornerRadius(dp(Lucent.R_S));
+        bg.setColor(0x00000000);
+        c.setBackground(bg);
+        final android.graphics.drawable.GradientDrawable bgf = bg;
+        c.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent e) {
+                int a = e.getActionMasked();
+                if (a == MotionEvent.ACTION_DOWN) {
+                    bgf.setColor(th.glassLine);
+                } else if (a == MotionEvent.ACTION_UP || a == MotionEvent.ACTION_CANCEL) {
+                    bgf.setColor(0x00000000);
+                }
+                return false;
+            }
+        });
+        c.addView(icon, new LinearLayout.LayoutParams(dp(38), dp(38)));
         label.setSingleLine(true);
         label.setGravity(Gravity.CENTER);
         c.addView(label);
@@ -408,10 +429,10 @@ public class ScratchActivity extends Activity {
                 setDjMode(!djMode);
             }
         });
-        opts.addView(modeChip, new LinearLayout.LayoutParams(0, dp(58), 1f));
-        opts.addView(shuffleChip, new LinearLayout.LayoutParams(0, dp(58), 1f));
-        opts.addView(lockChip, new LinearLayout.LayoutParams(0, dp(58), 1f));
-        opts.addView(coverChip, new LinearLayout.LayoutParams(0, dp(58), 1f));
+        opts.addView(modeChip, new LinearLayout.LayoutParams(0, dp(72), 1f));
+        opts.addView(shuffleChip, new LinearLayout.LayoutParams(0, dp(72), 1f));
+        opts.addView(lockChip, new LinearLayout.LayoutParams(0, dp(72), 1f));
+        opts.addView(coverChip, new LinearLayout.LayoutParams(0, dp(72), 1f));
         card.addView(opts);
 
         LinearLayout vol = row();
@@ -618,7 +639,7 @@ public class ScratchActivity extends Activity {
         br.setGravity(Gravity.CENTER_VERTICAL);
         br.setPadding(dp(6), dp(2), 0, 0);
         final TextView back = text("BACKSPIN", 12, th.accent, th.mono);
-        back.setPadding(dp(8), dp(8), dp(14), dp(8));
+        btnStyle(back);
         back.setClickable(true);
         back.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -628,7 +649,7 @@ public class ScratchActivity extends Activity {
         });
         br.addView(back);
         final TextView brake = text("", 12, th.ink, th.mono);
-        brake.setPadding(dp(8), dp(8), dp(8), dp(8));
+        btnStyle(brake);
         brake.setClickable(true);
         brake.setText("FRENADO " + brakeText());
         brake.setOnClickListener(new View.OnClickListener() {
@@ -642,6 +663,22 @@ public class ScratchActivity extends Activity {
         br.addView(brake);
         card.addView(br);
         return card;
+    }
+
+    /** Botón de texto grande (≥48dp) con fondo de cristal. */
+    private void btnStyle(TextView t) {
+        t.setGravity(Gravity.CENTER);
+        t.setMinHeight(dp(48));
+        t.setPadding(dp(18), dp(10), dp(18), dp(10));
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+        g.setCornerRadius(dp(Lucent.R_M));
+        g.setColor(th.glass);
+        g.setStroke(dp(1), th.glassLine);
+        t.setBackground(g);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.rightMargin = dp(8);
+        t.setLayoutParams(lp);
     }
 
     private FaderView fader(LinearLayout row, String label, double neutral, FaderView.Listener l) {
