@@ -43,6 +43,9 @@ final class Player {
         String title = "";
         String artist = "";
         String album = "";
+        /** Etiquetas originales del archivo (sin los nombres editados); las usa la importación de listas. */
+        String tagTitle = "";
+        String tagArtist = "";
 
         Track(Uri uri, String name) {
             this.uri = uri;
@@ -56,9 +59,20 @@ final class Player {
         }
 
         void setMeta(String t, String ar, String al) {
-            title = t == null ? "" : t;
-            artist = ar == null ? "" : ar;
+            tagTitle = t == null ? "" : t;
+            tagArtist = ar == null ? "" : ar;
+            title = tagTitle;
+            artist = tagArtist;
             album = al == null ? "" : al;
+            String[] e = TrackEdits.I.get(uri.toString());
+            if (e != null) {
+                if (e[0].length() > 0) {
+                    title = e[0];
+                }
+                if (e[1].length() > 0) {
+                    artist = e[1];
+                }
+            }
             lower = (name + " " + title + " " + artist + " " + album).toLowerCase(java.util.Locale.ROOT);
         }
 
@@ -309,6 +323,8 @@ final class Player {
         repeat = prefs.getInt("repeat", 0);
         loadFavs();
         Playlists.I.init(new java.io.File(app.getFilesDir(), "playlists.txt"));
+        TrackEdits.I.init(new java.io.File(app.getFilesDir(), "edits.txt"));
+        CoverCache.init(app);
         try {
             String r = am.getProperty(AudioManager.PROPERTY_OUTPUT_SAMPLE_RATE);
             if (r != null) {
@@ -351,6 +367,16 @@ final class Player {
 
     void removeListener(Listener l) {
         listeners.remove(l);
+    }
+
+    /** Tras editar el nombre de una canción: actualiza el título que suena y avisa a las pantallas y a la notificación. */
+    void metaEdited(Track t) {
+        if (t.uri.equals(currentUri)) {
+            title = t.display();
+        }
+        for (Listener l : new ArrayList<Listener>(listeners)) {
+            l.onChanged();
+        }
     }
 
     private void changed() {

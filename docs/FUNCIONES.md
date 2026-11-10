@@ -13,6 +13,7 @@ La política puede releerse en Ajustes → Permisos y privacidad ([PRIVACIDAD.md
 ## Inicio
 Primera pantalla (`HomeView`).
 - Tarjeta **REPRODUCIENDO** con lo último que sonaba; tócala para abrir la rueda.
+- La tarjeta, las canciones escuchadas recientemente y tus listas llevan la **carátula del álbum** (las listas, su portada).
 - Accesos a canciones, listas, favoritas, recientes, más escuchadas, estadísticas y ajustes.
 - Etiqueta **BETA 0.xx** junto al título (útil para comprobar qué versión tienes instalada).
 
@@ -41,7 +42,10 @@ Primera pantalla (`HomeView`).
 Lo que suena y lo que viene después; quitar canciones de la cola.
 
 ## Listas
-- Listas propias (`playlists.txt`): crear, añadir, quitar, borrar.
+- Listas propias (`playlists.txt`): crear, añadir, quitar, borrar, **renombrar**.
+- **Portada de lista:** por defecto un mosaico 2x2 con las carátulas de sus primeras canciones (4 distintas; con menos, solo la primera). Con **EDITAR** (cabecera de la lista) o manteniendo pulsado el chip de la lista se elige una imagen propia (`plcovers/`, cuadrada y reducida a 512 px) o se vuelve al mosaico.
+- **Orden:** dentro de una lista, mantén pulsada una canción → SUBIR / BAJAR UN PUESTO o MOVER A LA POSICIÓN…. Con la búsqueda activa no se ofrece mover.
+- **Editar nombre:** mantén pulsada cualquier canción → EDITAR NOMBRE… cambia el título y el artista que se muestran (también en la notificación). Se guarda en `edits.txt` y no toca el archivo de audio; RESTAURAR ORIGINAL lo deshace. La importación de Spotify sigue emparejando con las etiquetas originales.
 - **Favoritas** (`favs.txt`).
 - **Recientes** y **Más escuchadas** (`plays.txt`, `history.txt`).
 

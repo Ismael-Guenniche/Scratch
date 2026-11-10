@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -22,6 +23,8 @@ public final class Playlists {
     static final Playlists I = new Playlists();
 
     private final LinkedHashMap<String, ArrayList<String>> map = new LinkedHashMap<String, ArrayList<String>>();
+    /** Portadas personalizadas: nombre de la lista -> ruta de una imagen propia de la app. */
+    private final HashMap<String, String> covers = new HashMap<String, String>();
     private File file;
     /** Sube cada vez que algo cambia, para que las pantallas sepan que deben redibujar. */
     volatile int version;
@@ -80,8 +83,85 @@ public final class Playlists {
         String k = find(name);
         if (k != null) {
             map.remove(k);
+            String c = covers.remove(k);
+            if (c != null) {
+                new File(c).delete();
+            }
             changed();
         }
+    }
+
+    /** Cambia el nombre conservando la posición, las canciones y la portada. false si no se pudo (nombre vacío o repetido). */
+    public synchronized boolean rename(String old, String neu) {
+        String k = find(old);
+        String n = clean(neu);
+        if (k == null || n.length() == 0) {
+            return false;
+        }
+        String other = find(n);
+        if (other != null && !other.equals(k)) {
+            return false;
+        }
+        if (n.equals(k)) {
+            return true;
+        }
+        LinkedHashMap<String, ArrayList<String>> nm = new LinkedHashMap<String, ArrayList<String>>();
+        for (Map.Entry<String, ArrayList<String>> e : map.entrySet()) {
+            nm.put(e.getKey().equals(k) ? n : e.getKey(), e.getValue());
+        }
+        map.clear();
+        map.putAll(nm);
+        String c = covers.remove(k);
+        if (c != null) {
+            covers.put(n, c);
+        }
+        changed();
+        return true;
+    }
+
+    /** Posición (desde 0) de la canción en la lista, o -1. */
+    public synchronized int indexOf(String name, String uri) {
+        ArrayList<String> l = map.get(find(name));
+        return l == null ? -1 : l.indexOf(uri);
+    }
+
+    /** Mueve la canción a la posición {@code to} (desde 0, se ajusta a los límites). false si no cambió nada. */
+    public synchronized boolean move(String name, String uri, int to) {
+        ArrayList<String> l = map.get(find(name));
+        if (l == null) {
+            return false;
+        }
+        int from = l.indexOf(uri);
+        if (from < 0) {
+            return false;
+        }
+        int dest = Math.max(0, Math.min(l.size() - 1, to));
+        if (dest == from) {
+            return false;
+        }
+        l.remove(from);
+        l.add(dest, uri);
+        changed();
+        return true;
+    }
+
+    /** Ruta de la portada personalizada de la lista, o null si usa el mosaico por defecto. */
+    public synchronized String cover(String name) {
+        String k = find(name);
+        return k == null ? null : covers.get(k);
+    }
+
+    /** Pone (o quita, con null) la portada personalizada. Borra la imagen anterior si era otra. */
+    public synchronized void setCover(String name, String path) {
+        String k = find(name);
+        if (k == null) {
+            return;
+        }
+        String old = path == null ? covers.remove(k) : covers.put(k, path);
+        if (old != null && !old.equals(path)) {
+            new File(old).delete();
+        }
+        changed();
     }
 
     /** Añade al final las canciones que aún no estén; devuelve cuántas se añadieron. */
@@ -113,6 +193,73 @@ public final class Playlists {
     private void changed() {
         version++;
         save();
+        saveCovers();
+    }
+
+    private File coversFile() {
+        return file == null ? null : new File(file.getPath() + ".covers");
+    }
+
+    private void saveCovers() {
+        File f = coversFile();
+        if (f == null) {
+            return;
+        }
+        if (covers.isEmpty()) {
+            f.delete();
+            return;
+        }
+        File tmp = new File(f.getPath() + ".tmp");
+        BufferedWriter w = null;
+        try {
+            w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmp), "UTF-8"));
+            for (Map.Entry<String, String> e : covers.entrySet()) {
+                w.write(e.getKey() + "\t" + e.getValue());
+                w.newLine();
+            }
+        } catch (IOException ignored) {
+            return;
+        } finally {
+            if (w != null) {
+                try {
+                    w.close();
+                } catch (IOException ignored) {
+                }
+            }
+        }
+        if (!tmp.renameTo(f)) {
+            f.delete();
+            tmp.renameTo(f);
+        }
+    }
+
+    private void loadCovers() {
+        File f = coversFile();
+        if (f == null || !f.exists()) {
+            return;
+        }
+        BufferedReader r = null;
+        try {
+            r = new BufferedReader(new InputStreamReader(new FileInputStream(f), "UTF-8"));
+            String line;
+            while ((line = r.readLine()) != null) {
+                int t = line.indexOf('\t');
+                if (t > 0) {
+                    String k = find(line.substring(0, t));
+                    if (k != null) {
+                        covers.put(k, line.substring(t + 1));
+                    }
+                }
+            }
+        } catch (IOException ignored) {
+        } finally {
+            if (r != null) {
+                try {
+                    r.close();
+                } catch (IOException ignored) {
+                }
+            }
+        }
     }
 
     private void save() {
@@ -176,6 +323,7 @@ public final class Playlists {
                 }
             }
         }
+        loadCovers();
         version++;
     }
 

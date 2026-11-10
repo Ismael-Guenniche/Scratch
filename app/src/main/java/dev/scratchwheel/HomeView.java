@@ -105,9 +105,17 @@ final class HomeView extends ScrollView {
         if (p.index() >= 0 && p.index() < p.tracks.size()) {
             Player.Track now = p.tracks.get(p.index());
             LinearLayout hero = new LinearLayout(getContext());
-            hero.setOrientation(LinearLayout.VERTICAL);
-            hero.setPadding(dp(22), dp(20), dp(22), dp(22));
+            hero.setOrientation(LinearLayout.HORIZONTAL);
+            hero.setGravity(Gravity.CENTER_VERTICAL);
+            hero.setPadding(dp(16), dp(16), dp(18), dp(16));
             hero.setBackground(th.card(Lucent.R_L));
+            android.widget.ImageView heroCover = CoverCache.view(getContext(), 16);
+            CoverCache.into(getContext(), heroCover, now.uri);
+            hero.addView(heroCover, new LinearLayout.LayoutParams(dp(104), dp(104)));
+            LinearLayout body = new LinearLayout(getContext());
+            body.setOrientation(LinearLayout.VERTICAL);
+            body.setPadding(dp(16), 0, 0, 0);
+            hero.addView(body, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
             LinearLayout lab = new LinearLayout(getContext());
             lab.setGravity(Gravity.CENTER_VERTICAL);
             View dot = new View(getContext());
@@ -120,18 +128,18 @@ final class HomeView extends ScrollView {
             lt.setLetterSpacing(0.12f);
             lt.setPadding(dp(10), 0, 0, 0);
             lab.addView(lt);
-            hero.addView(lab);
-            TextView title = text(now.display(), 24, th.ink, th.medium);
+            body.addView(lab);
+            TextView title = text(now.display(), 20, th.ink, th.medium);
             title.setMaxLines(2);
             title.setEllipsize(TextUtils.TruncateAt.END);
-            title.setPadding(0, dp(18), 0, 0);
-            hero.addView(title);
+            title.setPadding(0, dp(10), 0, 0);
+            body.addView(title);
             if (now.artist.length() > 0) {
                 TextView ar = text(now.artist, 15, th.ink2, th.regular);
                 ar.setSingleLine(true);
                 ar.setEllipsize(TextUtils.TruncateAt.END);
-                ar.setPadding(0, dp(6), 0, 0);
-                hero.addView(ar);
+                ar.setPadding(0, dp(4), 0, 0);
+                body.addView(ar);
             }
             hero.setOnClickListener(open("NOW"));
             col.addView(hero, new LinearLayout.LayoutParams(
@@ -148,9 +156,14 @@ final class HomeView extends ScrollView {
             final List<Integer> top = new ArrayList<Integer>(rec.subList(0, Math.min(12, rec.size())));
             for (int i = 0; i < top.size(); i++) {
                 final int pos = i;
-                Player.Track t = p.tracks.get(top.get(i));
-                row.addView(card(t.display(), t.artist.length() > 0 ? t.artist : t.folder(),
-                        top.get(i) == p.index(), new View.OnClickListener() {
+                final Player.Track t = p.tracks.get(top.get(i));
+                row.addView(coverCard(t.display(), t.artist.length() > 0 ? t.artist : t.folder(),
+                        top.get(i) == p.index(), new CoverBind() {
+                            @Override
+                            public void bind(android.widget.ImageView iv) {
+                                CoverCache.into(getContext(), iv, t.uri);
+                            }
+                        }, new View.OnClickListener() {
                             @Override
                             public void onClick(View v) {
                                 host.play(top, pos);
@@ -161,10 +174,20 @@ final class HomeView extends ScrollView {
 
         col.addView(section(Tr.t("TUS LISTAS")));
         LinearLayout lists = hrow();
-        lists.addView(card(Tr.t("FAVORITAS"), favCount(p) + Tr.t(" CANCIONES"), false, open("FAVS")));
+        final android.net.Uri favFirst = firstFav(p);
+        lists.addView(coverCard(Tr.t("FAVORITAS"), favCount(p) + Tr.t(" CANCIONES"), false, new CoverBind() {
+            @Override
+            public void bind(android.widget.ImageView iv) {
+                CoverCache.into(getContext(), iv, favFirst);
+            }
+        }, open("FAVS")));
         for (final String name : Playlists.I.names()) {
-            lists.addView(card(name.toUpperCase(java.util.Locale.ROOT),
-                    Playlists.I.size(name) + Tr.t(" CANCIONES"), false, open("LIST:" + name)));
+            lists.addView(coverCard(name, Playlists.I.size(name) + Tr.t(" CANCIONES"), false, new CoverBind() {
+                @Override
+                public void bind(android.widget.ImageView iv) {
+                    CoverCache.intoPlaylist(getContext(), iv, name);
+                }
+            }, open("LIST:" + name)));
         }
 
         col.addView(section(Tr.t("EXPLORAR")));
@@ -216,6 +239,16 @@ final class HomeView extends ScrollView {
         };
     }
 
+    /** Carátula de portada para FAVORITAS: la de la primera canción favorita (o null). */
+    private android.net.Uri firstFav(Player p) {
+        for (int i = 0; i < p.tracks.size(); i++) {
+            if (p.isFav(p.tracks.get(i).uri)) {
+                return p.tracks.get(i).uri;
+            }
+        }
+        return null;
+    }
+
     private int favCount(Player p) {
         int n = 0;
         for (int i = 0; i < p.tracks.size(); i++) {
@@ -256,23 +289,33 @@ final class HomeView extends ScrollView {
         return row;
     }
 
-    private View card(String title, String sub, boolean current, View.OnClickListener click) {
+    /** Pone la imagen de una tarjeta (carátula de canción o portada de lista). */
+    private interface CoverBind {
+        void bind(android.widget.ImageView iv);
+    }
+
+    /** Tarjeta con la carátula arriba, como en un reproductor: imagen cuadrada, título y detalle. */
+    private View coverCard(String title, String sub, boolean current, CoverBind cover, View.OnClickListener click) {
         LinearLayout c = new LinearLayout(getContext());
         c.setOrientation(LinearLayout.VERTICAL);
-        c.setPadding(dp(12), dp(12), dp(12), dp(12));
+        c.setPadding(dp(10), dp(10), dp(10), dp(12));
         c.setBackground(th.card(Lucent.R_L));
+        android.widget.ImageView iv = CoverCache.view(getContext(), 14);
+        cover.bind(iv);
+        c.addView(iv, new LinearLayout.LayoutParams(dp(120), dp(120)));
         TextView t = text(current ? "●  " + title : title, 13, th.ink, current ? th.semi : th.regular);
-        t.setMaxLines(3);
-        t.setEllipsize(TextUtils.TruncateAt.END);
+        t.setMaxLines(2);
         t.setMinLines(2);
+        t.setEllipsize(TextUtils.TruncateAt.END);
+        t.setPadding(0, dp(10), 0, 0);
         c.addView(t);
         TextView s = text(sub, 10, th.ink2, th.mono);
         s.setSingleLine(true);
         s.setEllipsize(TextUtils.TruncateAt.END);
-        s.setPadding(0, dp(6), 0, 0);
+        s.setPadding(0, dp(4), 0, 0);
         c.addView(s);
         c.setOnClickListener(click);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(140), dp(104));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(140), LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.rightMargin = dp(8);
         c.setLayoutParams(lp);
         return c;

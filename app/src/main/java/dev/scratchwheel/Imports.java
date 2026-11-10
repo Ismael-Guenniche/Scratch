@@ -81,7 +81,7 @@ final class Imports {
     static List<SpotifyImport.Cand> cands(List<Player.Track> tracks) {
         ArrayList<SpotifyImport.Cand> l = new ArrayList<SpotifyImport.Cand>();
         for (Player.Track t : tracks) {
-            l.add(new SpotifyImport.Cand(t.title, t.artist, t.name));
+            l.add(new SpotifyImport.Cand(t.tagTitle, t.tagArtist, t.name));
         }
         return l;
     }

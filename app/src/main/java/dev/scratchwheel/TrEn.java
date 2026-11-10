@@ -342,5 +342,23 @@ final class TrEn {
         M.put("CONSTANCIA", "CONSISTENCY");
         M.put("Tu racha más larga seguida escuchando.", "Your longest listening streak in a row.");
         M.put("canciones descubiertas en este periodo.", "songs discovered in this period.");
+        // 0.35: portadas, edición de listas y de nombres
+        M.put("EDITAR", "EDIT");
+        M.put("RENOMBRAR LISTA", "RENAME PLAYLIST");
+        M.put("ELEGIR PORTADA…", "CHOOSE COVER…");
+        M.put("CAMBIAR PORTADA…", "CHANGE COVER…");
+        M.put("QUITAR PORTADA PROPIA", "REMOVE CUSTOM COVER");
+        M.put("No se pudo usar esa imagen", "Could not use that image");
+        M.put("MOVER A LA POSICIÓN", "MOVE TO POSITION");
+        M.put("MOVER A LA POSICIÓN…", "MOVE TO POSITION…");
+        M.put("Ahora está en la", "Now at position");
+        M.put("MOVER", "MOVE");
+        M.put("SUBIR UN PUESTO", "MOVE UP");
+        M.put("BAJAR UN PUESTO", "MOVE DOWN");
+        M.put("EDITAR NOMBRE…", "EDIT NAME…");
+        M.put("EDITAR CANCIÓN", "EDIT SONG");
+        M.put("Título", "Title");
+        M.put("Artista", "Artist");
+        M.put("RESTAURAR ORIGINAL", "RESTORE ORIGINAL");
     }
 }

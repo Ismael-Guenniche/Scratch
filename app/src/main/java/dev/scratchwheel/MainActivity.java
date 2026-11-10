@@ -45,6 +45,7 @@ public class MainActivity extends Activity {
     private static final int REQ_OPEN = 3;
     private static final int REQ_CSV = 4;
     private static final int REQ_WEB = 5;
+    private static final int REQ_COVER = 6;
     private static final int TAB_ALL = 0;
     private static final int TAB_FAVS = 1;
     private static final int TAB_FOLDER = 2;
@@ -61,6 +62,14 @@ public class MainActivity extends Activity {
     private TextView status;
     private EditText search;
     private BaseAdapter adapter;
+    private android.widget.ImageView barCover;
+    private String barCoverKey = "";
+    private LinearLayout listHeader;
+    private android.widget.ImageView listCover;
+    private TextView listName;
+    private TextView listCount;
+    private String headerKey = "";
+    private String coverTarget = "";
     private LinearLayout chips;
     private LinearLayout empty;
     private ListView list;
@@ -485,6 +494,39 @@ public class MainActivity extends Activity {
         });
         panel.addView(search);
 
+        listHeader = new LinearLayout(this);
+        listHeader.setOrientation(LinearLayout.HORIZONTAL);
+        listHeader.setGravity(Gravity.CENTER_VERTICAL);
+        listHeader.setPadding(0, dp(8), 0, dp(10));
+        listHeader.setVisibility(View.GONE);
+        listCover = CoverCache.view(this, 14);
+        listHeader.addView(listCover, new LinearLayout.LayoutParams(dp(76), dp(76)));
+        LinearLayout lhText = new LinearLayout(this);
+        lhText.setOrientation(LinearLayout.VERTICAL);
+        lhText.setPadding(dp(14), 0, dp(8), 0);
+        listName = text("", 18, th.ink, th.semi);
+        listName.setMaxLines(2);
+        listName.setEllipsize(TextUtils.TruncateAt.END);
+        listCount = text("", 11, th.ink2, th.mono);
+        listCount.setPadding(0, dp(4), 0, 0);
+        lhText.addView(listName);
+        lhText.addView(listCount);
+        listHeader.addView(lhText, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        TextView editChip = th.chip(this, Tr.t("EDITAR"), false, 16);
+        listHeader.addView(editChip, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, dp(44)));
+        View.OnClickListener editList = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (Playlists.I.find(listSel) != null) {
+                    showListMenu(v, listSel);
+                }
+            }
+        };
+        editChip.setOnClickListener(editList);
+        listCover.setOnClickListener(editList);
+        panel.addView(listHeader);
+
         home = new HomeView(this, th, new HomeView.Host() {
             @Override
             public void play(List<Integer> idxs, int pos) {
@@ -524,25 +566,34 @@ public class MainActivity extends Activity {
             @Override
             public View getView(int pos, View convert, ViewGroup parent) {
                 LinearLayout row;
-                if (convert instanceof LinearLayout) {
+                if (convert instanceof LinearLayout && ((LinearLayout) convert).getChildCount() == 2
+                        && ((LinearLayout) convert).getChildAt(0) instanceof android.widget.ImageView) {
                     row = (LinearLayout) convert;
                 } else {
                     row = new LinearLayout(MainActivity.this);
-                    row.setOrientation(LinearLayout.VERTICAL);
-                    row.setPadding(0, dp(10), 0, dp(10));
+                    row.setOrientation(LinearLayout.HORIZONTAL);
+                    row.setGravity(Gravity.CENTER_VERTICAL);
+                    row.setPadding(0, dp(8), 0, dp(8));
+                    row.addView(CoverCache.view(MainActivity.this, 8), new LinearLayout.LayoutParams(dp(54), dp(54)));
+                    LinearLayout tx = new LinearLayout(MainActivity.this);
+                    tx.setOrientation(LinearLayout.VERTICAL);
+                    tx.setPadding(dp(12), 0, 0, 0);
                     TextView n = text("", 14, th.ink, th.regular);
                     n.setSingleLine(true);
                     n.setEllipsize(TextUtils.TruncateAt.END);
                     TextView s = text("", 11, th.ink2, th.mono);
                     s.setSingleLine(true);
                     s.setEllipsize(TextUtils.TruncateAt.END);
-                    row.addView(n);
-                    row.addView(s);
+                    tx.addView(n);
+                    tx.addView(s);
+                    row.addView(tx, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
                 }
                 int idx = shown.get(pos);
                 Player.Track t = Player.I.tracks.get(idx);
-                TextView n = (TextView) row.getChildAt(0);
-                TextView s = (TextView) row.getChildAt(1);
+                CoverCache.into(MainActivity.this, (android.widget.ImageView) row.getChildAt(0), t.uri);
+                LinearLayout tx = (LinearLayout) row.getChildAt(1);
+                TextView n = (TextView) tx.getChildAt(0);
+                TextView s = (TextView) tx.getChildAt(1);
                 boolean cur = idx == Player.I.index();
                 n.setText(cur ? "●  " + t.display() : t.display());
                 n.setTypeface(cur ? th.semi : th.regular);
@@ -612,7 +663,7 @@ public class MainActivity extends Activity {
         bg.setStroke(dp(1), th.glassLine);
         bar.setBackground(bg);
         bar.setElevation(dp(8));
-        bar.setPadding(dp(18), dp(8), dp(10), dp(12));
+        bar.setPadding(dp(12), dp(8), dp(10), dp(12));
         bar.setClickable(true);
         bar.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -625,6 +676,11 @@ public class MainActivity extends Activity {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
+        barCover = CoverCache.view(this, 10);
+        CoverCache.into(this, barCover, null);
+        LinearLayout.LayoutParams bcp = new LinearLayout.LayoutParams(dp(48), dp(48));
+        bcp.rightMargin = dp(12);
+        row.addView(barCover, bcp);
         LinearLayout texts = new LinearLayout(this);
         texts.setOrientation(LinearLayout.VERTICAL);
         barTitle = text("", 14, th.ink, th.semi);
@@ -679,6 +735,12 @@ public class MainActivity extends Activity {
         String t = p.isLoading() ? Tr.t("CARGANDO…") : p.title();
         barTitle.setText(t.toUpperCase(Locale.ROOT));
         barPlay.set(p.isPlayingOrPending() ? DotIcons.PAUSE : DotIcons.PLAY, th.accent);
+        Uri cu = p.currentUri();
+        String ck = cu == null ? "" : cu.toString();
+        if (!ck.equals(barCoverKey)) {
+            barCoverKey = ck;
+            CoverCache.into(this, barCover, cu);
+        }
         lastSec = -1;
         tickBar();
     }
@@ -881,6 +943,11 @@ public class MainActivity extends Activity {
         empty.setVisibility(none ? View.VISIBLE : View.GONE);
         list.setVisibility(none || isHome ? View.GONE : View.VISIBLE);
         home.setVisibility(none || !isHome ? View.GONE : View.VISIBLE);
+        boolean showHeader = tab == TAB_LIST && !none;
+        listHeader.setVisibility(showHeader ? View.VISIBLE : View.GONE);
+        if (showHeader) {
+            bindListHeader();
+        }
         if (isHome && !none) {
             home.refresh();
         }
@@ -962,12 +1029,7 @@ public class MainActivity extends Activity {
             chip.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
                 public boolean onLongClick(View v) {
-                    DotMenu.show(MainActivity.this, th, v, new String[] {Tr.t("BORRAR LISTA")}, new DotMenu.Picked() {
-                        @Override
-                        public void onPick(int id) {
-                            Playlists.I.delete(name);
-                        }
-                    });
+                    showListMenu(v, name);
                     return true;
                 }
             });
@@ -1091,38 +1153,156 @@ public class MainActivity extends Activity {
                 .button(Tr.t("CERRAR"), Lucent.GLASS, null).show();
     }
 
+    private static final int A_NEXT = 0;
+    private static final int A_QUEUE = 1;
+    private static final int A_ADD = 2;
+    private static final int A_REMOVE = 3;
+    private static final int A_UP = 4;
+    private static final int A_DOWN = 5;
+    private static final int A_MOVE = 6;
+    private static final int A_FAV = 7;
+    private static final int A_EDIT = 8;
+    private static final int A_STATS = 9;
+
     private void showTrackMenu(View anchor, final int idx) {
         final Player p = Player.I;
         final Player.Track t = p.tracks.get(idx);
         final boolean inList = tab == TAB_LIST;
-        final String[] labels = inList
-                ? new String[] {Tr.t("REPRODUCIR A CONTINUACIÓN"), Tr.t("AÑADIR A LA COLA"), Tr.t("AÑADIR A LISTA…"),
-                    Tr.t("QUITAR DE ESTA LISTA"), p.isFav(t.uri) ? Tr.t("QUITAR DE FAVORITAS") : Tr.t("AÑADIR A FAVORITAS"), Tr.t("ESTADÍSTICAS")}
-                : new String[] {Tr.t("REPRODUCIR A CONTINUACIÓN"), Tr.t("AÑADIR A LA COLA"), Tr.t("AÑADIR A LISTA…"),
-                    p.isFav(t.uri) ? Tr.t("QUITAR DE FAVORITAS") : Tr.t("AÑADIR A FAVORITAS"), Tr.t("ESTADÍSTICAS")};
+        // Mover solo tiene sentido con la lista completa a la vista (sin filtrar con la búsqueda).
+        final boolean canMove = inList && search.getText().toString().trim().length() == 0;
+        final ArrayList<Integer> acts = new ArrayList<Integer>();
+        final ArrayList<String> labs = new ArrayList<String>();
+        acts.add(A_NEXT);
+        labs.add(Tr.t("REPRODUCIR A CONTINUACIÓN"));
+        acts.add(A_QUEUE);
+        labs.add(Tr.t("AÑADIR A LA COLA"));
+        acts.add(A_ADD);
+        labs.add(Tr.t("AÑADIR A LISTA…"));
+        if (inList) {
+            acts.add(A_REMOVE);
+            labs.add(Tr.t("QUITAR DE ESTA LISTA"));
+        }
+        if (canMove) {
+            acts.add(A_UP);
+            labs.add(Tr.t("SUBIR UN PUESTO"));
+            acts.add(A_DOWN);
+            labs.add(Tr.t("BAJAR UN PUESTO"));
+            acts.add(A_MOVE);
+            labs.add(Tr.t("MOVER A LA POSICIÓN…"));
+        }
+        acts.add(A_FAV);
+        labs.add(p.isFav(t.uri) ? Tr.t("QUITAR DE FAVORITAS") : Tr.t("AÑADIR A FAVORITAS"));
+        acts.add(A_EDIT);
+        labs.add(Tr.t("EDITAR NOMBRE…"));
+        acts.add(A_STATS);
+        labs.add(Tr.t("ESTADÍSTICAS"));
         final View a = anchor;
+        DotMenu.show(this, th, anchor, labs.toArray(new String[0]), new DotMenu.Picked() {
+            @Override
+            public void onPick(int id) {
+                final String uri = t.uri.toString();
+                switch (acts.get(id)) {
+                    case A_NEXT:
+                        p.addToQueue(idx, true);
+                        break;
+                    case A_QUEUE:
+                        p.addToQueue(idx, false);
+                        break;
+                    case A_ADD:
+                        final List<String> one = new ArrayList<String>();
+                        one.add(uri);
+                        a.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                PlaylistUi.pick(MainActivity.this, th, a, one, null);
+                            }
+                        });
+                        break;
+                    case A_REMOVE:
+                        Playlists.I.remove(listSel, uri);
+                        break;
+                    case A_UP:
+                        Playlists.I.move(listSel, uri, Playlists.I.indexOf(listSel, uri) - 1);
+                        refilter();
+                        break;
+                    case A_DOWN:
+                        Playlists.I.move(listSel, uri, Playlists.I.indexOf(listSel, uri) + 1);
+                        refilter();
+                        break;
+                    case A_MOVE:
+                        PlaylistUi.promptPosition(MainActivity.this, Playlists.I.indexOf(listSel, uri) + 1,
+                                Playlists.I.size(listSel), new PlaylistUi.IntCb() {
+                                    @Override
+                                    public void on(int pos) {
+                                        Playlists.I.move(listSel, uri, pos - 1);
+                                        refilter();
+                                    }
+                                });
+                        break;
+                    case A_FAV:
+                        p.toggleFav(t.uri);
+                        break;
+                    case A_EDIT:
+                        PlaylistUi.editTrack(MainActivity.this, t, new Runnable() {
+                            @Override
+                            public void run() {
+                                refilter();
+                                refreshBar();
+                            }
+                        });
+                        break;
+                    default:
+                        showSongStats(t);
+                        break;
+                }
+            }
+        });
+    }
+
+    /** Cabecera de la lista abierta: su portada (mosaico o propia), el nombre y cuántas canciones tiene. */
+    private void bindListHeader() {
+        String k = listSel + "|" + Playlists.I.version + "|" + Tr.lang;
+        if (k.equals(headerKey)) {
+            return;
+        }
+        headerKey = k;
+        listName.setText(listSel);
+        listCount.setText(Playlists.I.size(listSel) + Tr.t(" CANCIONES"));
+        CoverCache.intoPlaylist(this, listCover, listSel);
+    }
+
+    /** Opciones de una lista: renombrar, cambiar o quitar la portada, borrar. */
+    private void showListMenu(View anchor, final String name) {
+        final boolean hasCover = Playlists.I.cover(name) != null;
+        String[] labels = hasCover
+                ? new String[] {Tr.t("RENOMBRAR LISTA"), Tr.t("CAMBIAR PORTADA…"), Tr.t("QUITAR PORTADA PROPIA"), Tr.t("BORRAR LISTA")}
+                : new String[] {Tr.t("RENOMBRAR LISTA"), Tr.t("ELEGIR PORTADA…"), Tr.t("BORRAR LISTA")};
         DotMenu.show(this, th, anchor, labels, new DotMenu.Picked() {
             @Override
             public void onPick(int id) {
                 if (id == 0) {
-                    p.addToQueue(idx, true);
-                } else if (id == 1) {
-                    p.addToQueue(idx, false);
-                } else if (id == 2) {
-                    final List<String> one = new ArrayList<String>();
-                    one.add(t.uri.toString());
-                    a.post(new Runnable() {
+                    PlaylistUi.promptRename(MainActivity.this, name, new PlaylistUi.Name() {
                         @Override
-                        public void run() {
-                            PlaylistUi.pick(MainActivity.this, th, a, one, null);
+                        public void onName(String n) {
+                            if (Playlists.I.rename(name, n)) {
+                                if (name.equals(listSel)) {
+                                    listSel = Playlists.I.find(n);
+                                }
+                                refilter();
+                            }
                         }
                     });
-                } else if (id == labels.length - 1) {
-                    showSongStats(t);
-                } else if (inList && id == 3) {
-                    Playlists.I.remove(listSel, t.uri.toString());
+                } else if (id == 1) {
+                    coverTarget = name;
+                    Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("image/*");
+                    startActivityForResult(i, REQ_COVER);
+                } else if (hasCover && id == 2) {
+                    Playlists.I.setCover(name, null);
+                    refilter();
                 } else {
-                    p.toggleFav(t.uri);
+                    Playlists.I.delete(name);
                 }
             }
         });
@@ -1131,6 +1311,31 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
+        if (req == REQ_COVER) {
+            if (res == RESULT_OK && data != null && data.getData() != null && coverTarget.length() > 0) {
+                final Uri src = data.getData();
+                final String target = coverTarget;
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        final java.io.File f = CoverCache.importImage(MainActivity.this, src);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (f == null) {
+                                    Toast.makeText(MainActivity.this, Tr.t("No se pudo usar esa imagen"),
+                                            Toast.LENGTH_SHORT).show();
+                                } else {
+                                    Playlists.I.setCover(target, f.getPath());
+                                    refilter();
+                                }
+                            }
+                        });
+                    }
+                }).start();
+            }
+            return;
+        }
         if (req == REQ_WEB) {
             if (res == RESULT_OK) {
                 fetchPlaylistsDialog();

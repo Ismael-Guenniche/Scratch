@@ -56,6 +56,16 @@ final class Meta {
         }
     }
 
+    /** Vuelve a aplicar las etiquetas guardadas (y los nombres editados) a una pista, tras editarla. */
+    static synchronized void reapply(Player.Track t) {
+        String[] m = cache.get(t.uri.toString());
+        if (m != null) {
+            t.setMeta(m[0], m[1], m[2]);
+        } else {
+            t.setMeta(t.tagTitle, t.tagArtist, t.album);
+        }
+    }
+
     /** Lee las etiquetas que faltan. Devuelve true si cambió algo. */
     static boolean scan(Context c, List<Player.Track> tracks) {
         boolean changed = false;

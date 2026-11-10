@@ -165,17 +165,29 @@ public class QueueActivity extends Activity {
 
             @Override
             public View getView(int pos, View convert, ViewGroup parent) {
-                TextView t = convert instanceof TextView ? (TextView) convert
-                        : text(14, th.ink, th.regular);
-                t.setPadding(0, dp(12), 0, dp(12));
-                t.setSingleLine(true);
-                t.setEllipsize(TextUtils.TruncateAt.END);
-                SpannableString sp = new SpannableString((pos + 1) + "   "
-                        + Player.I.queue.get(pos).display());
+                LinearLayout row;
+                if (convert instanceof LinearLayout && ((LinearLayout) convert).getChildCount() == 2) {
+                    row = (LinearLayout) convert;
+                } else {
+                    row = new LinearLayout(QueueActivity.this);
+                    row.setOrientation(LinearLayout.HORIZONTAL);
+                    row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+                    row.setPadding(0, dp(6), 0, dp(6));
+                    row.addView(CoverCache.view(QueueActivity.this, 8), new LinearLayout.LayoutParams(dp(44), dp(44)));
+                    TextView tv = text(14, th.ink, th.regular);
+                    tv.setPadding(dp(12), 0, 0, 0);
+                    tv.setSingleLine(true);
+                    tv.setEllipsize(TextUtils.TruncateAt.END);
+                    row.addView(tv, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+                }
+                Player.Track tr = Player.I.queue.get(pos);
+                CoverCache.into(QueueActivity.this, (android.widget.ImageView) row.getChildAt(0), tr.uri);
+                TextView t = (TextView) row.getChildAt(1);
+                SpannableString sp = new SpannableString((pos + 1) + "   " + tr.display());
                 int n = String.valueOf(pos + 1).length();
                 sp.setSpan(new ForegroundColorSpan(th.ink2), 0, n, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                 t.setText(sp);
-                return t;
+                return row;
             }
         };
         list.setAdapter(adapter);
