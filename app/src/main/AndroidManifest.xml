@@ -146,6 +146,16 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".StatsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
+            android:name=".WrappedActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".SettingsActivity"
             android:exported="false"
             android:screenOrientation="portrait" />

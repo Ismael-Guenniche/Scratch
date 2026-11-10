@@ -30,7 +30,9 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.TreeMap;
 
@@ -677,6 +679,14 @@ public class MainActivity extends Activity {
     /** Accesos de la pantalla de inicio. */
     private void openFromHome(String what) {
         final Player p = Player.I;
+        if (what.equals("STATS")) {
+            startActivity(new Intent(this, StatsActivity.class));
+            return;
+        }
+        if (what.equals("SETTINGS")) {
+            startActivity(new Intent(this, SettingsActivity.class));
+            return;
+        }
         if (what.equals("ALL")) {
             tab = TAB_ALL;
         } else if (what.equals("FAVS")) {
@@ -985,7 +995,7 @@ public class MainActivity extends Activity {
 
     private void showMainMenu(View anchor) {
         DotMenu.show(this, th, anchor,
-                new String[] {"ELEGIR CARPETA", "RESCANEAR", "ABRIR ARCHIVO", "IMPORTAR DE SPOTIFY", "FALTANTES", "DIAGNÓSTICO", "AJUSTES"},
+                new String[] {"ELEGIR CARPETA", "RESCANEAR", "ABRIR ARCHIVO", "IMPORTAR DE SPOTIFY", "FALTANTES", "DIAGNÓSTICO", "ESTADÍSTICAS", "AJUSTES"},
                 new DotMenu.Picked() {
                     @Override
                     public void onPick(int id) {
@@ -1011,6 +1021,8 @@ public class MainActivity extends Activity {
                             new DotDialog(MainActivity.this, th).title("DIAGNÓSTICO")
                                     .message(head + Library.report)
                                     .button("CERRAR", Lucent.GLASS, null).show();
+                        } else if (id == 6) {
+                            startActivity(new Intent(MainActivity.this, StatsActivity.class));
                         } else {
                             startActivity(new Intent(MainActivity.this, SettingsActivity.class));
                         }
@@ -1024,15 +1036,45 @@ public class MainActivity extends Activity {
         startActivityForResult(i, REQ_TREE);
     }
 
+    private void showSongStats(Player.Track t) {
+        final Map<String, String[]> tags = new HashMap<String, String[]>();
+        for (Player.Track x : Player.I.tracks) {
+            tags.put(x.uri.toString(), new String[] {x.display(), x.artist, x.album});
+        }
+        Stats st = new Stats(PlayLog.all(), new Stats.Info() {
+            @Override
+            public String[] tags(String uri) {
+                return tags.get(uri);
+            }
+        }, java.util.TimeZone.getDefault());
+        String u = t.uri.toString();
+        Stats.Row r = st.track(u);
+        java.text.DateFormat df = java.text.DateFormat.getDateInstance(java.text.DateFormat.MEDIUM);
+        long first = st.firstListen(u);
+        long last = Meta.last(u);
+        String msg;
+        if (r == null || (r.plays == 0 && r.secs == 0)) {
+            msg = "Aún sin escuchas registradas.";
+        } else {
+            int rank = st.rankOf(u);
+            msg = "Reproducciones: " + r.plays + "\nTiempo: " + Stats.duration(r.secs)
+                    + (rank > 0 ? "\nPuesto en tu top: " + rank : "")
+                    + (first > 0 ? "\nPrimera vez: " + df.format(new java.util.Date(first)) : "")
+                    + (last > 0 ? "\nÚltima vez: " + df.format(new java.util.Date(last)) : "");
+        }
+        new DotDialog(this, th).title("ESTADISTICAS").message(t.display() + "\n\n" + msg)
+                .button("CERRAR", Lucent.GLASS, null).show();
+    }
+
     private void showTrackMenu(View anchor, final int idx) {
         final Player p = Player.I;
         final Player.Track t = p.tracks.get(idx);
         final boolean inList = tab == TAB_LIST;
         final String[] labels = inList
                 ? new String[] {"REPRODUCIR A CONTINUACIÓN", "AÑADIR A LA COLA", "AÑADIR A LISTA…",
-                    "QUITAR DE ESTA LISTA", p.isFav(t.uri) ? "QUITAR DE FAVORITAS" : "AÑADIR A FAVORITAS"}
+                    "QUITAR DE ESTA LISTA", p.isFav(t.uri) ? "QUITAR DE FAVORITAS" : "AÑADIR A FAVORITAS", "ESTADÍSTICAS"}
                 : new String[] {"REPRODUCIR A CONTINUACIÓN", "AÑADIR A LA COLA", "AÑADIR A LISTA…",
-                    p.isFav(t.uri) ? "QUITAR DE FAVORITAS" : "AÑADIR A FAVORITAS"};
+                    p.isFav(t.uri) ? "QUITAR DE FAVORITAS" : "AÑADIR A FAVORITAS", "ESTADÍSTICAS"};
         final View a = anchor;
         DotMenu.show(this, th, anchor, labels, new DotMenu.Picked() {
             @Override
@@ -1050,6 +1092,8 @@ public class MainActivity extends Activity {
                             PlaylistUi.pick(MainActivity.this, th, a, one, null);
                         }
                     });
+                } else if (id == labels.length - 1) {
+                    showSongStats(t);
                 } else if (inList && id == 3) {
                     Playlists.I.remove(listSel, t.uri.toString());
                 } else {

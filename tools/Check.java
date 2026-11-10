@@ -4,6 +4,7 @@ import dev.scratchwheel.DemoTrack;
 import dev.scratchwheel.PcmData;
 import dev.scratchwheel.ScratchEngine;
 import dev.scratchwheel.SeekSpeed;
+import dev.scratchwheel.Stats;
 import dev.scratchwheel.WavParser;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -502,6 +503,35 @@ public class Check {
                     "#EXTM3U\n#EXTINF:200,Ana - Heroe\nfile.mp3\n#EXTINF:100,Solo titulo\nx.mp3\n");
             ok(r.size() == 2 && r.get(0).artist.equals("Ana") && r.get(0).title.equals("Heroe")
                     && r.get(1).title.equals("Solo titulo"), "SpotifyImport: M3U extendido");
+        }
+
+        // ---- Stats
+        {
+            final java.util.TimeZone utc = java.util.TimeZone.getTimeZone("UTC");
+            long day = 86400000L;
+            long t0 = 1700000000000L - (1700000000000L % day) + 20 * 3600000L; // 20:00 UTC
+            java.util.List<Stats.Entry> es = new java.util.ArrayList<Stats.Entry>();
+            es.add(new Stats.Entry(t0, "a", 200, true));
+            es.add(new Stats.Entry(t0 + 1000, "a", 100, true));
+            es.add(new Stats.Entry(t0 + day, "b", 50, false));
+            es.add(new Stats.Entry(t0 + 2 * day, "a", 60, true));
+            es.add(new Stats.Entry(t0 + 5 * day, "c", 30, true));
+            Stats st = new Stats(es, new Stats.Info() {
+                public String[] tags(String u) {
+                    return new String[] {"T" + u, u.equals("c") ? "Y" : "X", "AL"};
+                }
+            }, utc);
+            java.util.List<Stats.Row> top = st.top(Stats.TRACK, 0, Long.MAX_VALUE, 5);
+            ok(top.size() == 3 && top.get(0).name.equals("Ta") && top.get(0).secs == 360 && top.get(0).plays == 3,
+                    "Stats: top canciones por tiempo y plays");
+            java.util.List<Stats.Row> ar = st.top(Stats.ARTIST, 0, Long.MAX_VALUE, 5);
+            ok(ar.get(0).name.equals("X") && ar.get(0).secs == 410, "Stats: top artistas agrega");
+            Stats.Summary sm = st.summary(0, Long.MAX_VALUE);
+            ok(sm.bestStreak == 3 && sm.activeDays == 4, "Stats: racha " + sm.bestStreak + " dias " + sm.activeDays);
+            ok(sm.favHour == 20, "Stats: hora favorita " + sm.favHour);
+            ok(sm.plays == 4 && sm.tracks == 3 && sm.artists == 2, "Stats: totales");
+            ok(st.rankOf("a") == 1, "Stats: rankOf");
+            ok(Stats.duration(2700).equals("45 M"), "Stats: duration " + Stats.duration(2700));
         }
         System.out.println(fails == 0 ? "TODO OK" : (fails + " FALLOS"));
         System.exit(fails == 0 ? 0 : 1);

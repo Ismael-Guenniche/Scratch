@@ -121,8 +121,10 @@ final class HomeView extends ScrollView {
             {"MÁS ESCUCHADAS", "", "TOP"},
             {"RECIENTES", "", "RECENT"},
             {"CARPETAS", "", "FOLDERS"},
-            {"PENDIENTES", missing > 0 ? String.valueOf(missing) : "AL DÍA", "MISSING"}};
-        String[][] icons = {{"QUEUE"}, {"SHUFFLE"}, {"PITCH"}, {"DISC"}, {"FOLDER"}, {"DOWN"}};
+            {"PENDIENTES", missing > 0 ? String.valueOf(missing) : "AL DÍA", "MISSING"},
+            {"ESTADÍSTICAS", "WRAPPED", "STATS"},
+            {"AJUSTES", "", "SETTINGS"}};
+        String[][] icons = {{"QUEUE"}, {"SHUFFLE"}, {"PITCH"}, {"DISC"}, {"FOLDER"}, {"DOWN"}, {"PITCH"}, {"MENU"}};
         for (int r = 0; r < tiles.length; r += 2) {
             LinearLayout row = new LinearLayout(getContext());
             row.setOrientation(LinearLayout.HORIZONTAL);

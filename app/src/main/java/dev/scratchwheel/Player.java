@@ -184,6 +184,7 @@ final class Player {
         String label = Library.load(app, tracks);
         libraryLabel = label == null ? "" : label;
         Meta.init(app, tracks);
+        PlayLog.init(app);
         startMetaScan();
         int last = prefs.getInt("index", -1);
         if (last >= 0 && last < tracks.size()) {
@@ -245,6 +246,68 @@ final class Player {
                 });
             }
         }, "meta").start();
+    }
+
+    // ------------------------------------------------------- historial de escucha
+
+    private String listenUri;
+    private double listenSecs;
+    private boolean listenCounted;
+    private boolean listenReported;
+    private boolean listenTicking;
+
+    private final Runnable listenTick = new Runnable() {
+        @Override
+        public void run() {
+            listenTicking = false;
+            if (listenUri != null && engine.isPlaying() && !engine.isScratching()
+                    && engine.getDurationSeconds() > 0) {
+                listenSecs += 1;
+                double need = Math.min(Stats.PLAY_SECS, engine.getDurationSeconds() / 2);
+                if (!listenCounted && listenSecs >= need) {
+                    listenCounted = true;
+                    countPlay(listenUri);
+                }
+            }
+            if (listenUri != null) {
+                listenTicking = true;
+                main.postDelayed(listenTick, 1000);
+            }
+        }
+    };
+
+    /** Guarda en el historial lo escuchado de la canción actual (si llega a 10 s). */
+    private void flushListen(boolean trackChanged) {
+        if (listenUri != null && listenSecs >= 10) {
+            final String u = listenUri;
+            final int s = (int) listenSecs;
+            final long ts = System.currentTimeMillis();
+            final boolean played = listenCounted && !listenReported;
+            if (played) {
+                listenReported = true;
+            }
+            io().post(new Runnable() {
+                @Override
+                public void run() {
+                    PlayLog.add(ts, u, s, played);
+                }
+            });
+            listenSecs = 0;
+        }
+        if (trackChanged) {
+            listenSecs = 0;
+            listenCounted = false;
+            listenReported = false;
+        }
+    }
+
+    private void startListen(Uri u) {
+        flushListen(true);
+        listenUri = u == null ? null : u.toString();
+        if (listenUri != null && !listenTicking) {
+            listenTicking = true;
+            main.postDelayed(listenTick, 1000);
+        }
     }
 
     private void countPlay(final String uri) {
@@ -310,9 +373,6 @@ final class Player {
         }
         Track t = tracks.get(i);
         load(t.uri, t.display(), i, autoplay, startSec);
-        if (autoplay) {
-            countPlay(t.uri.toString());
-        }
     }
 
     void openSingle(Uri uri, String name) {
@@ -326,6 +386,7 @@ final class Player {
         loading = true;
         index = idx;
         title = name;
+        startListen(uri);
         currentUri = uri;
         changed();
         new Thread(new Runnable() {
@@ -464,6 +525,7 @@ final class Player {
     }
 
     private void pauseInternal(final boolean abandonFocus) {
+        flushListen(false);
         playWhenReady = false;
         engine.setPlaying(false);
         changed();
@@ -523,7 +585,6 @@ final class Player {
             Track q = queue.remove(0);
             pushHistory();
             load(q.uri, q.display(), indexOf(q.uri), true, 0);
-            countPlay(q.uri.toString());
             return;
         }
         int n = tracks.size();
@@ -1067,7 +1128,6 @@ final class Player {
         Track q = queue.remove(pos);
         pushHistory();
         load(q.uri, q.display(), indexOf(q.uri), true, 0);
-            countPlay(q.uri.toString());
     }
 
     boolean isFav(Uri u) {
