@@ -38,6 +38,8 @@ public class ScratchActivity extends Activity {
     private DotIconView coverBtn;
     private TextView lockLabel;
     private DotIconView modeBtn;
+    private View volRow;
+    private View pitchRow;
     private TextView modeLabel;
     private LinearLayout djCard;
     private boolean djMode;
@@ -277,6 +279,7 @@ public class ScratchActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
         wlp.topMargin = dp(10);
         wlp.bottomMargin = dp(10);
+        wheelCard.setMinimumHeight(dp(340));
         root.addView(wheelCard, wlp);
 
         LinearLayout controls = card();
@@ -320,7 +323,15 @@ public class ScratchActivity extends Activity {
         root.addView(buildOptions());
         root.addView(buildDj());
         refreshMode();
-        return root;
+        // En modo DJ hay más controles que alto de pantalla: la rueda mantiene su tamaño y se desplaza.
+        android.widget.ScrollView sv = new android.widget.ScrollView(this);
+        sv.setFillViewport(true);
+        sv.setVerticalScrollBarEnabled(false);
+        sv.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        sv.addView(root, new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT));
+        return sv;
     }
 
     /** Opción pequeña: icono de puntos con su etiqueta debajo. */
@@ -431,6 +442,7 @@ public class ScratchActivity extends Activity {
         LinearLayout.LayoutParams vlp = new LinearLayout.LayoutParams(0, dp(34), 1f);
         vlp.leftMargin = dp(4);
         vol.addView(volBar, vlp);
+        volRow = vol;
         card.addView(vol);
 
         LinearLayout pr = row();
@@ -475,6 +487,7 @@ public class ScratchActivity extends Activity {
         plp.leftMargin = dp(4);
         pr.addView(pitchBar, plp);
         pr.addView(pitchLabel);
+        pitchRow = pr;
         card.addView(pr);
         return card;
     }
@@ -493,6 +506,10 @@ public class ScratchActivity extends Activity {
         modeLabel.setText(djMode ? "DJ" : "ESTÁNDAR");
         if (djCard != null) {
             djCard.setVisibility(djMode ? View.VISIBLE : View.GONE);
+        }
+        if (volRow != null) {
+            volRow.setVisibility(djMode ? View.GONE : View.VISIBLE);
+            pitchRow.setVisibility(djMode ? View.GONE : View.VISIBLE);
         }
     }
 
@@ -536,96 +553,70 @@ public class ScratchActivity extends Activity {
         return djHost;
     }
 
-    private interface SlideCb {
-        void on(int value);
-    }
-
-    /** Fila con etiqueta, deslizador y toque en la etiqueta para volver al valor neutro. */
-    private void slider(LinearLayout card, String name, int max, final int neutral, final SlideCb cb) {
-        LinearLayout r = row();
-        r.setGravity(Gravity.CENTER_VERTICAL);
-        r.setPadding(dp(6), dp(4), 0, 0);
-        final TextView lab = tag(name);
-        lab.setMinWidth(dp(70));
-        lab.setClickable(true);
-        final SeekBar sb = new SeekBar(this);
-        th.styleSeek(sb);
-        sb.setMax(max);
-        sb.setProgress(neutral);
-        lab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                sb.setProgress(neutral);
-                cb.on(neutral);
-            }
-        });
-        sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar b, int value, boolean fromUser) {
-                if (fromUser) {
-                    cb.on(value);
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar b) {
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar b) {
-            }
-        });
-        r.addView(lab);
-        r.addView(sb, new LinearLayout.LayoutParams(0, dp(34), 1f));
-        card.addView(r);
-    }
-
-    /** Efectos DJ: filtro, ecualizador de 3 bandas, eco, backspin y frenado. Toca la etiqueta para resetear. */
+    /** Efectos DJ compactos: fadders verticales (filtro, EQ, eco, pitch) y backspin/frenado. */
     private LinearLayout buildDjCard() {
         final LinearLayout card = card();
-        card.setPadding(dp(10), dp(10), dp(16), dp(10));
+        card.setPadding(dp(10), dp(8), dp(10), dp(8));
         LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         clp.topMargin = dp(10);
         card.setLayoutParams(clp);
-        final int[] eq = {100, 100, 100};
+        final double[] eq = {1, 1, 1};
         final ScratchEngine en = Player.I.engine;
-        slider(card, "FILTRO", 200, 100, new SlideCb() {
+        LinearLayout faders = row();
+        faders.setGravity(Gravity.CENTER);
+        final FaderView filter = fader(faders, "FILTRO", 0.5, new FaderView.Listener() {
             @Override
-            public void on(int v) {
-                en.setFilter((v - 100) / 100.0);
+            public void onValue(double v) {
+                en.setFilter((v - 0.5) * 2);
             }
         });
-        slider(card, "GRAVES", 160, 100, new SlideCb() {
+        fader(faders, "GRAVES", 1 / 1.6, new FaderView.Listener() {
             @Override
-            public void on(int v) {
-                eq[0] = v;
-                en.setEq(v / 100.0, eq[1] / 100.0, eq[2] / 100.0);
+            public void onValue(double v) {
+                eq[0] = v * 1.6;
+                en.setEq(eq[0], eq[1], eq[2]);
             }
         });
-        slider(card, "MEDIOS", 160, 100, new SlideCb() {
+        fader(faders, "MEDIOS", 1 / 1.6, new FaderView.Listener() {
             @Override
-            public void on(int v) {
-                eq[1] = v;
-                en.setEq(eq[0] / 100.0, v / 100.0, eq[2] / 100.0);
+            public void onValue(double v) {
+                eq[1] = v * 1.6;
+                en.setEq(eq[0], eq[1], eq[2]);
             }
         });
-        slider(card, "AGUDOS", 160, 100, new SlideCb() {
+        fader(faders, "AGUDOS", 1 / 1.6, new FaderView.Listener() {
             @Override
-            public void on(int v) {
-                eq[2] = v;
-                en.setEq(eq[0] / 100.0, eq[1] / 100.0, v / 100.0);
+            public void onValue(double v) {
+                eq[2] = v * 1.6;
+                en.setEq(eq[0], eq[1], eq[2]);
             }
         });
-        slider(card, "ECO", 100, 0, new SlideCb() {
+        fader(faders, "ECO", 0, new FaderView.Listener() {
             @Override
-            public void on(int v) {
-                en.setEcho(v / 100.0);
+            public void onValue(double v) {
+                en.setEcho(v);
             }
         });
+        FaderView pitch = fader(faders, "PITCH", 0.5, new FaderView.Listener() {
+            @Override
+            public void onValue(double v) {
+                double pc = v == 0.5 ? 1.0 : 0.8 + v * 0.4;
+                Player.I.setPitch(pc);
+                if (pitchLabel != null) {
+                    pitchLabel.setText(pitchText(pc));
+                }
+                if (pitchBar != null) {
+                    pitchBar.setProgress((int) Math.round((pc - 0.8) * 100));
+                }
+            }
+        });
+        pitch.setValue((Player.I.pitch() - 0.8) / 0.4);
+        card.addView(faders);
+
         LinearLayout br = row();
         br.setGravity(Gravity.CENTER_VERTICAL);
-        br.setPadding(dp(6), dp(8), 0, 0);
+        br.setPadding(dp(6), dp(2), 0, 0);
         final TextView back = text("BACKSPIN", 12, th.accent, th.mono);
         back.setPadding(dp(8), dp(8), dp(14), dp(8));
         back.setClickable(true);
@@ -651,6 +642,13 @@ public class ScratchActivity extends Activity {
         br.addView(brake);
         card.addView(br);
         return card;
+    }
+
+    private FaderView fader(LinearLayout row, String label, double neutral, FaderView.Listener l) {
+        FaderView f = new FaderView(this, th, label, neutral);
+        f.setListener(l);
+        row.addView(f, new LinearLayout.LayoutParams(0, dp(150), 1f));
+        return f;
     }
 
     private String brakeText() {
@@ -800,6 +798,9 @@ public class ScratchActivity extends Activity {
             public boolean onTouch(View v, MotionEvent e) {
                 switch (e.getActionMasked()) {
                     case MotionEvent.ACTION_DOWN:
+                        if (v.getParent() != null) {
+                            v.getParent().requestDisallowInterceptTouchEvent(true);
+                        }
                         v.setPressed(true);
                         down[0] = e.getRawX();
                         shown[0] = false;

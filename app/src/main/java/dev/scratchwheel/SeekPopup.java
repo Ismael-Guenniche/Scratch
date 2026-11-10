@@ -38,7 +38,7 @@ final class SeekPopup {
             float h = getHeight();
             float d = th.dp(1);
             p.setStyle(Paint.Style.FILL);
-            p.setColor(th.solid);
+            p.setColor(th.dark ? 0xFF2B2B30 : 0xFFFFFFFF);
             p.setAlpha(255);
             r.set(0, 0, w, h);
             c.drawRoundRect(r, th.dp(18), th.dp(18), p);

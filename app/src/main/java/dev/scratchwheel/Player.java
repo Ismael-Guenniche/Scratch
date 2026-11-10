@@ -122,6 +122,7 @@ final class Player {
     private boolean resumeAfterFocus;
     private boolean noisyOn;
 
+    private volatile android.graphics.Bitmap cover = Covers.placeholder();
     private boolean scanning;
     private int scanCount;
     private String libraryLabel = "";
@@ -370,6 +371,7 @@ final class Player {
         engine.load(pcm);
         engine.seekTo(startSec);
         truncated = pcm.truncated;
+        loadCoverAsync(gen);
         if (playWhenReady) {
             playWhenReady = false;
             play();
@@ -380,6 +382,39 @@ final class Player {
             changed();
         }
         savePos();
+    }
+
+    android.graphics.Bitmap cover() {
+        return cover;
+    }
+
+    /** Carátula para la notificación y la pantalla de bloqueo; mientras llega, la rueda de puntos. */
+    private void loadCoverAsync(final int gen) {
+        cover = Covers.placeholder();
+        final Uri u = currentUri;
+        if (u == null) {
+            return;
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final android.graphics.Bitmap b = Covers.embedded(app, u);
+                if (b == null) {
+                    return;
+                }
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (gen != loadGen) {
+                            return;
+                        }
+                        cover = b;
+                        updateSession();
+                        syncService();
+                    }
+                });
+            }
+        }, "cover").start();
     }
 
     // ------------------------------------------------------------- transport
@@ -957,6 +992,8 @@ final class Player {
                     .putString(MediaMetadata.METADATA_KEY_TITLE, title)
                     .putString(MediaMetadata.METADATA_KEY_ARTIST, cur == null ? "" : cur.artist)
                     .putString(MediaMetadata.METADATA_KEY_ALBUM, cur == null ? "" : cur.album)
+                    .putBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART, cover)
+                    .putBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON, cover)
                     .putLong(MediaMetadata.METADATA_KEY_DURATION,
                             (long) (engine.getDurationSeconds() * 1000))
                     .build());

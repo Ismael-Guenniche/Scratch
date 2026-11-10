@@ -195,6 +195,9 @@ public class JogWheelView extends View {
     public boolean onTouchEvent(MotionEvent e) {
         switch (e.getActionMasked()) {
             case MotionEvent.ACTION_DOWN: {
+                if (!locked && getParent() != null) {
+                    getParent().requestDisallowInterceptTouchEvent(true);
+                }
                 if (inHub(e)) {
                     hubDown = true;
                     invalidate();

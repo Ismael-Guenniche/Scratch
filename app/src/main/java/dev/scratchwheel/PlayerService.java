@@ -96,6 +96,9 @@ public class PlayerService extends MediaBrowserService {
         String a = intent == null ? null : intent.getAction();
         if (A_STOP.equals(a)) {
             // la notificación en pausa se ha descartado con el dedo
+            if (p.isPlayingOrPending()) {
+                p.pause();
+            }
             stopForeground(true);
             stopSelf();
             return START_NOT_STICKY;
@@ -109,19 +112,12 @@ public class PlayerService extends MediaBrowserService {
         }
         Notification n = build(p);
         try {
+            // Siempre en primer plano mientras haya una canción cargada: así la notificación
+            // se queda también en pausa y se puede reanudar desde ella.
             startForeground(ID, n);
         } catch (RuntimeException e) {
             stopSelf();
             return START_NOT_STICKY;
-        }
-        if (!p.isPlayingOrPending()) {
-            // En pausa la notificación se queda (para poder reanudar); el servicio sigue vivo
-            // y solo desaparece si se descarta con el dedo o se cierra la app.
-            stopForeground(false);
-            try {
-                ((NotificationManager) getSystemService(NOTIFICATION_SERVICE)).notify(ID, n);
-            } catch (RuntimeException ignored) {
-            }
         }
         return START_NOT_STICKY;
     }
@@ -132,18 +128,22 @@ public class PlayerService extends MediaBrowserService {
                 ? new Notification.Builder(this, CHANNEL) : new Notification.Builder(this);
         String title = p.title().length() == 0 ? "Scratch" : p.title();
         String sub = p.index() >= 0 ? (p.index() + 1) + " / " + p.count() : "Scratch";
-        b.setSmallIcon(android.R.drawable.ic_media_play)
+        b.setSmallIcon(getResources().getIdentifier("ic_stat", "drawable", getPackageName()))
+                .setColor(0xFFFB471F)
+                .setCategory(Notification.CATEGORY_TRANSPORT)
+                .setSubText("SCRATCH")
+                .setLargeIcon(p.cover())
                 .setContentTitle(title)
                 .setContentText(sub)
                 .setContentIntent(openApp())
-                .setOngoing(playing)
-                .setDeleteIntent(stopIntent())
+                .setOngoing(true)
                 .setShowWhen(false)
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
                 .addAction(action(android.R.drawable.ic_media_previous, "Anterior", A_PREV))
                 .addAction(action(playing ? android.R.drawable.ic_media_pause
                         : android.R.drawable.ic_media_play, playing ? "Pausa" : "Play", A_TOGGLE))
-                .addAction(action(android.R.drawable.ic_media_next, "Siguiente", A_NEXT));
+                .addAction(action(android.R.drawable.ic_media_next, "Siguiente", A_NEXT))
+                .addAction(action(android.R.drawable.ic_menu_close_clear_cancel, "Cerrar", A_STOP));
         Notification.MediaStyle style = new Notification.MediaStyle().setShowActionsInCompactView(0, 1, 2);
         MediaSession.Token token = p.sessionToken();
         if (token != null) {
