@@ -31,6 +31,8 @@ public class ScratchActivity extends Activity {
     private TextView nameView;
     private TextView metaView;
     private DotTextView timeView;
+    private android.widget.ImageView infoCover;
+    private String infoCoverKey = "";
     private TextView durView;
     private Lucent th;
     private DotIconView playBtn;
@@ -268,12 +270,13 @@ public class ScratchActivity extends Activity {
         nameView = text("", 17, th.ink, th.semi);
         nameView.setSingleLine(true);
         nameView.setEllipsize(TextUtils.TruncateAt.END);
+        nameView.setPadding(0, 0, dp(78), 0);
         info.addView(nameView);
 
         metaView = text("", 11, th.ink2, th.mono);
         metaView.setSingleLine(true);
         metaView.setEllipsize(TextUtils.TruncateAt.END);
-        metaView.setPadding(0, dp(2), 0, 0);
+        metaView.setPadding(0, dp(2), dp(78), 0);
         info.addView(metaView);
 
         LinearLayout timeRow = new LinearLayout(this);
@@ -314,7 +317,17 @@ public class ScratchActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(32));
         plp.topMargin = dp(6);
         info.addView(progress, plp);
-        rightCol.addView(info);
+        android.widget.FrameLayout infoHost = new android.widget.FrameLayout(this);
+        infoHost.addView(info, new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT));
+        infoCover = CoverCache.view(this, 12);
+        android.widget.FrameLayout.LayoutParams cvp = new android.widget.FrameLayout.LayoutParams(
+                dp(64), dp(64), Gravity.TOP | Gravity.END);
+        cvp.topMargin = dp(14);
+        cvp.rightMargin = dp(18);
+        infoHost.addView(infoCover, cvp);
+        rightCol.addView(infoHost);
 
         wheel = new JogWheelView(this, th);
         wheel.setListener(new JogWheelView.Listener() {
@@ -1502,6 +1515,14 @@ public class ScratchActivity extends Activity {
             meta.append(Tr.t("SIN BIBLIOTECA · PULSA BIBLIOTECA"));
         }
         metaView.setText(meta.toString());
+        if (infoCover != null) {
+            android.net.Uri cu = p.currentUri();
+            String ck = cu == null ? "" : cu.toString();
+            if (!ck.equals(infoCoverKey)) {
+                infoCoverKey = ck;
+                CoverCache.into(this, infoCover, cu);
+            }
+        }
         boolean playing = p.isPlayingOrPending();
         playBtn.set(playing ? DotIcons.PAUSE : DotIcons.PLAY, th.accent);
         wheel.setPlayingState(playing);

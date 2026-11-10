@@ -46,6 +46,7 @@ public class MainActivity extends Activity {
     private static final int REQ_CSV = 4;
     private static final int REQ_WEB = 5;
     private static final int REQ_COVER = 6;
+    private static final int REQ_LISTFOLDER = 7;
     private static final int TAB_ALL = 0;
     private static final int TAB_FAVS = 1;
     private static final int TAB_FOLDER = 2;
@@ -70,6 +71,7 @@ public class MainActivity extends Activity {
     private TextView listCount;
     private String headerKey = "";
     private String coverTarget = "";
+    private String folderTarget = "";
     private LinearLayout chips;
     private LinearLayout empty;
     private ListView list;
@@ -1044,6 +1046,7 @@ public class MainActivity extends Activity {
                             tab = TAB_LIST;
                             listSel = name;
                             refilter();
+                            askListFolder(name);
                         }
                     }
                 });
@@ -1272,15 +1275,62 @@ public class MainActivity extends Activity {
     }
 
     /** Opciones de una lista: renombrar, cambiar o quitar la portada, borrar. */
+    private static final int L_RENAME = 0;
+    private static final int L_COVER = 1;
+    private static final int L_NOCOVER = 2;
+    private static final int L_FOLDER = 3;
+    private static final int L_REFRESH = 4;
+    private static final int L_UNLINK = 5;
+    private static final int L_DELETE = 6;
+
+    /** Pregunta si la lista nueva debe enlazarse a su propia carpeta de canciones. */
+    private void askListFolder(final String name) {
+        new DotDialog(this, th).title(Tr.t("CARPETA DE LA LISTA"))
+                .message(Tr.t("¿Quieres que esta lista use su propia carpeta? Sus canciones se añadirán solas."))
+                .button(Tr.t("SIN CARPETA"), Lucent.GLASS, null)
+                .button(Tr.t("ELEGIR CARPETA"), Lucent.ACCENT, new Runnable() {
+                    @Override
+                    public void run() {
+                        pickListFolder(name);
+                    }
+                }).show();
+    }
+
+    private void pickListFolder(String name) {
+        folderTarget = name;
+        Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        startActivityForResult(i, REQ_LISTFOLDER);
+    }
+
     private void showListMenu(View anchor, final String name) {
         final boolean hasCover = Playlists.I.cover(name) != null;
-        String[] labels = hasCover
-                ? new String[] {Tr.t("RENOMBRAR LISTA"), Tr.t("CAMBIAR PORTADA…"), Tr.t("QUITAR PORTADA PROPIA"), Tr.t("BORRAR LISTA")}
-                : new String[] {Tr.t("RENOMBRAR LISTA"), Tr.t("ELEGIR PORTADA…"), Tr.t("BORRAR LISTA")};
-        DotMenu.show(this, th, anchor, labels, new DotMenu.Picked() {
+        final boolean linked = Playlists.I.folder(name) != null;
+        final ArrayList<Integer> codes = new ArrayList<Integer>();
+        final ArrayList<String> labels = new ArrayList<String>();
+        codes.add(L_RENAME);
+        labels.add(Tr.t("RENOMBRAR LISTA"));
+        codes.add(L_COVER);
+        labels.add(hasCover ? Tr.t("CAMBIAR PORTADA…") : Tr.t("ELEGIR PORTADA…"));
+        if (hasCover) {
+            codes.add(L_NOCOVER);
+            labels.add(Tr.t("QUITAR PORTADA PROPIA"));
+        }
+        codes.add(L_FOLDER);
+        labels.add(linked ? Tr.t("CAMBIAR CARPETA…") : Tr.t("ENLAZAR CARPETA…"));
+        if (linked) {
+            codes.add(L_REFRESH);
+            labels.add(Tr.t("ACTUALIZAR DESDE LA CARPETA"));
+            codes.add(L_UNLINK);
+            labels.add(Tr.t("DESENLAZAR CARPETA"));
+        }
+        codes.add(L_DELETE);
+        labels.add(Tr.t("BORRAR LISTA"));
+        DotMenu.show(this, th, anchor, labels.toArray(new String[0]), new DotMenu.Picked() {
             @Override
             public void onPick(int id) {
-                if (id == 0) {
+                int code = codes.get(id);
+                if (code == L_RENAME) {
                     PlaylistUi.promptRename(MainActivity.this, name, new PlaylistUi.Name() {
                         @Override
                         public void onName(String n) {
@@ -1292,14 +1342,21 @@ public class MainActivity extends Activity {
                             }
                         }
                     });
-                } else if (id == 1) {
+                } else if (code == L_COVER) {
                     coverTarget = name;
                     Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                     i.addCategory(Intent.CATEGORY_OPENABLE);
                     i.setType("image/*");
                     startActivityForResult(i, REQ_COVER);
-                } else if (hasCover && id == 2) {
+                } else if (code == L_NOCOVER) {
                     Playlists.I.setCover(name, null);
+                    refilter();
+                } else if (code == L_FOLDER) {
+                    pickListFolder(name);
+                } else if (code == L_REFRESH) {
+                    Player.I.refreshListFolder(name);
+                } else if (code == L_UNLINK) {
+                    Playlists.I.setFolder(name, null);
                     refilter();
                 } else {
                     Playlists.I.delete(name);
@@ -1311,6 +1368,19 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
+        if (req == REQ_LISTFOLDER) {
+            if (res == RESULT_OK && data != null && data.getData() != null && folderTarget.length() > 0) {
+                Uri tree = data.getData();
+                try {
+                    getContentResolver().takePersistableUriPermission(tree,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                } catch (RuntimeException ignored) {
+                }
+                Player.I.addFolder(tree, folderTarget);
+            }
+            folderTarget = "";
+            return;
+        }
         if (req == REQ_COVER) {
             if (res == RESULT_OK && data != null && data.getData() != null && coverTarget.length() > 0) {
                 final Uri src = data.getData();

@@ -345,6 +345,18 @@ final class TrEn {
         // 0.35: portadas, edición de listas y de nombres
         M.put("EDITAR", "EDIT");
         M.put("RENOMBRAR LISTA", "RENAME PLAYLIST");
+        M.put("CARPETA DE LA LISTA", "PLAYLIST FOLDER");
+        M.put("¿Quieres que esta lista use su propia carpeta? Sus canciones se añadirán solas.", "Do you want this playlist to use its own folder? Its songs will be added automatically.");
+        M.put("SIN CARPETA", "NO FOLDER");
+        M.put("ELEGIR CARPETA", "CHOOSE FOLDER");
+        M.put("ENLAZAR CARPETA…", "LINK FOLDER…");
+        M.put("CAMBIAR CARPETA…", "CHANGE FOLDER…");
+        M.put("ACTUALIZAR DESDE LA CARPETA", "UPDATE FROM FOLDER");
+        M.put("DESENLAZAR CARPETA", "UNLINK FOLDER");
+        M.put("Espera a que termine el escaneo", "Wait for the scan to finish");
+        M.put("No se encontró audio en esa carpeta", "No audio found in that folder");
+        M.put("Carpeta enlazada: ", "Folder linked: ");
+        M.put(" canciones nuevas en la lista", " new songs in the playlist");
         M.put("ELEGIR PORTADA…", "CHOOSE COVER…");
         M.put("CAMBIAR PORTADA…", "CHANGE COVER…");
         M.put("QUITAR PORTADA PROPIA", "REMOVE CUSTOM COVER");

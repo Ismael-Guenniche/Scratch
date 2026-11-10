@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.36: cada lista puede tener su propia carpeta (al crearla, o desde su menú: enlazar, actualizar, desenlazar); la carátula de la canción aparece arriba a la derecha de la tarjeta del título en el reproductor
 - 0.35: carátulas del álbum primero en las listas, la cola, el inicio y la barra pequeña (miniaturas con caché en memoria y disco); portada de cada lista con mosaico 2x2 de 4 carátulas distintas, o una imagen propia; renombrar listas, mover canciones dentro de una lista (subir, bajar, a una posición) y editar el título y el artista de una canción sin tocar el archivo
 - 0.34: auditoría de seguridad (ver docs/SEGURIDAD.md): servicio exportado protegido, WAV malicioso, host de Spotify, state de login de un solo uso
 - 0.33: etiquetas de los botones del reproductor en dos líneas (kana arriba, inglés abajo)

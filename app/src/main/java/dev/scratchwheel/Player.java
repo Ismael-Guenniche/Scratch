@@ -1683,6 +1683,92 @@ final class Player {
         }, "scan").start();
     }
 
+    /** Escanea una carpeta propia de una lista, suma sus canciones a la biblioteca y las pone en la lista. */
+    void addFolder(final Uri tree, final String listName) {
+        if (scanning) {
+            toast(Tr.t("Espera a que termine el escaneo"));
+            return;
+        }
+        scanning = true;
+        scanCount = 0;
+        changed();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                List<Track> got;
+                try {
+                    got = Library.scan(app, tree, new Library.Progress() {
+                        @Override
+                        public void onCount(final int n) {
+                            if (n % 50 == 0) {
+                                main.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        scanCount = n;
+                                        changed();
+                                    }
+                                });
+                            }
+                        }
+                    });
+                } catch (Throwable t) {
+                    Library.fail(t);
+                    got = new ArrayList<Track>();
+                }
+                final List<Track> found = got;
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        finishAddFolder(found, tree, listName);
+                    }
+                });
+            }
+        }, "scan-list").start();
+    }
+
+    /** Vuelve a leer la carpeta enlazada a la lista (añade las canciones nuevas). */
+    void refreshListFolder(String listName) {
+        String s = Playlists.I.folder(listName);
+        if (s != null) {
+            addFolder(Uri.parse(s), listName);
+        }
+    }
+
+    private void finishAddFolder(List<Track> found, Uri tree, String listName) {
+        scanning = false;
+        scanCount = found.size();
+        if (found.isEmpty()) {
+            toast(Tr.t("No se encontró audio en esa carpeta"));
+            changed();
+            return;
+        }
+        HashSet<String> have = new HashSet<String>();
+        for (Track t : tracks) {
+            have.add(t.uri.toString());
+        }
+        ArrayList<String> uris = new ArrayList<String>();
+        int added = 0;
+        for (Track t : found) {
+            String u = t.uri.toString();
+            uris.add(u);
+            if (have.add(u)) {
+                tracks.add(t);
+                added++;
+            }
+        }
+        if (added > 0) {
+            order = null;
+            Library.save(app, libraryLabel, tracks);
+            Meta.apply(tracks);
+            startMetaScan();
+            Imports.resync(app, tracks);
+        }
+        Playlists.I.setFolder(listName, tree.toString());
+        int n = Playlists.I.add(listName, uris);
+        toast(Tr.t("Carpeta enlazada: ") + n + Tr.t(" canciones nuevas en la lista"));
+        changed();
+    }
+
     void rescan() {
         String s = prefs.getString("tree", null);
         if (s != null) {
@@ -1701,6 +1787,22 @@ final class Player {
             toast(Tr.t("No se encontró audio · mira MENÚ → DIAGNÓSTICO"));
             changed();
             return;
+        }
+        // las canciones de listas con carpeta propia no deben desaparecer al escanear la carpeta madre
+        HashSet<String> mine = Playlists.I.linkedUris();
+        if (!mine.isEmpty()) {
+            HashSet<String> inNew = new HashSet<String>();
+            for (Track t : found) {
+                inNew.add(t.uri.toString());
+            }
+            ArrayList<Track> merged = new ArrayList<Track>(found);
+            for (Track t : tracks) {
+                String u = t.uri.toString();
+                if (mine.contains(u) && inNew.add(u)) {
+                    merged.add(t);
+                }
+            }
+            found = merged;
         }
         tracks.clear();
         tracks.addAll(found);

@@ -82,6 +82,21 @@ public final class CheckLists {
         q.delete("Jazz");
         ok(!img3.exists(), "al borrar la lista se borra su imagen");
 
+        // carpeta enlazada a la lista
+        q.setFolder("Pop", "content://tree/pop");
+        ok("content://tree/pop".equals(q.folder("Pop")), "carpeta enlazada");
+        q.add("Pop", Arrays.asList("p1", "p2"));
+        ok(q.linkedUris().equals(new java.util.HashSet<String>(Arrays.asList("p1", "p2"))), "linkedUris: " + q.linkedUris());
+        ok(q.rename("Pop", "Pop2") && "content://tree/pop".equals(q.folder("Pop2")), "la carpeta sigue al renombrar");
+        Playlists q2 = new Playlists();
+        q2.init(pf);
+        ok("content://tree/pop".equals(q2.folder("Pop2")), "la carpeta persiste");
+        q2.setFolder("Pop2", null);
+        ok(q2.folder("Pop2") == null && q2.linkedUris().isEmpty(), "desenlazar");
+        q2.setFolder("Pop2", "content://tree/pop");
+        q2.delete("Pop2");
+        ok(q2.folder("Pop2") == null, "borrar la lista quita el enlace");
+
         // nombres editados
         File ef = new File(dir, "edits.txt");
         TrackEdits e = new TrackEdits();

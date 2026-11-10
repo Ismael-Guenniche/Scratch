@@ -20,6 +20,7 @@ Primera pantalla (`HomeView`).
 ## Biblioteca (`MainActivity`)
 - **Elegir carpeta** (SAF): se escanea recursivamente; el resultado se guarda en `library.txt` para arrancar al instante. **Rescanear** actualiza.
 - Pestañas: **CANCIONES**, **CARPETAS** (una lista por carpeta), **FAVORITAS**, **RECIENTES**, **MÁS ESCUCHADAS** y tus listas.
+- **Carpeta por lista:** al crear una lista (+ LISTA) puedes elegir su carpeta; sus canciones se suman a la biblioteca y a la lista. Desde el menú de la lista: cambiar carpeta, actualizar o desenlazar.
 - Búsqueda por título o carpeta.
 - Menú ⋮: abrir archivo suelto, rescanear, importar lista (CSV), importar de Spotify, ver faltantes, estadísticas, ajustes y **DIAGNÓSTICO** (informa de por qué una biblioteca sale vacía).
 - Acciones por canción: reproducir a continuación, añadir a la cola, añadir a favoritas, añadir a lista, quitar de lista, estadísticas de la canción.

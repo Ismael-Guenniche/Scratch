@@ -25,6 +25,8 @@ public final class Playlists {
     private final LinkedHashMap<String, ArrayList<String>> map = new LinkedHashMap<String, ArrayList<String>>();
     /** Portadas personalizadas: nombre de la lista -> ruta de una imagen propia de la app. */
     private final HashMap<String, String> covers = new HashMap<String, String>();
+    /** Carpeta enlazada a cada lista: nombre de la lista -> URI del árbol de documentos. */
+    private final HashMap<String, String> folders = new HashMap<String, String>();
     private File file;
     /** Sube cada vez que algo cambia, para que las pantallas sepan que deben redibujar. */
     volatile int version;
@@ -87,6 +89,7 @@ public final class Playlists {
             if (c != null) {
                 new File(c).delete();
             }
+            folders.remove(k);
             changed();
         }
     }
@@ -114,6 +117,10 @@ public final class Playlists {
         String c = covers.remove(k);
         if (c != null) {
             covers.put(n, c);
+        }
+        String fo = folders.remove(k);
+        if (fo != null) {
+            folders.put(n, fo);
         }
         changed();
         return true;
@@ -164,6 +171,38 @@ public final class Playlists {
         changed();
     }
 
+    /** URI de la carpeta enlazada a la lista, o null si no tiene. */
+    public synchronized String folder(String name) {
+        String k = find(name);
+        return k == null ? null : folders.get(k);
+    }
+
+    /** Enlaza la lista a una carpeta (o la desenlaza con null). */
+    public synchronized void setFolder(String name, String treeUri) {
+        String k = find(name);
+        if (k == null) {
+            return;
+        }
+        if (treeUri == null) {
+            folders.remove(k);
+        } else {
+            folders.put(k, treeUri);
+        }
+        changed();
+    }
+
+    /** Todas las canciones de las listas que tienen una carpeta enlazada (no deben desaparecer de la biblioteca). */
+    public synchronized java.util.HashSet<String> linkedUris() {
+        java.util.HashSet<String> out = new java.util.HashSet<String>();
+        for (String k : folders.keySet()) {
+            ArrayList<String> l = map.get(k);
+            if (l != null) {
+                out.addAll(l);
+            }
+        }
+        return out;
+    }
+
     /** Añade al final las canciones que aún no estén; devuelve cuántas se añadieron. */
     public synchronized int add(String name, List<String> uris) {
         ArrayList<String> l = map.get(find(name));
@@ -194,6 +233,7 @@ public final class Playlists {
         version++;
         save();
         saveCovers();
+        saveFolders();
     }
 
     private File coversFile() {
@@ -248,6 +288,72 @@ public final class Playlists {
                     String k = find(line.substring(0, t));
                     if (k != null) {
                         covers.put(k, line.substring(t + 1));
+                    }
+                }
+            }
+        } catch (IOException ignored) {
+        } finally {
+            if (r != null) {
+                try {
+                    r.close();
+                } catch (IOException ignored) {
+                }
+            }
+        }
+    }
+
+    private File foldersFile() {
+        return file == null ? null : new File(file.getPath() + ".folders");
+    }
+
+    private void saveFolders() {
+        File f = foldersFile();
+        if (f == null) {
+            return;
+        }
+        if (folders.isEmpty()) {
+            f.delete();
+            return;
+        }
+        File tmp = new File(f.getPath() + ".tmp");
+        BufferedWriter w = null;
+        try {
+            w = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmp), "UTF-8"));
+            for (Map.Entry<String, String> e : folders.entrySet()) {
+                w.write(e.getKey() + "\t" + e.getValue());
+                w.newLine();
+            }
+        } catch (IOException ignored) {
+            return;
+        } finally {
+            if (w != null) {
+                try {
+                    w.close();
+                } catch (IOException ignored) {
+                }
+            }
+        }
+        if (!tmp.renameTo(f)) {
+            f.delete();
+            tmp.renameTo(f);
+        }
+    }
+
+    private void loadFolders() {
+        File f = foldersFile();
+        if (f == null || !f.exists()) {
+            return;
+        }
+        BufferedReader r = null;
+        try {
+            r = new BufferedReader(new InputStreamReader(new FileInputStream(f), "UTF-8"));
+            String line;
+            while ((line = r.readLine()) != null) {
+                int t = line.indexOf('\t');
+                if (t > 0) {
+                    String k = find(line.substring(0, t));
+                    if (k != null) {
+                        folders.put(k, line.substring(t + 1));
                     }
                 }
             }
@@ -324,6 +430,7 @@ public final class Playlists {
             }
         }
         loadCovers();
+        loadFolders();
         version++;
     }
 
