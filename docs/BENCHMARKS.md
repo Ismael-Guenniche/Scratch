@@ -193,3 +193,19 @@ Herramienta nueva: `tools/BenchQuality.java` reproduce tonos puros (pista a 44,1
 | Coste: parado | 6,8 µs | 0,31 µs |
 
 El sonido cambia (las huellas CRC ya no coinciden con las de T1–T5, como se esperaba). El coste sube, pero sigue por debajo del 1 % del plazo; la primera versión del filtro costaba 243 µs en scratch y se optimizó hasta 39 µs (coeficientes por fase a velocidad normal y núcleo corto en lectura rápida). Por encima de 4× el filtro deja de estrecharse: a esas velocidades queda algo de aliasing.
+
+## T7 · Física del plato (v0.58)
+
+Herramienta nueva: `tools/BenchPlatter.java` (traza la velocidad cada 0,33 ms).
+
+| Situación | Medida | Antes (0.57) | Después (0.58) |
+|---|---|---:|---:|
+| Arranque del motor (play) | 10 / 50 / 90 / 99 % | 13 / 83 / 276 / 553 ms | 20 / 100 / 180 / 226 ms |
+| Arranque del motor (play) | forma (0,5 = rampa recta de motor) | 0,27 (exponencial) | 0,50 |
+| Agarrar el disco sonando (1× → 0) | tiempo hasta parar | 1,0 ms | 12,7 ms |
+| Agarrar el disco sonando (1× → 0) | salto máximo de velocidad en 0,33 ms | 0,710× | 0,065× |
+| Soltar el disco parado con música (0 → 1×) | 90 / 99 % | 276 / 553 ms | 54 / 60 ms |
+| Soltar el disco yendo atrás (−2,4× → 1×) | llega al 90 % | 424 ms | 199 ms |
+| Frenado (pausa) | 50 % / parado | 350 / 699 ms | igual (ya era lineal) |
+
+El frenado y la inercia al soltar con la música parada no cambian. El coste de `render()` no varía de forma medible.
