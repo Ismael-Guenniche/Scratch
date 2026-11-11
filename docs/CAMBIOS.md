@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.49: Corrige el error de compilación de la vista previa de Android Auto: el MediaBrowser del framework no tiene búsqueda, ahora filtra la carpeta ALL en local. Quita un @Override inválido de PlayerService.onSearch.
 - 0.48: Vista previa de Android Auto dentro de la app (Ajustes → ANDROID AUTO): se conecta a PlayerService como el coche, con explorador, búsqueda, cola y controles grandes. Guía para el emulador DHU.
 - 0.46: Android Auto mejorado (rama android-auto): navegar por Artistas y Álbumes, búsqueda y voz (pon X en Scratch), cola visible, salto en la barra de progreso y botones de aleatorio y repetir
 - 0.45: ReplayGain (Ajustes → SONIDO: baja las canciones fuertes según la etiqueta REPLAYGAIN_TRACK_GAIN) y fundido cruzado entre canciones (0–10 s, cuando suena sola y la siguiente está precargada)

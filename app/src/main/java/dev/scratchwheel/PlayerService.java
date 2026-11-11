@@ -117,7 +117,6 @@ public class PlayerService extends MediaBrowserService {
         result.sendResult(out);
     }
 
-    @Override
     public void onSearch(String query, Bundle extras, Result<List<MediaBrowser.MediaItem>> result) {
         Player p = Player.I;
         List<MediaBrowser.MediaItem> out = new ArrayList<MediaBrowser.MediaItem>();

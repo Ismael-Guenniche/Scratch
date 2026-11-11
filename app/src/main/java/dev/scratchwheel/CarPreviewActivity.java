@@ -448,20 +448,36 @@ public class CarPreviewActivity extends Activity {
                 browser.unsubscribe(subscribed);
             } catch (RuntimeException ignored) {
             }
-            subscribed = "SEARCH";
         }
+        subscribed = "SEARCH";
         crumb.setText(stack.get(0)[1] + "  ›  " + Tr.t("Resultados: ") + q);
-        browser.search(q, null, new MediaBrowser.SearchCallback() {
+        final String ql = q.toLowerCase(Locale.getDefault());
+        // el MediaBrowser del framework no tiene búsqueda: se filtra la carpeta ALL en local
+        browser.subscribe("ALL", new MediaBrowser.SubscriptionCallback() {
             @Override
-            public void onSearchResult(String query, Bundle extras, List<MediaBrowser.MediaItem> found) {
+            public void onChildrenLoaded(String parent, List<MediaBrowser.MediaItem> children) {
+                if (!"SEARCH".equals(subscribed)) {
+                    return;
+                }
                 items.clear();
-                items.addAll(found);
+                for (MediaBrowser.MediaItem it : children) {
+                    String t = String.valueOf(it.getDescription().getTitle());
+                    String st = String.valueOf(it.getDescription().getSubtitle());
+                    if (!it.isBrowsable() && (t.toLowerCase(Locale.getDefault()).contains(ql)
+                            || st.toLowerCase(Locale.getDefault()).contains(ql))) {
+                        items.add(it);
+                    }
+                }
                 adapter.notifyDataSetChanged();
-                status.setText(found.isEmpty() ? Tr.t("Sin resultados") : "");
+                status.setText(items.isEmpty() ? Tr.t("Sin resultados") : "");
+                try {
+                    browser.unsubscribe("ALL");
+                } catch (RuntimeException ignored) {
+                }
             }
 
             @Override
-            public void onError(String query, Bundle extras) {
+            public void onError(String parent) {
                 status.setText(Tr.t("La búsqueda falló"));
             }
         });
