@@ -66,12 +66,17 @@ public class MainActivity extends Activity {
     private android.widget.ImageView barCover;
     private String barCoverKey = "";
     private LinearLayout listHeader;
+    private DotIconView listShuffle;
     private android.widget.ImageView listCover;
     private TextView listName;
     private TextView listCount;
     private String headerKey = "";
     private String coverTarget = "";
     private String folderTarget = "";
+    /** Orden de la lista abierta: 0 el de la lista, 1 título, 2 artista, 3 álbum, 4 duración. */
+    private int sortMode;
+    private boolean sortDesc;
+    private String sortFor = "";
     private LinearLayout chips;
     private LinearLayout empty;
     private ListView list;
@@ -513,7 +518,44 @@ public class MainActivity extends Activity {
         listCount.setPadding(0, dp(4), 0, 0);
         lhText.addView(listName);
         lhText.addView(listCount);
+        LinearLayout lhBtns = new LinearLayout(this);
+        lhBtns.setOrientation(LinearLayout.HORIZONTAL);
+        lhBtns.setGravity(Gravity.CENTER_VERTICAL);
+        lhBtns.setPadding(0, dp(6), 0, 0);
+        DotIconView listPlay = new DotIconView(this, th).ghost(false);
+        listPlay.set(DotIcons.PLAY, th.accent);
+        listPlay.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                playWholeList();
+            }
+        });
+        lhBtns.addView(listPlay, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        listShuffle = new DotIconView(this, th);
+        listShuffle.set(DotIcons.SHUFFLE, th.ink);
+        listShuffle.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Player.I.setShuffle(!Player.I.isShuffle());
+                listShuffle.set(DotIcons.SHUFFLE, Player.I.isShuffle() ? th.accent : th.ink);
+            }
+        });
+        LinearLayout.LayoutParams lsp = new LinearLayout.LayoutParams(dp(44), dp(44));
+        lsp.leftMargin = dp(6);
+        lhBtns.addView(listShuffle, lsp);
+        lhText.addView(lhBtns);
         listHeader.addView(lhText, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        TextView sortChip = th.chip(this, Tr.t("ORDEN"), false, 16);
+        LinearLayout.LayoutParams sclp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, dp(44));
+        sclp.rightMargin = dp(8);
+        listHeader.addView(sortChip, sclp);
+        sortChip.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                showSortMenu(v);
+            }
+        });
         TextView editChip = th.chip(this, Tr.t("EDITAR"), false, 16);
         listHeader.addView(editChip, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, dp(44)));
@@ -549,6 +591,8 @@ public class MainActivity extends Activity {
         list.setClipToPadding(false);
         list.setPadding(0, 0, 0, dp(96));
         list.setVerticalScrollBarEnabled(false);
+        list.setFastScrollEnabled(true);
+        list.setFastScrollAlwaysVisible(false);
         adapter = new BaseAdapter() {
             @Override
             public int getCount() {
@@ -568,14 +612,14 @@ public class MainActivity extends Activity {
             @Override
             public View getView(int pos, View convert, ViewGroup parent) {
                 LinearLayout row;
-                if (convert instanceof LinearLayout && ((LinearLayout) convert).getChildCount() == 2
+                if (convert instanceof LinearLayout && ((LinearLayout) convert).getChildCount() == 3
                         && ((LinearLayout) convert).getChildAt(0) instanceof android.widget.ImageView) {
                     row = (LinearLayout) convert;
                 } else {
                     row = new LinearLayout(MainActivity.this);
                     row.setOrientation(LinearLayout.HORIZONTAL);
                     row.setGravity(Gravity.CENTER_VERTICAL);
-                    row.setPadding(0, dp(8), 0, dp(8));
+                    row.setPadding(0, dp(8), dp(20), dp(8));
                     row.addView(CoverCache.view(MainActivity.this, 8), new LinearLayout.LayoutParams(dp(54), dp(54)));
                     LinearLayout tx = new LinearLayout(MainActivity.this);
                     tx.setOrientation(LinearLayout.VERTICAL);
@@ -589,7 +633,13 @@ public class MainActivity extends Activity {
                     tx.addView(n);
                     tx.addView(s);
                     row.addView(tx, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+                    TextView num = text("", 11, th.ink2, th.mono);
+                    num.setGravity(Gravity.END);
+                    num.setPadding(dp(8), 0, 0, 0);
+                    row.addView(num, new LinearLayout.LayoutParams(
+                            LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
                 }
+                ((TextView) row.getChildAt(2)).setText(String.valueOf(pos + 1));
                 int idx = shown.get(pos);
                 Player.Track t = Player.I.tracks.get(idx);
                 CoverCache.into(MainActivity.this, (android.widget.ImageView) row.getChildAt(0), t.uri);
@@ -718,6 +768,15 @@ public class MainActivity extends Activity {
                 Player.I.next();
             }
         });
+        DotIconView queueBtn = new DotIconView(this, th);
+        queueBtn.set(DotIcons.QUEUE, th.ink2);
+        queueBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, QueueActivity.class));
+            }
+        });
+        row.addView(queueBtn, new LinearLayout.LayoutParams(dp(40), dp(44)));
         row.addView(prev, new LinearLayout.LayoutParams(dp(44), dp(44)));
         row.addView(barPlay, new LinearLayout.LayoutParams(dp(52), dp(52)));
         row.addView(next, new LinearLayout.LayoutParams(dp(44), dp(44)));
@@ -906,6 +965,10 @@ public class MainActivity extends Activity {
                 if (i != null && matches(i, q)) {
                     shown.add(i);
                 }
+            }
+            loadSort();
+            if (sortMode != 0) {
+                sortShown();
             }
         } else if (tab == TAB_RECENT || tab == TAB_TOP) {
             final boolean top = tab == TAB_TOP;
@@ -1172,7 +1235,7 @@ public class MainActivity extends Activity {
         final Player.Track t = p.tracks.get(idx);
         final boolean inList = tab == TAB_LIST;
         // Mover solo tiene sentido con la lista completa a la vista (sin filtrar con la búsqueda).
-        final boolean canMove = inList && search.getText().toString().trim().length() == 0;
+        final boolean canMove = inList && sortMode == 0 && search.getText().toString().trim().length() == 0;
         final ArrayList<Integer> acts = new ArrayList<Integer>();
         final ArrayList<String> labs = new ArrayList<String>();
         acts.add(A_NEXT);
@@ -1263,7 +1326,18 @@ public class MainActivity extends Activity {
     }
 
     /** Cabecera de la lista abierta: su portada (mosaico o propia), el nombre y cuántas canciones tiene. */
+    /** Reproduce la lista que se ve: de la primera a la última, o desde una al azar y el resto mezclado si el aleatorio está activo. */
+    private void playWholeList() {
+        if (shown.isEmpty()) {
+            return;
+        }
+        Player p = Player.I;
+        int start = p.isShuffle() ? new java.util.Random().nextInt(shown.size()) : 0;
+        p.playFrom(new ArrayList<Integer>(shown), start);
+    }
+
     private void bindListHeader() {
+        listShuffle.set(DotIcons.SHUFFLE, Player.I.isShuffle() ? th.accent : th.ink);
         String k = listSel + "|" + Playlists.I.version + "|" + Tr.lang;
         if (k.equals(headerKey)) {
             return;
@@ -1274,7 +1348,120 @@ public class MainActivity extends Activity {
         CoverCache.intoPlaylist(this, listCover, listSel);
     }
 
-    /** Opciones de una lista: renombrar, cambiar o quitar la portada, borrar. */
+    private void loadSort() {
+        if (listSel == null || listSel.equals(sortFor)) {
+            return;
+        }
+        sortFor = listSel;
+        android.content.SharedPreferences sp = Lucent.prefs(this);
+        sortMode = sp.getInt("sortm_" + listSel, 0);
+        sortDesc = sp.getBoolean("sortd_" + listSel, false);
+    }
+
+    private void saveSort() {
+        if (listSel != null) {
+            Lucent.prefs(this).edit().putInt("sortm_" + listSel, sortMode)
+                    .putBoolean("sortd_" + listSel, sortDesc).apply();
+        }
+    }
+
+    private static int cmpText(String a, String b) {
+        boolean ea = a.length() == 0;
+        boolean eb = b.length() == 0;
+        if (ea || eb) {
+            return ea == eb ? 0 : (ea ? 1 : -1);
+        }
+        return a.compareToIgnoreCase(b);
+    }
+
+    /** Ordena la lista que se ve según el modo elegido (los vacíos siempre al final). */
+    private void sortShown() {
+        final Player p = Player.I;
+        final int mode = sortMode;
+        final boolean desc = sortDesc;
+        java.util.Collections.sort(shown, new java.util.Comparator<Integer>() {
+            @Override
+            public int compare(Integer x, Integer y) {
+                Player.Track a = p.tracks.get(x);
+                Player.Track b = p.tracks.get(y);
+                int c;
+                if (mode == 1) {
+                    c = cmpText(a.display(), b.display());
+                } else if (mode == 2) {
+                    c = cmpText(a.artist, b.artist);
+                } else if (mode == 3) {
+                    c = cmpText(a.album, b.album);
+                } else {
+                    boolean za = a.durMs <= 0;
+                    boolean zb = b.durMs <= 0;
+                    if (za || zb) {
+                        c = za == zb ? 0 : (za ? 1 : -1);
+                        return c != 0 ? c : cmpText(a.display(), b.display());
+                    }
+                    c = a.durMs < b.durMs ? -1 : (a.durMs > b.durMs ? 1 : 0);
+                }
+                if (c != 0 && desc) {
+                    boolean ea = (mode == 2 ? a.artist : (mode == 3 ? a.album : a.display())).length() == 0;
+                    boolean eb = (mode == 2 ? b.artist : (mode == 3 ? b.album : b.display())).length() == 0;
+                    if (!(mode >= 2 && mode <= 3 && (ea || eb))) {
+                        c = -c;
+                    }
+                }
+                return c != 0 ? c : cmpText(a.display(), b.display());
+            }
+        });
+    }
+
+    private void showSortMenu(View anchor) {
+        if (Playlists.I.find(listSel) == null) {
+            return;
+        }
+        loadSort();
+        final String[] names = {Tr.t("ORDEN DE LA LISTA"), Tr.t("TÍTULO A–Z"), Tr.t("ARTISTA"), Tr.t("ÁLBUM"),
+                Tr.t("DURACIÓN")};
+        final ArrayList<String> labels = new ArrayList<String>();
+        for (int i = 0; i < names.length; i++) {
+            labels.add((i == sortMode ? "● " : "") + names[i]);
+        }
+        if (sortMode != 0) {
+            labels.add(sortDesc ? Tr.t("ORDEN ASCENDENTE") : Tr.t("ORDEN DESCENDENTE"));
+            labels.add(Tr.t("GUARDAR ESTE ORDEN EN LA LISTA"));
+        }
+        DotMenu.show(this, th, anchor, labels.toArray(new String[0]), new DotMenu.Picked() {
+            @Override
+            public void onPick(int id) {
+                if (id < names.length) {
+                    sortMode = id;
+                    sortDesc = false;
+                    saveSort();
+                    refilter();
+                } else if (id == names.length) {
+                    sortDesc = !sortDesc;
+                    saveSort();
+                    refilter();
+                } else {
+                    if (search.getText().toString().trim().length() > 0) {
+                        Toast.makeText(MainActivity.this, Tr.t("Borra la búsqueda para guardar el orden"),
+                                Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    ArrayList<String> uris = new ArrayList<String>();
+                    for (int i : shown) {
+                        uris.add(Player.I.tracks.get(i).uri.toString());
+                    }
+                    Playlists.I.setOrder(listSel, uris);
+                    sortMode = 0;
+                    sortDesc = false;
+                    saveSort();
+                    Toast.makeText(MainActivity.this, Tr.t("Orden guardado en la lista"),
+                            Toast.LENGTH_SHORT).show();
+                    refilter();
+                }
+            }
+        });
+    }
+
+    /** Opciones de una lista: renombrar, cambiar o quitar la portada, carpeta, borrar. */
     private static final int L_RENAME = 0;
     private static final int L_COVER = 1;
     private static final int L_NOCOVER = 2;

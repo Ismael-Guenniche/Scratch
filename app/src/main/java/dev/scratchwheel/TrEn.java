@@ -345,6 +345,19 @@ final class TrEn {
         // 0.35: portadas, edición de listas y de nombres
         M.put("EDITAR", "EDIT");
         M.put("RENOMBRAR LISTA", "RENAME PLAYLIST");
+        M.put("Pitch bloqueado", "Pitch locked");
+        M.put("Pitch desbloqueado", "Pitch unlocked");
+        M.put("ORDEN", "SORT");
+        M.put("ORDEN DE LA LISTA", "LIST ORDER");
+        M.put("TÍTULO A–Z", "TITLE A–Z");
+        M.put("ARTISTA", "ARTIST");
+        M.put("ÁLBUM", "ALBUM");
+        M.put("DURACIÓN", "DURATION");
+        M.put("ORDEN ASCENDENTE", "ASCENDING");
+        M.put("ORDEN DESCENDENTE", "DESCENDING");
+        M.put("GUARDAR ESTE ORDEN EN LA LISTA", "SAVE THIS ORDER TO THE LIST");
+        M.put("Borra la búsqueda para guardar el orden", "Clear the search to save the order");
+        M.put("Orden guardado en la lista", "Order saved to the list");
         M.put("Aspecto del vinilo", "Vinyl look");
         M.put("CLÁSICO", "CLASSIC");
         M.put("RAYAS", "STRIPES");

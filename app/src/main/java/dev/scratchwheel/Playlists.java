@@ -152,6 +152,34 @@ public final class Playlists {
         return true;
     }
 
+    /** Fija el orden de la lista: primero {@code order} (solo lo que ya estaba en la lista), luego lo que sobre. */
+    public synchronized boolean setOrder(String name, List<String> order) {
+        ArrayList<String> l = map.get(find(name));
+        if (l == null) {
+            return false;
+        }
+        ArrayList<String> out = new ArrayList<String>();
+        java.util.HashSet<String> inList = new java.util.HashSet<String>(l);
+        java.util.HashSet<String> used = new java.util.HashSet<String>();
+        for (String u : order) {
+            if (inList.contains(u) && used.add(u)) {
+                out.add(u);
+            }
+        }
+        for (String u : l) {
+            if (used.add(u)) {
+                out.add(u);
+            }
+        }
+        if (out.equals(l)) {
+            return false;
+        }
+        l.clear();
+        l.addAll(out);
+        changed();
+        return true;
+    }
+
     /** Ruta de la portada personalizada de la lista, o null si usa el mosaico por defecto. */
     public synchronized String cover(String name) {
         String k = find(name);

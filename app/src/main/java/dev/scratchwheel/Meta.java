@@ -31,7 +31,9 @@ final class Meta {
         plays.clear();
         for (String l : readLines(metaFile)) {
             String[] f = l.split("\t", -1);
-            if (f.length >= 4) {
+            if (f.length >= 5) {
+                cache.put(f[0], new String[]{f[1], f[2], f[3], f[4]});
+            } else if (f.length >= 4) {
                 cache.put(f[0], new String[]{f[1], f[2], f[3]});
             }
         }
@@ -52,7 +54,19 @@ final class Meta {
             String[] m = cache.get(t.uri.toString());
             if (m != null) {
                 t.setMeta(m[0], m[1], m[2]);
+                t.durMs = dur(m);
             }
+        }
+    }
+
+    private static long dur(String[] m) {
+        if (m.length < 4) {
+            return 0;
+        }
+        try {
+            return Long.parseLong(m[3]);
+        } catch (NumberFormatException e) {
+            return 0;
         }
     }
 
@@ -61,6 +75,7 @@ final class Meta {
         String[] m = cache.get(t.uri.toString());
         if (m != null) {
             t.setMeta(m[0], m[1], m[2]);
+            t.durMs = dur(m);
         } else {
             t.setMeta(t.tagTitle, t.tagArtist, t.album);
         }
@@ -73,7 +88,8 @@ final class Meta {
         for (Player.Track t : tracks) {
             String key = t.uri.toString();
             synchronized (Meta.class) {
-                if (cache.containsKey(key)) {
+                String[] have = cache.get(key);
+                if (have != null && have.length >= 4) {
                     continue;
                 }
             }
@@ -82,6 +98,7 @@ final class Meta {
                 cache.put(key, m);
             }
             t.setMeta(m[0], m[1], m[2]);
+            t.durMs = dur(m);
             changed = true;
             if (++sinceSave >= 200) {
                 sinceSave = 0;
@@ -104,9 +121,15 @@ final class Meta {
                 ar = clean(r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST));
             }
             String al = clean(r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM));
-            return new String[]{ti, ar, al};
+            String du = r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+            long ms = 0;
+            try {
+                ms = du == null ? 0 : Long.parseLong(du.trim());
+            } catch (NumberFormatException ignored) {
+            }
+            return new String[]{ti, ar, al, String.valueOf(ms)};
         } catch (RuntimeException e) {
-            return new String[]{"", "", ""};
+            return new String[]{"", "", "", "0"};
         } finally {
             try {
                 r.release();
@@ -124,7 +147,11 @@ final class Meta {
         for (Map.Entry<String, String[]> e : cache.entrySet()) {
             String[] m = e.getValue();
             sb.append(e.getKey()).append('\t').append(m[0]).append('\t').append(m[1])
-                    .append('\t').append(m[2]).append('\n');
+                    .append('\t').append(m[2]);
+            if (m.length > 3) {
+                sb.append('\t').append(m[3]);
+            }
+            sb.append('\n');
         }
         write(metaFile, sb.toString());
     }

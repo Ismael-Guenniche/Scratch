@@ -49,6 +49,7 @@ public class ScratchActivity extends Activity {
     private TextView coverLabel;
     private SeekBar volBar;
     private SeekBar pitchBar;
+    private DotIconView pitchLockIcon;
     private TextView pitchLabel;
     private int lastVol = -1;
     private android.media.AudioManager audio;
@@ -568,7 +569,18 @@ public class ScratchActivity extends Activity {
         LinearLayout pr = row();
         pr.setGravity(Gravity.CENTER_VERTICAL);
         pr.setPadding(dp(20), dp(4), dp(22), 0);
-        pr.addView(icon(DotIcons.PITCH, th.ink2), new LinearLayout.LayoutParams(dp(30), dp(30)));
+        pitchLockIcon = icon(DotIcons.PITCH, pitchLocked() ? th.accent : th.ink2);
+        pitchLockIcon.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                boolean now = !pitchLocked();
+                Lucent.prefs(ScratchActivity.this).edit().putBoolean("pitch_lock", now).apply();
+                applyPitchLock();
+                Toast.makeText(ScratchActivity.this, now ? Tr.t("Pitch bloqueado") : Tr.t("Pitch desbloqueado"),
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+        pr.addView(pitchLockIcon, new LinearLayout.LayoutParams(dp(30), dp(30)));
         pitchBar = new SeekBar(this);
         th.styleSeek(pitchBar);
         pitchBar.setMax(40);
@@ -580,6 +592,9 @@ public class ScratchActivity extends Activity {
         pitchLabel.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (pitchLocked()) {
+                    return;
+                }
                 pitchBar.setProgress(20);
                 Player.I.setPitch(1.0);
                 pitchLabel.setText(pitchText(1.0));
@@ -588,7 +603,7 @@ public class ScratchActivity extends Activity {
         pitchBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar sb, int value, boolean fromUser) {
-                if (fromUser) {
+                if (fromUser && !pitchLocked()) {
                     double p = value == 20 ? 1.0 : 0.8 + value / 100.0;
                     Player.I.setPitch(p);
                     pitchLabel.setText(pitchText(p));
@@ -608,8 +623,25 @@ public class ScratchActivity extends Activity {
         pr.addView(pitchBar, plp);
         pr.addView(pitchLabel);
         pitchRow = pr;
+        applyPitchLock();
         card.addView(pr);
         return card;
+    }
+
+    private boolean pitchLocked() {
+        return Lucent.prefs(this).getBoolean("pitch_lock", false);
+    }
+
+    /** Con el pitch bloqueado el control no responde (no se mueve sin querer); el icono se pone de color. */
+    private void applyPitchLock() {
+        boolean l = pitchLocked();
+        if (pitchBar != null) {
+            pitchBar.setEnabled(!l);
+            pitchBar.setAlpha(l ? 0.45f : 1f);
+        }
+        if (pitchLockIcon != null) {
+            pitchLockIcon.set(DotIcons.PITCH, l ? th.accent : th.ink2);
+        }
     }
 
     private static String pitchText(double p) {
@@ -815,6 +847,12 @@ public class ScratchActivity extends Activity {
         FaderView pitch = fader(faders, "PITCH", 0.5, new FaderView.Listener() {
             @Override
             public void onValue(double v) {
+                if (pitchLocked()) {
+                    if (pitchFader != null) {
+                        pitchFader.setValue((Player.I.pitch() - 0.8) / 0.4);
+                    }
+                    return;
+                }
                 double pc = v == 0.5 ? 1.0 : 0.8 + v * 0.4;
                 Player.I.setPitch(pc);
                 if (pitchLabel != null) {

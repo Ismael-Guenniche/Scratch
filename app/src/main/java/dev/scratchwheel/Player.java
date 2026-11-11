@@ -45,6 +45,8 @@ final class Player {
         String title = "";
         String artist = "";
         String album = "";
+        /** Duración en milisegundos (0 si aún no se ha leído). */
+        long durMs;
         /** Etiquetas originales del archivo (sin los nombres editados); las usa la importación de listas. */
         String tagTitle = "";
         String tagArtist = "";

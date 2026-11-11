@@ -97,6 +97,13 @@ public final class CheckLists {
         q2.delete("Pop2");
         ok(q2.folder("Pop2") == null, "borrar la lista quita el enlace");
 
+        // guardar un orden
+        q2.create("Orden");
+        q2.add("Orden", Arrays.asList("a", "b", "c", "d"));
+        ok(q2.setOrder("Orden", Arrays.asList("c", "x", "a")), "setOrder cambia");
+        ok(q2.uris("Orden").equals(Arrays.asList("c", "a", "b", "d")), "setOrder: lo que sobra va detrás: " + q2.uris("Orden"));
+        ok(!q2.setOrder("Orden", Arrays.asList("c", "a", "b", "d")), "setOrder igual no cambia");
+
         // nombres editados
         File ef = new File(dir, "edits.txt");
         TrackEdits e = new TrackEdits();
