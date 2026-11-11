@@ -84,6 +84,7 @@ public class Bench {
         "Reproducción + EQ 5 bandas",
         "Reproducción + modo DJ completo",
         "Reproducción + sampler (bocina)",
+        "Reproducción + sonido de vinilo",
     };
 
     static Setup scenario(int i) {
@@ -139,6 +140,13 @@ public class Bench {
                         e.setFlanger(true);
                         e.setPhaser(true);
                         e.setGate(8);
+                        e.setPlaying(true);
+                    }
+                };
+            case 8:
+                return new Base() {
+                    public void init(ScratchEngine e) {
+                        e.setVinyl(1.0);
                         e.setPlaying(true);
                     }
                 };

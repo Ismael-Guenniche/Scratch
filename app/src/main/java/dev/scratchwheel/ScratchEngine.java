@@ -114,6 +114,11 @@ public final class ScratchEngine {
     private double gatePhase;
     private double cutGain = 1;
     private double cutPhase = 1;
+    // ----- carácter de vinilo (opcional): oscilación lenta del tono y ruido de surco
+    private double vinyl;
+    private double wowS, wowC = 1, flutS, flutC = 1;
+    private long vrnd = 0x9E3779B97F4A7C15L;
+    private double popL, popR;
     private double velGain;
     /** Duración total de la rampa del corte (s). */
     private static final double CUT_TIME = 0.002;
@@ -1032,6 +1037,15 @@ public final class ScratchEngine {
         publish();
     }
 
+    /**
+     * Carácter de vinilo, 0 (apagado) a 1: excentricidad del disco (el tono oscila ±0,12 % una vez por vuelta,
+     * a 33⅓ rpm), flutter (±0,03 % a 7,3 Hz), siseo de surco muy bajo y algún chasquido. Solo suena con el disco
+     * girando y sigue su velocidad (al frenar, el ruido también baja).
+     */
+    public synchronized void setVinyl(double amount) {
+        vinyl = Math.max(0, Math.min(1, amount));
+    }
+
     /** Velocidad de reproducción normal (como el pitch de una mesa): 1,0 = original. */
     public synchronized void setPitch(double p) {
         pitch = Math.max(0.5, Math.min(1.5, p));
@@ -1226,6 +1240,10 @@ public final class ScratchEngine {
         final double slipStep = dtOut / SLIP_CATCH;
         final double gripAlpha = dtOut / GRIP_TAU;
         final double cutStep = dtOut / CUT_TIME;
+        final double wowW = 2 * Math.PI * (1.0 / SECONDS_PER_REV) * dtOut;
+        final double flutW = 2 * Math.PI * 7.3 * dtOut;
+        final double popDecay = Math.exp(-dtOut / 0.0003);
+        final double popProb = 5.0 * dtOut;
         final double velGainAlpha = Math.min(1.0, dtOut / 0.0015);
         final double cutAlpha = Math.min(1.0, 1.0 / (0.002 * outRate));
         for (int i = 0; i < n; i++) {
@@ -1341,7 +1359,16 @@ public final class ScratchEngine {
             if (!scratching && seek == 0 && !playing && backspinLeft == 0 && Math.abs(rate) < 1e-4) {
                 rate = 0;
             }
-            pos += rate * ratio;
+            if (vinyl > 0 && !scratching) {
+                // Dos osciladores por rotación (sin senos por muestra): 0,556 Hz (una vuelta) y 7,3 Hz.
+                wowS += wowC * wowW;
+                wowC -= wowS * wowW;
+                flutS += flutC * flutW;
+                flutC -= flutS * flutW;
+                pos += rate * ratio * (1 + vinyl * (0.0012 * wowS + 0.0003 * flutS));
+            } else {
+                pos += rate * ratio;
+            }
             if (slipping && playing) {
                 slipPos += pitch * ratio;
                 if (slipPos > last) {
@@ -1416,6 +1443,25 @@ public final class ScratchEngine {
                     vl = sOut[0] * g;
                     vr = sOut[1] * g;
                 }
+            }
+            if (vinyl > 0 && velGain > 0) {
+                // Ruido de surco: siseo muy bajo y chasquidos sueltos, proporcionales a la velocidad del disco.
+                vrnd = vrnd * 6364136223846793005L + 1442695040888963407L;
+                double n1 = ((vrnd >>> 40) / (double) (1L << 24)) * 2 - 1;
+                vrnd = vrnd * 6364136223846793005L + 1442695040888963407L;
+                double n2 = ((vrnd >>> 40) / (double) (1L << 24)) * 2 - 1;
+                double sp = rate < 0 ? -rate : rate;
+                if ((n1 < 0 ? -n1 : n1) < popProb * (sp > 2 ? 2 : sp)) {
+                    double amp = 150 + 500 * (n2 < 0 ? -n2 : n2);
+                    popL += n2 > 0 ? amp : -amp;
+                    popR += n1 > 0 ? amp * 0.7 : -amp * 0.7;
+                }
+                double ng = vinyl * velGain * volume;
+                vl += (n1 * 10 + popL) * ng;
+                vr += (n2 * 10 + popR) * ng;
+                // se corta al llegar a cero práctico: los números denormales son muy lentos
+                popL = popL > 1e-3 || popL < -1e-3 ? popL * popDecay : 0;
+                popR = popR > 1e-3 || popR < -1e-3 ? popR * popDecay : 0;
             }
             if (xfadeSecs > 0 && nextPcm != null && playing && !scratching && !reverse && !partial && !loopOn
                     && rate > 0.3 && frames > 0) {

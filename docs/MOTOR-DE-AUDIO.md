@@ -37,6 +37,9 @@ El motor distingue el **plato** (lo que mueve el motor) del **disco** (lo que se
 - **Avance/retroceso rápido:** 1,5× con audio; velocidad ajustable.
 - **Pitch:** velocidad de reproducción 0,5×–1,5× (el panel limita a ±20 %).
 
+## Sonido de vinilo (opcional)
+Ajustes → RUEDA → «Sonido de vinilo» (apagado por defecto). Añade la excentricidad del disco (el tono oscila ±0,12 % una vez por vuelta, a 33⅓ rpm), un flutter de ±0,03 % a 7,3 Hz, un siseo de surco muy bajo y chasquidos sueltos. Los osciladores van por rotación (sin senos por muestra) y el ruido sigue la velocidad del disco: al frenar baja y con el disco parado no suena.
+
 ## Mantener el tono (keylock)
 Síntesis **granular (OLA)** con ventana Hann de 50 ms (precalculada en una tabla al fijar la frecuencia de salida) y solape del 50 %, hasta 4 granos simultáneos. Cada grano suena a velocidad normal (hacia delante o atrás según la rueda), así el tono no cambia aunque la posición avance más rápido o más lento. Desde la 0.60 es **WSOLA**: cada grano nuevo no empieza en un punto fijo, sino donde su onda mejor continúa la del grano anterior (correlación normalizada en ±6 ms), así los granos se suman en fase y desaparece el sonido «rugoso» y desafinado del OLA simple.
 

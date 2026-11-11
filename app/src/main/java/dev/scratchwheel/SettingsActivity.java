@@ -258,6 +258,16 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
+        c.addView(switchRow(Tr.t("Sonido de vinilo"),
+                Tr.t("Añade el carácter de un disco real: una oscilación mínima del tono y un ruido de surco muy suave."),
+                prefs.getBoolean("vinyl", false), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("vinyl", v).apply();
+                        Player.I.applyWheelPrefs();
+                    }
+                }));
+        c.addView(dots());
         c.addView(switchRow(Tr.t("Invertir el sentido"),
                 Tr.t("Girar en sentido horario hace retroceder el audio, como en algunos platos."),
                 prefs.getBoolean("winvert", false), true, new Toggle() {
@@ -577,7 +587,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.61");
+        about.setText("SCRATCH 0.62");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);
