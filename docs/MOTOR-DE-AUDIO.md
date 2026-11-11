@@ -22,6 +22,9 @@ La forma de onda (480 picos) se calcula al terminar de decodificar y se guarda p
 
 Así, mientras haces scratch la interfaz no puede retener el cerrojo y dejar esperando al hilo de audio (inversión de prioridad). Las órdenes puntuales (play, efectos, cues) lo cogen durante nanosegundos.
 
+## Latencia y posición mostrada
+El hilo de audio mide cada ~0,5 s la latencia de salida real con las marcas de tiempo del `AudioTrack` (frames escritos menos frames ya presentados) y se la pasa al motor. El audio no cambia: `getHeardSeconds()` devuelve la posición que el motor tenía hace esa latencia (historial de los últimos 256 bloques), que es lo que se está oyendo, y la usan la rueda, el tiempo, los pulsos y la letra. Mientras el dedo sujeta el disco, lo mostrado pasa gradualmente (0,15 s) a la posición del motor para que la rueda vaya pegada al dedo. En Ajustes → SONIDO se puede desactivar (NO / AUTO) y corregir a mano (ajuste fino de ±40 ms); ahí se ve la latencia medida.
+
 ## Cómo suena el scratch
 Como un vinilo: el motor lee la pista a **velocidad variable** con un **filtro sinc enventanado** (Kaiser, 12 muestras por punto). A velocidad normal o menor usa coeficientes precalculados por fase; por encima de 1× el filtro se ensancha con la velocidad (corte más bajo, hasta 4×) para que los agudos que quedarían fuera de lo audible no se plieguen como aliasing. En silencio (velocidad 0) no se calcula nada. Mientras el dedo está en la rueda, la posición de lectura *persigue* a una posición objetivo que mueve el dedo:
 - el motor estima la **velocidad del dedo** a partir de los eventos táctiles y su hora (`rotateAt`), con un filtro adaptativo: suave con el dedo lento, casi directo con el dedo rápido o ante un cambio brusco;

@@ -5,14 +5,14 @@ Todo lo que se podía verificar en la JVM está hecho y medido (ver [BENCHMARKS.
 | Tarea | Estado |
 |---|---|
 | T1–T8 | Hechas (0.52–0.59) |
-| T9 Streaming / PCM en disco | **Pendiente.** Toca `AudioLoader`, `PcmData`, la caché de precarga, la onda (`snap`) y el BPM: todos leen hoy un `short[]` completo |
-| T10 Precarga con menos memoria | **Pendiente**, depende de T9 |
-| T11 Caché de BPM y de forma de onda | **Pendiente** (lectura/escritura en el almacenamiento de la app) |
+| T9 PCM en disco | Hecha (0.65). Falta probar en el móvil con canciones largas |
+| T10 Precarga con menos memoria | Hecha (0.65) |
+| T11 Caché de BPM y de forma de onda | Hecha (0.65); el BPM ya se guardaba |
 | T12 Ahorro de batería | **Parcial.** El motor en reposo cuesta 0,8 µs por bloque (antes 6,8) y no calcula el filtro en silencio. Falta mantener el `AudioTrack` en pausa en vez de destruirlo y bajar el ticker; hay que medir consumo en el móvil |
 | T13 Oboe/AAudio | **Evaluado, no implementado.** Por CPU no compensa (el motor usa < 1 % del plazo). Solo compensaría por latencia: decidirlo con los datos de `adb logcat -s ScratchAudio` (si ya sale «ruta rápida» y el búfer se queda en 2–3 ráfagas, la ganancia de Oboe sería de pocos ms). Requiere NDK |
-| T14 Efectos por bloque | **Probado y descartado** (sin mejora medible) |
+| T14 Efectos por bloque | Hecha (0.64), con el mismo sonido bit a bit |
 | T15 Keylock WSOLA | Hecha (0.60) |
-| T16 Calibración de latencia | **Pendiente.** Necesita micrófono/loopback en el móvil y una pantalla nueva |
+| T16 Calibración de latencia | Hecha (0.66) con medida automática y ajuste fino manual; sin loopback por micrófono |
 | T17 Sonido de vinilo | Hecha (0.62) |
 | T18 Regresión de rendimiento | Hecha (0.61) |
 | T19 Perfilado en móvil | Guía en [PERFILADO.md](PERFILADO.md); falta que captures el trace |
@@ -24,4 +24,4 @@ Todo lo que se podía verificar en la JVM está hecho y medido (ver [BENCHMARKS.
 3. **Limitador suave de salida.** La de menos valor de las tres, pero la única verificable sin móvil: es la que se ha hecho.
 
 ## Antes de publicar
-Estas versiones no se han compilado con el SDK de Android (no estaba disponible donde se trabajó). Los cambios en código Android son pequeños (`Player`, `AudioTune`, `SettingsActivity`, `TrEn`) y se han revisado contra las firmas de la API, pero **hay que compilar y probar en el móvil** antes de subir nada a Google Play.
+Desde la 0.64 todo se compila con `javac` contra el `android.jar` del SDK 35 (los dos sabores, `play` y `personal`), pero no se ha generado un APK ni se ha ejecutado en un móvil. **Hay que probar en el móvil** antes de subir nada a Google Play, sobre todo la carga de canciones (0.65).

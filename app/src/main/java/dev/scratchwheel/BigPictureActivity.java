@@ -408,7 +408,7 @@ public class BigPictureActivity extends Activity {
                     }
                 }
                 ScratchEngine e = Player.I.engine;
-                wheel.setAngle((float) (e.getPositionSeconds() / e.getSecondsPerRev() * 2 * Math.PI
+                wheel.setAngle((float) (e.getHeardSeconds() / e.getSecondsPerRev() * 2 * Math.PI
                         * (e.isInverted() ? -1 : 1)));
                 wheel.setPlayingState(Player.I.isPlayingOrPending());
             }
@@ -891,7 +891,7 @@ public class BigPictureActivity extends Activity {
                 }
                 List<LyricsReader.Line> ls = res.synced;
                 int a = ls.isEmpty() ? -1
-                        : LyricsReader.lineAt(ls, (long) (Player.I.engine.getPositionSeconds() * 1000));
+                        : LyricsReader.lineAt(ls, (long) (Player.I.engine.getHeardSeconds() * 1000));
                 if (a == shown) {
                     return;
                 }

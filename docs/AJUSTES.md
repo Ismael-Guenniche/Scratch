@@ -20,6 +20,8 @@ Las opciones están agrupadas en tarjetas. Entre paréntesis, la clave de `Share
 | Sensibilidad LENTA / NORMAL / RÁPIDA (3,6 / 1,8 / 0,9 s por vuelta) | `wsens` | NORMAL |
 | Inercia al soltar | `inertia` | sí |
 | Sonido de vinilo | `vinyl` | no |
+| Compensar la latencia NO / AUTO (Ajustes → SONIDO) | `latcomp` | AUTO |
+| Ajuste fino de la latencia −40 / −20 / 0 / +20 / +40 ms | `lattrim` | 0 |
 | Fricción ALTA / MEDIA / BAJA | `wfric` | MEDIA |
 | Invertir el sentido | `winvert` | no |
 | Vibración al girar | `haptic` | sí |

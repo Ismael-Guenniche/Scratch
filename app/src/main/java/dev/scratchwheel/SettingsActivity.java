@@ -438,6 +438,29 @@ public class SettingsActivity extends Activity {
             }
         }));
         c.addView(muted(Tr.t("Las últimas canciones se mezclan con la siguiente cuando suena sola (necesita la precarga activada). Al saltar a mano no hay fundido.")));
+        c.addView(dots());
+        c.addView(body(Tr.t("Compensar la latencia")));
+        c.addView(segmented(new String[] {Tr.t("NO"), Tr.t("AUTO")}, prefs.getInt("latcomp", 1) == 1 ? 1 : 0,
+                new Pick() {
+                    @Override
+                    public void on(int v) {
+                        prefs.edit().putInt("latcomp", v).apply();
+                        Player.I.applyWheelPrefs();
+                        redo();
+                    }
+                }));
+        c.addView(body(Tr.t("Ajuste fino")));
+        c.addView(segmented(new String[] {"-40", "-20", "0", "+20", "+40"},
+                Math.max(0, Math.min(4, prefs.getInt("lattrim", 2))), new Pick() {
+                    @Override
+                    public void on(int v) {
+                        prefs.edit().putInt("lattrim", v).apply();
+                        Player.I.applyWheelPrefs();
+                        redo();
+                    }
+                }));
+        c.addView(muted(Tr.t("La rueda, el tiempo y la letra se muestran donde suena el audio de verdad, no donde va el motor. Si la rueda va por delante del sonido, sube el ajuste fino (en milisegundos); si va por detrás, bájalo.")
+                + (AudioTune.measuredMs >= 0 ? " " + Tr.t("Latencia medida:") + " " + AudioTune.measuredMs + " ms." : "")));
 
         // PRECARGA
         c = card(list, Tr.t("PRECARGA"));
@@ -587,7 +610,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.65");
+        about.setText("SCRATCH 0.66");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);
