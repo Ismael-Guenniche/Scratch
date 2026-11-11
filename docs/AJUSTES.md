@@ -19,6 +19,7 @@ Las opciones están agrupadas en tarjetas. Entre paréntesis, la clave de `Share
 | Mantener el tono (keylock) | `keylock` | no |
 | Sensibilidad LENTA / NORMAL / RÁPIDA (3,6 / 1,8 / 0,9 s por vuelta) | `wsens` | NORMAL |
 | Inercia al soltar | `inertia` | sí |
+| Sonido de vinilo | `vinyl` | no |
 | Fricción ALTA / MEDIA / BAJA | `wfric` | MEDIA |
 | Invertir el sentido | `winvert` | no |
 | Vibración al girar | `haptic` | sí |

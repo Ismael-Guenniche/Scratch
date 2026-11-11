@@ -240,6 +240,9 @@ final class TrEn {
         M.put("RÁPIDA", "FAST");
         M.put("Cuánto audio recorre una vuelta: lenta = más preciso, rápida = más recorrido.", "How much audio one turn covers: slow = more precise, fast = more distance.");
         M.put("Inercia al soltar", "Release inertia");
+        M.put("Sonido de vinilo", "Vinyl sound");
+        M.put("Añade el carácter de un disco real: una oscilación mínima del tono y un ruido de surco muy suave.",
+                "Adds the character of a real record: a tiny pitch wobble and a very soft groove noise.");
         M.put("Si sueltas la rueda lanzada con la música parada, sigue girando como un plato hasta frenarse.", "If you flick the wheel with the music stopped, it keeps spinning like a platter until it slows down.");
         M.put("Fricción", "Friction");
         M.put("ALTA", "HIGH");

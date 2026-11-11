@@ -1430,6 +1430,7 @@ final class Player {
         engine.setInvert(sp.getBoolean("winvert", false));
         int fr = sp.getInt("wfric", 1);
         engine.setInertia(sp.getBoolean("inertia", true), fr == 0 ? 0.6 : fr == 2 ? 3.0 : 1.5);
+        engine.setVinyl(sp.getBoolean("vinyl", false) ? 1.0 : 0.0);
     }
 
     void touchDown() {
