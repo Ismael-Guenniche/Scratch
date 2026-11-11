@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.39: vinilo más real con la portada: sin botón de play/pausa, etiqueta circular pequeña con la carátula y el agujero del eje (tocar el centro sigue dando play/pausa)
 - 0.38: precarga: las próximas N canciones (5 por defecto, ajustable en Ajustes → PRECARGA) se decodifican de una en una y quedan en memoria; arranque rápido: la canción suena en cuanto están los primeros 8 s y el resto se completa detrás (el scratch llega a todo al terminar); la decodificación se cancela al saltar de canción
 - 0.37: con la portada activada la rueda es un disco de vinilo (surcos y la carátula como etiqueta circular en el centro, girando)
 - 0.36: cada lista puede tener su propia carpeta (al crearla, o desde su menú: enlazar, actualizar, desenlazar); la carátula de la canción aparece arriba a la derecha de la tarjeta del título en el reproductor

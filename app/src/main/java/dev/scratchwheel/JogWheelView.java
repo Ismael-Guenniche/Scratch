@@ -198,10 +198,10 @@ public class JogWheelView extends View {
             // Disco de vinilo: plástico negro con surcos y la carátula como etiqueta circular en el centro.
             scrim.setColor(0xFF101010);
             c.drawCircle(cx, cy, r - dp(2), scrim);
-            for (float g = 0.62f; g < 0.97f; g += 0.045f) {
+            for (float g = 0.44f; g < 0.97f; g += 0.04f) {
                 c.drawCircle(cx, cy, r * g, groove);
             }
-            float lr = r * 0.52f;
+            float lr = r * 0.36f;
             clip.reset();
             clip.addCircle(cx, cy, lr, Path.Direction.CW);
             c.save();
@@ -237,6 +237,15 @@ public class JogWheelView extends View {
                     dp(5), accent);
         }
 
+        if (showCover && !square) {
+            // Vinilo: sin botón; solo el agujero del eje en el centro de la etiqueta (tocar el centro sigue dando play/pausa).
+            hubFill.setColor(0xFF101010);
+            c.drawCircle(cx, cy, r * 0.035f, hubFill);
+            groove.setColor(0x99FFFFFF);
+            c.drawCircle(cx, cy, r * 0.035f, groove);
+            groove.setColor(0x26FFFFFF);
+            return;
+        }
         if (showCover) {
             hubFill.setColor(0xAA000000);
             c.drawCircle(cx, cy, r * HUB, hubFill);
