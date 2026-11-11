@@ -296,3 +296,20 @@ Se rehízo la prueba descartada corrigiendo su fallo: flanger y phaser comparten
 | Reproducción normal | 14,3 µs | 13,3 µs |
 
 La mejora en la JVM es pequeña (y dentro del ruido en el EQ) porque el JIT ya optimizaba el camino por muestra; en ART, que optimiza menos, debería notarse algo más. SIMD queda fuera: exige un módulo nativo.
+
+## T9, T10 y T11 · PCM en disco, precarga y caché de onda (v0.65)
+
+Las canciones se guardan en un archivo temporal proyectado en memoria y el motor las lee por una ventana. En `Check.java` se reproduce la misma pista desde memoria y desde disco durante 48 s de uso variado (saltos, scratch, keylock, fundido y cambio de pista sin hueco) y **la salida es idéntica muestra a muestra**; las huellas CRC de `Bench` también coinciden.
+
+| Medida | Antes (0.64) | Después (0.65) |
+|---|---:|---:|
+| Heap por canción de 4 min | ≈ 42 MB | 0 (más 1 MB fijo de ventana en el motor) |
+| Heap con 5 pistas precargadas | hasta el 45 % del heap (≈ 210 MB) | ≈ 0 |
+| Duración máxima | 7,5 min (se recortaba) | ≈ 2,5 h |
+| Disco temporal | 0 | 10,6 MB por minuto de audio; precarga limitada a 600 MB |
+| Coste de `render()`, reproducción | 13,4 µs | 14,8 µs |
+| Coste de `render()`, scratch | 37,3 µs | 37,1 µs |
+| Asignaciones en el hilo de audio | 0 | 0 |
+| Forma de onda en Big Picture | se recalculaba al abrir cada canción | se calcula una vez al decodificar y se guarda en caché por canción |
+
+Lo que la JVM no mide y hay que probar en el móvil: la primera lectura de una zona de la canción que Android haya sacado de memoria puede tardar algún milisegundo (lectura de almacenamiento flash) y dar un microcorte al saltar muy lejos tras mucho rato.
