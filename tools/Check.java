@@ -1011,6 +1011,43 @@ public class Check {
             ok(detSame && sums[0] > 0, "determinismo: mismas órdenes, mismo audio muestra a muestra (suma " + sums[0] + ")");
         }
         {
+            // Seguimiento del dedo: a velocidad constante la lectura va a esa velocidad, sin retraso ni escalones,
+            // aunque los eventos táctiles (120 Hz) no coincidan con los bloques de audio.
+            ScratchEngine fe = new ScratchEngine();
+            fe.setOutputRate(48000);
+            fe.load(DemoTrack.generate());
+            fe.seekTo(0.5);
+            fe.touchDown();
+            short[] fb = new short[512];
+            double radPerEv = 1.0 / 120 / ScratchEngine.SECONDS_PER_REV * 2 * Math.PI; // dedo a 1×
+            double nextEv = 1.0 / 120;
+            double minR = 9, maxR = -9;
+            double fingerSec = 0;
+            for (int k = 0; k < 150; k++) {
+                double tb = k * 256 / 48000.0;
+                while (nextEv <= tb) {
+                    fe.rotateAt(radPerEv, (long) (nextEv * 1e9));
+                    fingerSec += 1.0 / 120;
+                    nextEv += 1.0 / 120;
+                }
+                fe.syncClock((long) (tb * 1e9));
+                fe.render(fb, 256);
+                if (k > 40) {
+                    minR = Math.min(minR, fe.getRate());
+                    maxR = Math.max(maxR, fe.getRate());
+                }
+            }
+            ok(minR > 0.93 && maxR < 1.07, "dedo a 1×: velocidad estable entre " + minR + " y " + maxR);
+            double ahead = fe.getPositionSeconds() - 0.5 - fingerSec;
+            ok(Math.abs(ahead) < 0.02, "dedo a 1×: sin retraso respecto al dedo (" + ahead * 1000 + " ms)");
+            for (int k = 0; k < 40; k++) {
+                fe.syncClock((long) ((150 + k) * 256 / 48000.0 * 1e9));
+                fe.render(fb, 256);
+            }
+            ok(Math.abs(fe.getPositionSeconds() - 0.5 - fingerSec) < 0.002 && energy(fb, 256) < 2.0,
+                    "dedo parado: acaba exactamente donde el dedo y en silencio");
+        }
+        {
             // Búfer adaptativo: empieza en dos bloques y solo crece con underruns, de bloque en bloque.
             dev.scratchwheel.BufferTuner bt = new dev.scratchwheel.BufferTuner(192, 1920, 0);
             ok(bt.frames() == 384 && Math.abs(bt.millis(48000) - 8.0) < 0.01, "búfer: empieza en dos ráfagas (8 ms)");

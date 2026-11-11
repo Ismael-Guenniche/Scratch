@@ -21,7 +21,9 @@ Así, mientras haces scratch la interfaz no puede retener el cerrojo y dejar esp
 
 ## Cómo suena el scratch
 Como un vinilo: el motor lee la pista a **velocidad variable** con **interpolación cúbica** (Catmull-Rom). Mientras el dedo está en la rueda, la posición de lectura *persigue* a una posición objetivo que mueve el dedo:
-- velocidad = distancia al objetivo / τ (τ = 20 ms), limitada a ±12×;
+- el motor estima la **velocidad del dedo** a partir de los eventos táctiles y su hora (`rotateAt`), con un filtro adaptativo: suave con el dedo lento, casi directo con el dedo rápido o ante un cambio brusco;
+- entre evento y evento el objetivo se **extrapola** con esa velocidad, así la lectura no va a escalones (zumbido) ni con retraso; la distancia que quede se corrige con τ = 20 ms; todo limitado a ±12×;
+- si dejan de llegar eventos (dedo parado), la velocidad estimada se apaga y la lectura acaba exactamente en el punto del dedo; si se había pasado, vuelve en silencio;
 - por eso el **tono sube y baja** con la velocidad, suena **al revés** si giras hacia atrás y se **calla** si paras;
 - una vuelta completa = 1,8 s de audio (33⅓ rpm); cambia con la sensibilidad (3,6 / 1,8 / 0,9 s).
 

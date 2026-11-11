@@ -1438,7 +1438,8 @@ final class Player {
     }
 
     void rotate(double radians) {
-        engine.rotate(radians);
+        // Con la hora del evento el motor estima la velocidad del dedo (ver ScratchEngine.rotateAt).
+        engine.rotateAt(radians, System.nanoTime());
     }
 
     void touchUp() {
@@ -1638,6 +1639,7 @@ final class Player {
         int errors = 0;
         try {
             while (true) {
+                engine.syncClock(System.nanoTime());
                 engine.render(buf, block);
                 WavRecorder wr = recorder;
                 if (wr != null) {

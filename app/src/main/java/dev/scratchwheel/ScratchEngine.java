@@ -829,7 +829,34 @@ public final class ScratchEngine {
         pubIdle = !playing && !scratching && seek == 0 && rate == 0 && echoOutLeft == 0 && !samplerActive();
     }
 
-    /** Aplica el giro acumulado por rotate() (con el cerrojo cogido). */
+    // ----- seguimiento del dedo: velocidad estimada de los eventos táctiles, con suavizado adaptativo
+    /** Reloj del motor en ns: el de fuera si se llama a syncClock(), o el tiempo de audio generado si no. */
+    private volatile long nowNanos;
+    private boolean extClock;
+    private volatile long lastRotNanos;
+    private long prevEvNanos = Long.MIN_VALUE;
+    /** Instante del último evento según un reloj regular (PLL): quita el temblor de la hora de llegada. */
+    private double evClock;
+    /** Periodo estimado entre eventos táctiles (s); se aprende solo (120 Hz ≈ 8,3 ms). */
+    private double evPeriod = 1.0 / 120;
+    /** Velocidad del dedo filtrada, en veces la velocidad normal. */
+    private double fingerVel;
+    /** Segundos desde el último evento táctil. */
+    private double evAge = 1.0;
+    private double lastMoveDir;
+    /** Ganancia (suavizada) que silencia la pequeña corrección de posición tras parar el dedo. */
+    private double settleGain = 1;
+
+    /**
+     * Sincroniza el reloj del motor con el del sistema (lo llama el hilo de audio antes de cada bloque) para
+     * que la edad de los eventos de rotateAt() sea exacta. Sin llamarlo, el motor usa su propio tiempo de audio.
+     */
+    public void syncClock(long nanos) {
+        extClock = true;
+        nowNanos = nanos;
+    }
+
+    /** Aplica el giro acumulado por rotate() (con el cerrojo cogido) y actualiza la velocidad del dedo. */
     private void applyRotation() {
         long bits = pendingRot.getAndSet(0L);
         if (bits == 0L) {
@@ -839,8 +866,55 @@ public final class ScratchEngine {
         if (!scratching) {
             return;
         }
-        scratchTarget += (invert ? -radians : radians) / (2 * Math.PI) * secPerRev * sampleRate;
+        double d = (invert ? -radians : radians) / (2 * Math.PI) * secPerRev * sampleRate;
+        scratchTarget += d;
         scratchTarget = Math.max(0, Math.min(Math.max(frames - 1, 0), scratchTarget));
+        long tEv = lastRotNanos;
+        double moved = d / sampleRate; // segundos de audio que ha movido el dedo
+        double tReal = tEv / 1e9;
+        if (prevEvNanos == Long.MIN_VALUE) {
+            // Primer evento del gesto: aún no hay intervalo; media velocidad para no dar un tirón.
+            fingerVel = 0.5 * moved / evPeriod;
+            evClock = tReal;
+        } else {
+            double dt = (tEv - prevEvNanos) / 1e9;
+            if (dt > 0.1) {
+                // El dedo estuvo quieto: empieza otro trazo.
+                fingerVel = 0.5 * moved / evPeriod;
+                evClock = tReal;
+            } else {
+                if (dt > 0.002 && dt < 0.04) {
+                    // Los eventos llegan a ritmo fijo (el de la pantalla): se aprende ese periodo y se usa en vez
+                    // del intervalo medido, que tiembla con la planificación de hilos.
+                    double k = Math.max(1, Math.rint(dt / evPeriod));
+                    if (k == 1) {
+                        evPeriod += 0.1 * (dt - evPeriod);
+                    }
+                    dt = k * evPeriod;
+                } else if (dt <= 0.002) {
+                    dt = evPeriod;
+                }
+                evClock += dt;
+                evClock += 0.1 * (tReal - evClock);
+                double vInst = moved / dt;
+                // Filtro adaptativo (tipo «1 €»): corte bajo con el dedo lento (quita el temblor), alto con el
+                // dedo rápido (no añade retraso), y casi directo ante un cambio brusco.
+                double fc = 1.5 + 4.0 * (Math.abs(vInst) + Math.abs(fingerVel));
+                double a = 1 - Math.exp(-2 * Math.PI * fc * dt);
+                if (Math.abs(vInst - fingerVel) > 0.5 + 0.5 * Math.abs(fingerVel)) {
+                    a = Math.max(a, 0.7);
+                }
+                fingerVel += a * (vInst - fingerVel);
+            }
+        }
+        if (fingerVel > MAX_RATE) {
+            fingerVel = MAX_RATE;
+        } else if (fingerVel < -MAX_RATE) {
+            fingerVel = -MAX_RATE;
+        }
+        prevEvNanos = tEv;
+        lastMoveDir = Math.signum(d);
+        evAge = Math.max(0, Math.min(0.05, nowNanos / 1e9 - evClock));
     }
 
     public synchronized void load(PcmData pcm) {
@@ -1052,6 +1126,10 @@ public final class ScratchEngine {
 
     public synchronized void touchDown() {
         pendingRot.set(0L);
+        fingerVel = 0;
+        prevEvNanos = Long.MIN_VALUE;
+        evAge = 1.0;
+        lastMoveDir = 0;
         freeSpin = false;
         slipBegin(false);
         scratching = true;
@@ -1059,11 +1137,20 @@ public final class ScratchEngine {
         publish();
     }
 
-    /** Giro de la rueda. No coge el cerrojo: se acumula y el hilo de audio lo aplica al empezar el bloque. */
+    /** Giro de la rueda sin marca de tiempo: cuenta como ocurrido «ahora» en el reloj del motor. */
     public void rotate(double radians) {
+        rotateAt(radians, nowNanos);
+    }
+
+    /**
+     * Giro de la rueda ocurrido en {@code nanos} (System.nanoTime() si se usa syncClock()). No coge el cerrojo:
+     * se acumula y el hilo de audio lo aplica al empezar el bloque.
+     */
+    public void rotateAt(double radians, long nanos) {
         if (!pubScratching || radians == 0) {
             return;
         }
+        lastRotNanos = nanos;
         while (true) {
             long old = pendingRot.get();
             long upd = Double.doubleToRawLongBits(Double.longBitsToDouble(old) + radians);
@@ -1106,7 +1193,10 @@ public final class ScratchEngine {
     public synchronized void render(short[] out, int n) {
         applyRotation();
         double ratio = (double) sampleRate / outRate;
-        double tau = 0.02 * sampleRate;
+        final double dtOut = 1.0 / outRate;
+        // Hasta cuándo se extrapola sin eventos nuevos: un periodo táctil más lo que tarda un bloque en verlos.
+        final double capT = Math.min(1.1 * evPeriod + n * dtOut + 0.002, 0.04);
+        final double velDecay = dtOut / 0.015;
         final double aScale = 44100.0 / outRate;
         int last = Math.max(frames - 1, 0);
         final double spinUpAlpha = 1.0 / (SPIN_UP * outRate);
@@ -1114,8 +1204,32 @@ public final class ScratchEngine {
         for (int i = 0; i < n; i++) {
             double target;
             double alpha;
+            boolean settling = false;
             if (scratching) {
-                target = (scratchTarget - pos) / tau;
+                // El objetivo se extrapola con la velocidad del dedo entre evento y evento (como mucho algo más
+                // de un periodo), así la lectura no va a escalones ni con retraso; si no llegan eventos, se queda.
+                double ex = evAge < capT ? evAge : capT;
+                double tgt = scratchTarget + fingerVel * ex * sampleRate;
+                if (tgt < 0) {
+                    tgt = 0;
+                } else if (tgt > last) {
+                    tgt = last;
+                }
+                target = fingerVel + (tgt - pos) / (0.02 * sampleRate);
+                if (evAge > capT) {
+                    // Dedo parado: la velocidad estimada se apaga y se llega al punto exacto del dedo; si la
+                    // extrapolación se pasó un poco, se vuelve en silencio (con el dedo quieto no debe sonar nada).
+                    fingerVel -= fingerVel * velDecay;
+                    if (target * lastMoveDir < 0) {
+                        settling = true;
+                        if (target > 1.5) {
+                            target = 1.5;
+                        } else if (target < -1.5) {
+                            target = -1.5;
+                        }
+                    }
+                }
+                evAge += dtOut;
                 if (target > MAX_RATE) {
                     target = MAX_RATE;
                 } else if (target < -MAX_RATE) {
@@ -1200,7 +1314,6 @@ public final class ScratchEngine {
                     xFor = null;
                 }
                 ratio = (double) sampleRate / outRate;
-                tau = 0.02 * sampleRate;
                 last = Math.max(frames - 1, 0);
             } else if (pos > last) {
                 pos = last;
@@ -1216,7 +1329,14 @@ public final class ScratchEngine {
             double vl = 0;
             double vr = 0;
             if (frames > 0) {
-                double g = Math.min(1.0, Math.abs(rate) * 8.0) * volume * trackGain;
+                double sg = settling ? 0.0 : 1.0;
+                if (sg != settleGain) {
+                    settleGain += (sg - settleGain) * cutAlpha;
+                    if (Math.abs(sg - settleGain) < 1e-4) {
+                        settleGain = sg;
+                    }
+                }
+                double g = Math.min(1.0, Math.abs(rate) * 8.0) * volume * trackGain * settleGain;
                 if (keyLock) {
                     double[] s = grains(ratio, last);
                     vl = s[0] * g;
@@ -1299,6 +1419,9 @@ public final class ScratchEngine {
             }
             out[2 * i] = clip(vl);
             out[2 * i + 1] = clip(vr);
+        }
+        if (!extClock) {
+            nowNanos += (long) (n * 1e9 / outRate);
         }
         double lv = Math.min(1.0, levelAcc / 24000.0);
         level = Math.max(lv, level * 0.8);

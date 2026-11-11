@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.56: Audio T5: el scratch sigue la velocidad real del dedo (filtro adaptativo y predicción entre eventos táctiles) en vez de perseguir la posición con retraso fijo: sin retraso apreciable, menos zumbido y arranques y paradas 3–4 veces más rápidos.
 - 0.55: Audio T4: el bloque de audio es la ráfaga nativa del móvil y el búfer del AudioTrack empieza en dos bloques y solo crece si hay underruns (menos latencia). Diagnóstico en logcat con la etiqueta ScratchAudio.
 - 0.54: Audio T3: la rueda y las consultas de la interfaz ya no cogen el cerrojo del motor, así que la interfaz no puede dejar esperando al hilo de audio. Mismo sonido bit a bit; esperas del audio por el cerrojo de hasta 11,7 ms a 0,02 ms en la prueba de estrés.
 - 0.53: Audio T2: el hilo de audio ya no crea objetos (sampler y grabación), ventana Hann del keylock en tabla y filtros que solo recalculan lo que cambia. Mismo sonido bit a bit; keylock un 30 % más barato.
