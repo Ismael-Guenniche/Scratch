@@ -1011,6 +1011,62 @@ public class Check {
             ok(detSame && sums[0] > 0, "determinismo: mismas órdenes, mismo audio muestra a muestra (suma " + sums[0] + ")");
         }
         {
+            // Corte sin clics y gestos típicos: transformer (corte rítmico) y baby scratch (vaivén).
+            PcmData.Builder cb = new PcmData.Builder(48000 * 6);
+            PcmData.Builder sb2 = new PcmData.Builder(48000 * 6);
+            for (int i = 0; i < 48000 * 6; i++) {
+                cb.append((short) 12000, (short) 12000);
+                short v = (short) Math.round(12000 * Math.sin(2 * Math.PI * 440.0 * i / 48000));
+                sb2.append(v, v);
+            }
+            ScratchEngine ce = new ScratchEngine();
+            ce.setOutputRate(48000);
+            ce.load(cb.build(48000));
+            ce.setPlaying(true);
+            short[] cbuf = new short[512];
+            for (int k = 0; k < 200; k++) {
+                ce.render(cbuf, 256);
+            }
+            int cprev = cbuf[510], cmaxStep = 0, cmin = 99999, cmax = 0, toSilence = -1;
+            for (int k = 0; k < 400; k++) {
+                if (k % 20 == 0) {
+                    ce.setCut((k / 20) % 2 == 0);
+                }
+                ce.render(cbuf, 256);
+                for (int i = 0; i < 256; i++) {
+                    int v = cbuf[2 * i];
+                    cmaxStep = Math.max(cmaxStep, Math.abs(v - cprev));
+                    cprev = v;
+                    cmin = Math.min(cmin, v);
+                    cmax = Math.max(cmax, v);
+                    if (k == 0 && toSilence < 0 && v <= 120) {
+                        toSilence = i;
+                    }
+                }
+            }
+            ok(cmaxStep < 400, "transformer: sin clics (salto máximo " + cmaxStep + " de 12000)");
+            ok(cmin == 0 && cmax >= 11990, "transformer: cierra del todo y abre del todo (" + cmin + " / " + cmax + ")");
+            ok(toSilence > 0 && toSilence < 120, "corte: silencio en " + toSilence * 1000.0 / 48000 + " ms");
+            ce.setCut(false);
+            ce.load(sb2.build(48000));
+            ce.seekTo(3);
+            ce.touchDown();
+            int bprev = 0, bmaxStep = 0;
+            long benergy = 0;
+            for (int k = 0; k < 400; k++) {
+                ce.rotate(0.06 * Math.sin(2 * Math.PI * 3 * k * 256 / 48000.0));
+                ce.render(cbuf, 256);
+                for (int i = 0; i < 256; i++) {
+                    int v = cbuf[2 * i];
+                    bmaxStep = Math.max(bmaxStep, Math.abs(v - bprev));
+                    bprev = v;
+                    benergy += Math.abs(v);
+                }
+            }
+            ok(bmaxStep < 3600 && benergy / (400 * 256) > 1500, "baby scratch: suena (media " + benergy / (400 * 256)
+                    + ") y sin saltos (máx " + bmaxStep + ")");
+        }
+        {
             // Plato: el motor arranca en rampa recta, el slipmat engancha el disco rápido al soltarlo y el dedo
             // no lo para en seco.
             ScratchEngine pe2 = new ScratchEngine();

@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.59: Audio T8: el corte (cut / transformer / gate) abre y cierra en 2 ms con una rampa en S: cinco veces más rápido que antes y con menos clic. Además desaparece el clic que sonaba en cada cambio de sentido del baby scratch.
 - 0.58: Audio T7: física del plato más real: el motor arranca en rampa recta, al soltar el disco con la música sonando el slipmat lo engancha en unos 60 ms (antes tardaba casi medio segundo) y al tocarlo frena con la inercia de un vinilo en vez de parar en seco.
 - 0.57: Audio T6: la pista se lee con un filtro sinc (antes interpolación cúbica): agudos mucho más limpios a cualquier velocidad y sin aliasing en el scratch rápido (hasta 4×). En silencio el motor ya no calcula nada.
 - 0.56: Audio T5: el scratch sigue la velocidad real del dedo (filtro adaptativo y predicción entre eventos táctiles) en vez de perseguir la posición con retraso fijo: sin retraso apreciable, menos zumbido y arranques y paradas 3–4 veces más rápidos.

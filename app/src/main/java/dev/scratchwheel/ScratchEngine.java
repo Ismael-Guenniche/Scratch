@@ -113,6 +113,10 @@ public final class ScratchEngine {
     private double gateHz;
     private double gatePhase;
     private double cutGain = 1;
+    private double cutPhase = 1;
+    private double velGain;
+    /** Duración total de la rampa del corte (s). */
+    private static final double CUT_TIME = 0.002;
     private boolean flanger;
     private boolean phaser;
     private double lfoPh;
@@ -1221,6 +1225,8 @@ public final class ScratchEngine {
         final double motorLand = dtOut / MOTOR_LAND;
         final double slipStep = dtOut / SLIP_CATCH;
         final double gripAlpha = dtOut / GRIP_TAU;
+        final double cutStep = dtOut / CUT_TIME;
+        final double velGainAlpha = Math.min(1.0, dtOut / 0.0015);
         final double cutAlpha = Math.min(1.0, 1.0 / (0.002 * outRate));
         for (int i = 0; i < n; i++) {
             double target;
@@ -1389,7 +1395,17 @@ public final class ScratchEngine {
                         settleGain = sg;
                     }
                 }
-                double g = Math.min(1.0, Math.abs(rate) * 8.0) * volume * trackGain * settleGain;
+                // El volumen cae a cero al parar el disco; se suaviza (~1,5 ms) para que un cambio de sentido
+                // rápido no meta un clic de amplitud.
+                double gv = (rate < 0 ? -rate : rate) * 8.0;
+                if (gv > 1.0) {
+                    gv = 1.0;
+                }
+                velGain += (gv - velGain) * velGainAlpha;
+                if (gv == 0 && velGain < 1e-5) {
+                    velGain = 0;
+                }
+                double g = velGain * volume * trackGain * settleGain;
                 if (keyLock) {
                     double[] s = grains(ratio, last);
                     vl = s[0] * g;
@@ -1449,11 +1465,22 @@ public final class ScratchEngine {
                     gt = 0;
                 }
             }
-            if (gt != cutGain) {
-                cutGain += (gt - cutGain) * cutAlpha;
-                if (Math.abs(gt - cutGain) < 1e-4) {
-                    cutGain = gt;
+            if (gt != cutPhase) {
+                // Rampa de duración fija con forma de S (derivadas continuas): flancos rápidos y sin clic,
+                // como un crossfader de corte seco movido con la mano.
+                if (cutPhase < gt) {
+                    cutPhase += cutStep;
+                    if (cutPhase > 1) {
+                        cutPhase = 1;
+                    }
+                } else {
+                    cutPhase -= cutStep;
+                    if (cutPhase < 0) {
+                        cutPhase = 0;
+                    }
                 }
+                double p = cutPhase;
+                cutGain = p * p * p * (p * (6 * p - 15) + 10);
             }
             vl *= cutGain;
             vr *= cutGain;
