@@ -314,7 +314,7 @@ public class LyricsActivity extends Activity {
         if (synced.isEmpty() || lineViews.size() != synced.size()) {
             return;
         }
-        long ms = (long) (Player.I.engine.getPositionSeconds() * 1000);
+        long ms = (long) (Player.I.engine.getHeardSeconds() * 1000);
         int a = LyricsReader.lineAt(synced, ms);
         if (a == active) {
             return;

@@ -1639,7 +1639,7 @@ public class ScratchActivity extends Activity {
                 String dots = BEATS[0];
                 if (bpm > 0) {
                     double per = 60.0 / bpm;
-                    int bi = (int) Math.floor((e.getPositionSeconds() - Player.I.beatOffset()) / per);
+                    int bi = (int) Math.floor((e.getHeardSeconds() - Player.I.beatOffset()) / per);
                     dots = BEATS[((bi % 4) + 4) % 4];
                 }
                 if (beatText != null && !dots.contentEquals(beatText.getText())) {
@@ -1650,7 +1650,8 @@ public class ScratchActivity extends Activity {
                 }
             }
         }
-        double pos = e.getPositionSeconds();
+        // lo que se está oyendo (posición del motor menos la latencia de salida): rueda, barra y tiempo
+        double pos = e.getHeardSeconds();
         wheel.setAngle((float) (pos / Player.I.engine.getSecondsPerRev() * 2 * Math.PI * (Player.I.engine.isInverted() ? -1 : 1)));
         double total = e.getDurationSeconds();
         if (!dragging && total > 0) {
