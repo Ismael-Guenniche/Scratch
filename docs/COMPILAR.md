@@ -13,6 +13,14 @@ Por línea de comandos: `./gradlew assemblePersonalDebug` (o `assemblePlayDebug`
 
 > La versión de la app está en `app/build.gradle` (`versionCode` / `versionName`); súbela en cada entrega para distinguir builds.
 
+## Todo de una vez (sin Android SDK)
+```bash
+tools/run-all.sh            # tests + regresión de rendimiento
+tools/run-all.sh baseline   # guarda una línea base de rendimiento nueva (tras una optimización o un cambio aceptado)
+tools/run-all.sh full       # además, todos los benchmarks de docs/BENCHMARKS.md
+```
+Solo necesita un JDK (y `ffmpeg` para el test de MP3; si falta, se salta). En Windows funciona desde Git Bash. Compila las clases que no dependen de Android con un sustituto de `Tr` (`tools/stubs`), ejecuta `Check`, `CheckXfade` y `CheckLists`, y compara el coste por bloque de cada escenario con `tools/bench-baseline.txt`: si alguno sube más de un 30 %, falla. Los costes se expresan divididos por una carga de referencia medida en el momento, así la comparación vale en cualquier máquina.
+
 ## Tests del motor, sin Android
 Los tests usan solo `android.jar` para compilar (no se ejecuta Android):
 

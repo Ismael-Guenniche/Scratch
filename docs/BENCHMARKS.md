@@ -251,3 +251,7 @@ Prueba objetiva en `tools/BenchQuality.java`: se reproduce un tono puro con keyl
 | Coste con keylock, media / p99 | 13 µs / 25 µs | 27 µs / 93 µs |
 
 El coste sube porque cada 25 ms se busca el mejor punto de enganche (búsqueda gruesa y ajuste fino); sigue por debajo del 2 % del plazo en el peor bloque. Sin keylock no cambia nada.
+
+## T18 · Regresión de rendimiento automática (v0.61)
+
+`tools/run-all.sh` ejecuta todos los tests y `Bench regress`: el coste p50 por bloque de cada escenario, dividido por una carga de referencia medida en la misma pasada (para que no dependa de la máquina), se compara con `tools/bench-baseline.txt`. Falla si un escenario sube más del 30 % (el ruido entre pasadas en la máquina de pruebas llega al 15 %). Tras un cambio de coste aceptado (como el sinc de T6) se regenera con `tools/run-all.sh baseline`.
