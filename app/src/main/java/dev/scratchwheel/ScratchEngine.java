@@ -1500,6 +1500,8 @@ public final class ScratchEngine {
                 vl = tmp[0];
                 vr = tmp[1];
             }
+            // limitador suave solo cuando algo se suma a la pista; la reproducción normal queda intacta
+            boolean soft = fxActive || xActive || svOn[0] || svOn[1] || svOn[2] || svOn[3];
             // corte (transformer) y trans/gate: ganancia suavizada para que no haya clics
             double gt = cut ? 0 : 1;
             if (gateHz > 0) {
@@ -1538,6 +1540,16 @@ public final class ScratchEngine {
             double pk = Math.max(Math.abs(vl), Math.abs(vr));
             if (pk > levelAcc) {
                 levelAcc = pk;
+            }
+            if (soft) {
+                // Con efectos, sampler o fundido la suma puede pasarse del máximo: en vez de recortar en seco
+                // (muy áspero) se redondea la cresta. Por debajo del umbral no toca nada.
+                if (vl > SOFT_KNEE || vl < -SOFT_KNEE) {
+                    vl = softClip(vl);
+                }
+                if (vr > SOFT_KNEE || vr < -SOFT_KNEE) {
+                    vr = softClip(vr);
+                }
             }
             out[2 * i] = clip(vl);
             out[2 * i + 1] = clip(vr);
@@ -1799,6 +1811,15 @@ public final class ScratchEngine {
         }
         sOut[0] = l / ws;
         sOut[1] = r / ws;
+    }
+
+    /** Umbral del limitador suave (−2,7 dB): solo actúa por encima. */
+    private static final double SOFT_KNEE = 24000;
+
+    private static double softClip(double v) {
+        double room = 32767 - SOFT_KNEE;
+        return v > 0 ? SOFT_KNEE + room * Math.tanh((v - SOFT_KNEE) / room)
+                : -SOFT_KNEE - room * Math.tanh((-v - SOFT_KNEE) / room);
     }
 
     private static short clip(double v) {

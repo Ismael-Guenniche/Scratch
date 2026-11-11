@@ -1011,6 +1011,39 @@ public class Check {
             ok(detSame && sums[0] > 0, "determinismo: mismas órdenes, mismo audio muestra a muestra (suma " + sums[0] + ")");
         }
         {
+            // Limitador suave: si los efectos suben la señal por encima del máximo, la cresta se redondea en vez
+            // de quedar plana; sin efectos la señal no se toca.
+            PcmData.Builder lb2 = new PcmData.Builder(48000 * 4);
+            for (int i = 0; i < 48000 * 4; i++) {
+                short v = (short) Math.round(26000 * Math.sin(2 * Math.PI * 440.0 * i / 48000));
+                lb2.append(v, v);
+            }
+            ScratchEngine lm = new ScratchEngine();
+            lm.setOutputRate(48000);
+            lm.load(lb2.build(48000));
+            lm.setPlaying(true);
+            short[] lmb = new short[512];
+            int cleanPeak = 0;
+            for (int k = 0; k < 300; k++) {
+                lm.render(lmb, 256);
+                for (int i = 0; k > 150 && i < 512; i++) {
+                    cleanPeak = Math.max(cleanPeak, Math.abs(lmb[i]));
+                }
+            }
+            lm.setEq(1.6, 1.6, 1.6);
+            int flat = 0, hotPeak = 0;
+            for (int k = 0; k < 200; k++) {
+                lm.render(lmb, 256);
+                for (int i = 0; k > 50 && i < 512; i++) {
+                    hotPeak = Math.max(hotPeak, Math.abs(lmb[i]));
+                    flat += Math.abs(lmb[i]) >= 32767 ? 1 : 0;
+                }
+            }
+            ok(cleanPeak >= 25900 && cleanPeak <= 26100, "limitador: sin efectos la señal no se toca (pico " + cleanPeak + ")");
+            ok(flat == 0 && hotPeak > 28000 && hotPeak < 32767, "limitador: con ×1,6 la cresta se redondea (pico " + hotPeak
+                    + ", muestras recortadas " + flat + ")");
+        }
+        {
             // Sonido de vinilo: ruido de surco muy bajo solo con el disco girando, y la oscilación del tono no
             // desplaza la posición.
             PcmData.Builder vb2 = new PcmData.Builder(48000 * 14);

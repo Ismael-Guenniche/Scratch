@@ -174,5 +174,48 @@ public class BenchQuality {
         System.out.println("| 12 kHz a 3× (36 kHz → se pliega a 12 kHz) | " + f(rmsDb(play(12000, 3.0))) + " |");
         System.out.println("| 10 kHz a 4× (40 kHz → se pliega a 8 kHz) | " + f(rmsDb(play(10000, 4.0))) + " |");
         keylockTable();
+        // Saturación: tono de 440 Hz fuerte con los graves/medios/agudos del modo DJ al máximo (×1,6).
+        ScratchEngine se = new ScratchEngine();
+        se.setOutputRate(OUT);
+        PcmData.Builder ob = new PcmData.Builder(SRC * 6);
+        for (int i = 0; i < SRC * 6; i++) {
+            short v = (short) Math.round(26000 * Math.sin(2 * Math.PI * 440.0 * i / SRC));
+            ob.append(v, v);
+        }
+        se.load(ob.build(SRC));
+        se.setEq(1.6, 1.6, 1.6);
+        se.setPlaying(true);
+        short[] sbuf = new short[512];
+        for (int k = 0; k < 3 * OUT / 256; k++) {
+            se.render(sbuf, 256);
+        }
+        double[] sx = new double[OUT / 256 * 256];
+        for (int k = 0; k < sx.length / 256; k++) {
+            se.render(sbuf, 256);
+            for (int i = 0; i < 256; i++) {
+                sx[k * 256 + i] = sbuf[2 * i];
+            }
+        }
+        // armónicos altos (por encima de 5 kHz) que mete el recorte: pasa-altos simple de 2.º orden dos veces
+        double w = 2 * Math.PI * 5000 / OUT, cs = Math.cos(w), al = Math.sin(w) / 1.4142, a0 = 1 + al;
+        double b0 = (1 + cs) / 2 / a0, b1 = -(1 + cs) / a0, a1 = -2 * cs / a0, a2 = (1 - al) / a0;
+        double[] y = sx.clone();
+        for (int pass = 0; pass < 2; pass++) {
+            double z1 = 0, z2 = 0;
+            for (int i = 0; i < y.length; i++) {
+                double in = y[i], o = b0 * in + z1;
+                z1 = b1 * in - a1 * o + z2;
+                z2 = b0 * in - a2 * o;
+                y[i] = o;
+            }
+        }
+        double hs = 0, ts = 0;
+        for (int i = 4000; i < y.length; i++) {
+            hs += y[i] * y[i];
+            ts += sx[i] * sx[i];
+        }
+        System.out.println();
+        System.out.println("Saturación (440 Hz fuerte × 1,6 con el EQ del modo DJ): armónicos por encima de 5 kHz a "
+                + f(10 * Math.log10(hs / ts)) + " dB de la señal");
     }
 }
