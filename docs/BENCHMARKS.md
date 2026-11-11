@@ -173,3 +173,23 @@ Herramienta nueva: `tools/BenchFeel.java` simula una pantalla táctil de 120 Hz 
 | Coste de `render()` en scratch | media | 9,4 µs | 11,0 µs |
 
 Contrapartida: al predecir la posición del dedo entre eventos, en una parada perfectamente brusca la lectura se pasa un poco y vuelve al punto exacto en silencio. Con un dedo real, que frena en varios eventos, el exceso es mucho menor. A 0,25× el rizado no mejora: ahí manda el ruido de posición del táctil simulado.
+
+## T6 · Interpolación y antialiasing (v0.57)
+
+Herramienta nueva: `tools/BenchQuality.java` reproduce tonos puros (pista a 44,1 kHz, salida a 48 kHz) y mide la relación señal/ruido y cuánto se cuela un tono que, por la velocidad, queda por encima de lo audible.
+
+| Prueba | Antes (cúbica, 0.56) | Después (sinc, 0.57) |
+|---|---:|---:|
+| Tono de 1 kHz, señal/ruido | 85,6 dB | 87,4 dB |
+| Tono de 5 kHz, señal/ruido | 46,5 dB | 85,5 dB |
+| Tono de 10 kHz, señal/ruido | 26,4 dB | 84,4 dB |
+| Tono de 15 kHz, señal/ruido (ganancia) | 13,8 dB (−1,7 dB) | 51,5 dB (−0,6 dB) |
+| Tono de 18 kHz, señal/ruido (ganancia) | 7,6 dB (−3,1 dB) | 24,5 dB (−2,6 dB) |
+| Aliasing, 14 kHz a 2× | −1,2 dB | −19,2 dB |
+| Aliasing, 12 kHz a 3× | −0,7 dB | −66,0 dB |
+| Aliasing, 10 kHz a 4× | −0,4 dB | −75,2 dB |
+| Coste: reproducción normal | 7,7 µs (0,14 %) | 14,6 µs (0,27 %) |
+| Coste: scratch | 11,0 µs (0,21 %) | 39,4 µs (0,74 %) |
+| Coste: parado | 6,8 µs | 0,31 µs |
+
+El sonido cambia (las huellas CRC ya no coinciden con las de T1–T5, como se esperaba). El coste sube, pero sigue por debajo del 1 % del plazo; la primera versión del filtro costaba 243 µs en scratch y se optimizó hasta 39 µs (coeficientes por fase a velocidad normal y núcleo corto en lectura rápida). Por encima de 4× el filtro deja de estrecharse: a esas velocidades queda algo de aliasing.
