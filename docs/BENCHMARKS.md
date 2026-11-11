@@ -135,3 +135,23 @@ Medida nueva en `Bench`: 4 hilos de interfaz llamando sin pausa a la rueda y a l
 | `rotate()` | 14 ns con cerrojo | 7 ns sin cerrojo |
 | `snap()` | 63 ns con cerrojo | 26 ns sin cerrojo |
 | Coste de `render()` (scratch / modo DJ) | 9,35 / 36,3 µs | 9,42 / 37,6 µs (igual, dentro del ruido) |
+
+## T4 · Búfer del AudioTrack adaptativo (v0.55)
+
+La latencia real solo se puede medir en el móvil; en la JVM se prueba la lógica (`BufferTuner`, tests en `Check.java`) y se calcula lo teórico. El motor no cambia (huellas CRC idénticas).
+
+| Medida | Antes (0.54) | Después (0.55) |
+|---|---|---|
+| Bloque de render | 256 frames fijos | la ráfaga nativa del móvil (`PROPERTY_OUTPUT_FRAMES_PER_BUFFER`) si está entre 64 y 512; si no, 256 |
+| Búfer efectivo | `getMinBufferSize()` entero, fijo | 2 bloques al empezar (8 ms con ráfaga de 192 a 48 kHz) |
+| Ante underruns | nada (ni se contaban) | crece 1, 2, 4, 8 bloques (con 0,5 s de calma entre subidas) hasta la capacidad |
+| Al despertar el hilo | — | reutiliza el tamaño aprendido (se olvida si cambia la salida de audio) |
+| Si Android no da la ruta rápida | — | búfer entero, como antes |
+
+Para ver los números reales en el Nothing Phone (4a):
+
+```bash
+adb logcat -s ScratchAudio
+```
+
+Sale una línea al arrancar el audio (frecuencia, ráfaga, bloque, capacidad, ruta rápida o normal, búfer en frames y ms) y otra cada vez que el búfer crece por underruns.
