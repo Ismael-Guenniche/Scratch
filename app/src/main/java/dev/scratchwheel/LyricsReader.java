@@ -39,6 +39,8 @@ final class LyricsReader {
         String plain;
         /** Letra con tiempos, ordenada (vacía si no hay). */
         List<Line> synced = new ArrayList<Line>();
+        /** ReplayGain de pista en dB (NaN si el archivo no lo trae). */
+        double gainDb = Double.NaN;
 
         boolean isEmpty() {
             return (plain == null || plain.trim().length() == 0) && synced.isEmpty();
@@ -198,7 +200,9 @@ final class LyricsReader {
             }
             boolean usable = ver == 2 || (ver == 3 ? (fl & 0x00C0) == 0 : (fl & 0x000C) == 0); // sin compresión ni cifrado
             if (usable) {
-                if (id.equals("USLT") || id.equals("ULT")) {
+                if (id.equals("TXXX") || id.equals("TXX")) {
+                    parseTxxx(data, r);
+                } else if (id.equals("USLT") || id.equals("ULT")) {
                     String t = parseUslt(data);
                     if (t != null && (r.plain == null || t.length() > r.plain.length())) {
                         r.plain = t;
@@ -211,6 +215,35 @@ final class LyricsReader {
                 }
             }
             p = body + size;
+        }
+    }
+
+    private static void parseTxxx(byte[] d, Result r) {
+        if (d.length < 3) {
+            return;
+        }
+        int enc = d[0] & 0xFF;
+        int term = findTerm(d, 1, enc);
+        if (term < 0) {
+            return;
+        }
+        String desc = decode(d, 1, term, enc).trim().toUpperCase(java.util.Locale.ROOT);
+        if (desc.equals("REPLAYGAIN_TRACK_GAIN")) {
+            double g = parseDb(decode(d, term + termLen(enc), d.length, enc));
+            if (!Double.isNaN(g)) {
+                r.gainDb = g;
+            }
+        }
+    }
+
+    /** "-6.50 dB" -> -6.5; NaN si no se entiende. */
+    static double parseDb(String s) {
+        String t = s.trim().toLowerCase(java.util.Locale.ROOT).replace("db", "").replace(',', '.').trim();
+        try {
+            double v = Double.parseDouble(t);
+            return v > -60 && v < 60 ? v : Double.NaN;
+        } catch (NumberFormatException e) {
+            return Double.NaN;
         }
     }
 
@@ -380,6 +413,13 @@ final class LyricsReader {
             String k = kv.substring(0, eq).toUpperCase(java.util.Locale.ROOT);
             String v = kv.substring(eq + 1).replace("\r\n", "\n").replace('\r', '\n');
             if (v.trim().length() == 0) {
+                continue;
+            }
+            if (k.equals("REPLAYGAIN_TRACK_GAIN")) {
+                double g = parseDb(v);
+                if (!Double.isNaN(g)) {
+                    r.gainDb = g;
+                }
                 continue;
             }
             if (k.equals("LYRICS") || k.equals("UNSYNCEDLYRICS") || k.equals("UNSYNCED LYRICS")

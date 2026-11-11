@@ -507,6 +507,7 @@ final class Player {
             outRate = 48000;
         }
         engine.setOutputRate(outRate);
+        applyCrossfade();
         engine.setPitch(prefs.getFloat("pitch", 1f));
         applyWheelPrefs();
         PowerManager pm = (PowerManager) app.getSystemService(Context.POWER_SERVICE);
@@ -685,12 +686,40 @@ final class Player {
         truncated = pcm.truncated;
         startListen(t.uri);
         loadCoverAsync(++loadGen);
+        applyReplayGain(t.uri);
         analyzeBpm(t.uri, pcm);
         savePos();
         updateSession();
         syncService();
         changed();
         refillCache();
+    }
+
+    void applyCrossfade() {
+        engine.setCrossfade(prefs == null ? 0 : prefs.getInt("crossfade", 0));
+    }
+
+    /** ReplayGain (si está activado en Ajustes): solo baja las pistas fuertes, nunca sube, para no saturar. */
+    void applyReplayGain(final Uri u) {
+        if (prefs == null || !prefs.getBoolean("replaygain", false)) {
+            engine.setTrackGain(1f);
+            return;
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                double g = LyricsStore.gainDb(app, u);
+                final float lin = Double.isNaN(g) ? 1f : (float) Math.pow(10, Math.min(0, g) / 20.0);
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (u.equals(currentUri)) {
+                            engine.setTrackGain(lin);
+                        }
+                    }
+                });
+            }
+        }, "rgain").start();
     }
 
     private void toast(String msg) {
@@ -979,6 +1008,7 @@ final class Player {
             truncated = pcm.truncated;
         }
         loadCoverAsync(gen);
+        applyReplayGain(currentUri);
         if (playWhenReady) {
             playWhenReady = false;
             play();

@@ -48,6 +48,12 @@ public final class ScratchEngine {
     private double scratchTarget;
     private double seek;
     private float volume = 1f;
+    private float trackGain = 1f;
+    /** Fundido cruzado entre canciones (segundos, 0 = apagado). */
+    private double xfadeSecs;
+    private boolean xActive;
+    private double xPos;
+    private PcmData xFor;
     private double pitch = 1.0;
     private boolean scratching;
     private boolean playing;
@@ -780,6 +786,15 @@ public final class ScratchEngine {
         return sampleRate;
     }
 
+    public synchronized void setCrossfade(double secs) {
+        xfadeSecs = Math.max(0, Math.min(12, secs));
+    }
+
+    /** Ganancia por pista (ReplayGain), aparte del volumen de fundidos y temporizador. */
+    public synchronized void setTrackGain(float g) {
+        trackGain = Math.max(0.05f, Math.min(1f, g));
+    }
+
     public synchronized void setVolume(float v) {
         volume = Math.max(0f, Math.min(1f, v));
     }
@@ -1006,6 +1021,11 @@ public final class ScratchEngine {
                 rate = 0;
             } else if (pos > last && playing && !scratching && nextPcm != null && !reverse) {
                 swapToNext();
+                if (xActive) {
+                    pos = Math.max(0, Math.min(xPos, frames - 1));
+                    xActive = false;
+                    xFor = null;
+                }
                 ratio = (double) sampleRate / outRate;
                 tau = 0.02 * sampleRate;
                 last = Math.max(frames - 1, 0);
@@ -1023,7 +1043,7 @@ public final class ScratchEngine {
             double vl = 0;
             double vr = 0;
             if (frames > 0) {
-                double g = Math.min(1.0, Math.abs(rate) * 8.0) * volume;
+                double g = Math.min(1.0, Math.abs(rate) * 8.0) * volume * trackGain;
                 if (keyLock) {
                     double[] s = grains(ratio, last);
                     vl = s[0] * g;
@@ -1038,6 +1058,36 @@ public final class ScratchEngine {
                     vr = cubic(data[2 * im + 1], data[2 * i0 + 1], data[2 * ip + 1],
                             data[2 * ip2 + 1], f) * g;
                 }
+            }
+            if (xfadeSecs > 0 && nextPcm != null && playing && !scratching && !reverse && !partial && !loopOn
+                    && rate > 0.3 && frames > 0) {
+                double xf = xfadeSecs * sampleRate;
+                double remain = last - pos;
+                if (remain < xf) {
+                    PcmData np = nextPcm;
+                    if (xFor != np) {
+                        xFor = np;
+                        xPos = 0;
+                    }
+                    short[] nd = np.stereo;
+                    int nl = Math.max(np.frames - 1, 0);
+                    xPos = Math.min(nl, xPos + rate * ((double) np.sampleRate / outRate));
+                    int j = (int) xPos;
+                    int j2 = Math.min(j + 1, nl);
+                    double fr = xPos - j;
+                    double f = Math.max(0, Math.min(1, 1 - remain / xf));
+                    double gc = Math.cos(f * Math.PI / 2);
+                    double gn = Math.sin(f * Math.PI / 2) * volume;
+                    vl = vl * gc + (nd[2 * j] + (nd[2 * j2] - nd[2 * j]) * fr) * gn;
+                    vr = vr * gc + (nd[2 * j + 1] + (nd[2 * j2 + 1] - nd[2 * j + 1]) * fr) * gn;
+                    xActive = true;
+                } else {
+                    xActive = false;
+                    xFor = null;
+                }
+            } else if (xActive) {
+                xActive = false;
+                xFor = null;
             }
             if (fxActive) {
                 tmp[0] = vl;

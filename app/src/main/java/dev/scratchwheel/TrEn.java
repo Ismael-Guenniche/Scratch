@@ -411,6 +411,12 @@ final class TrEn {
         M.put("EXPORTAR COMO M3U…", "EXPORT AS M3U…");
         M.put("Lista exportada: ", "Playlist exported: ");
         M.put("No se pudo exportar la lista", "Could not export the playlist");
+        M.put("SONIDO", "SOUND");
+        M.put("Nivelar volumen (ReplayGain)", "Level volume (ReplayGain)");
+        M.put("Si el archivo trae ReplayGain, baja las canciones que suenan más fuerte para que todas se oigan parecido. Nunca sube el volumen.", "If the file has ReplayGain, loud songs are turned down so everything sounds similar. It never raises the volume.");
+        M.put("Fundido entre canciones", "Crossfade");
+        M.put("NO", "OFF");
+        M.put("Las últimas canciones se mezclan con la siguiente cuando suena sola (necesita la precarga activada). Al saltar a mano no hay fundido.", "The end of a song blends into the next one when it plays on its own (needs preload on). No fade when you skip by hand.");
         M.put("PRECARGA", "PRELOAD");
         M.put("Canciones listas en memoria", "Songs ready in memory");
         M.put("Las próximas canciones se cargan de una en una para que al cambiar no haya espera. Cada una ocupa unos 40 MB de memoria; si la app va justa, baja el número. Con 0 solo se prepara la siguiente.", "The upcoming songs are loaded one at a time so there is no wait when you change track. Each one takes about 40 MB of memory; if the app runs short, lower the number. With 0 only the next one is prepared.");

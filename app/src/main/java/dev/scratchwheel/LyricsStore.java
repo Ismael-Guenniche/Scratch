@@ -77,6 +77,22 @@ final class LyricsStore {
         return r;
     }
 
+    private static String gainKey = "";
+    private static double gainVal = Double.NaN;
+
+    /** ReplayGain de pista de las etiquetas del archivo (NaN si no tiene). Bloqueante. */
+    static synchronized double gainDb(Context c, Uri uri) {
+        if (uri == null) {
+            return Double.NaN;
+        }
+        String k = uri.toString();
+        if (!k.equals(gainKey)) {
+            gainVal = embedded(c, uri).gainDb;
+            gainKey = k;
+        }
+        return gainVal;
+    }
+
     static boolean hasOwn(Context c, Uri uri) {
         return uri != null && new File(dir(c), name(uri)).exists();
     }

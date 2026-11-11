@@ -194,6 +194,7 @@ public final class CheckLists {
 
         lyricsTests();
         extraTests();
+        gainTests();
         System.out.println(fails == 0 ? "LISTAS OK" : fails + " FALLOS");
         System.exit(fails == 0 ? 0 : 1);
     }
@@ -312,5 +313,16 @@ public final class CheckLists {
         ok((raw[44] & 0xFF) == (blk[0] & 0xFF) && raw[45] == (byte) (blk[0] >> 8), "primera muestra");
         ok(!rec.hadDrops(), "sin pérdidas");
         w.delete();
+    }
+
+    private static void gainTests() throws Exception {
+        byte[] tx = cat(new byte[] {0}, b("REPLAYGAIN_TRACK_GAIN"), new byte[] {0}, b("-7.25 dB"));
+        LyricsReader.Result r = LyricsReader.read(LyricsReader.of(id3(3, frame("TXXX", tx))));
+        ok(Math.abs(r.gainDb + 7.25) < 1e-9, "ReplayGain ID3: " + r.gainDb);
+        byte[] kv = "REPLAYGAIN_TRACK_GAIN=-3.10 dB".getBytes("UTF-8");
+        byte[] vc = cat(le(1), b("x"), le(1), le(kv.length), kv);
+        byte[] flac = cat(b("fLaC"), new byte[] {(byte) 0x84, 0, 0, (byte) vc.length}, vc, new byte[32]);
+        ok(Math.abs(LyricsReader.read(LyricsReader.of(flac)).gainDb + 3.1) < 1e-9, "ReplayGain FLAC");
+        ok(Double.isNaN(LyricsReader.read(LyricsReader.of(id3(3, frame("TIT2", cat(new byte[] {0}, b("x")))))).gainDb), "sin ReplayGain");
     }
 }

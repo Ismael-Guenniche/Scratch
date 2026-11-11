@@ -420,6 +420,40 @@ public class SettingsActivity extends Activity {
             }
         }));
 
+        // SONIDO
+        c = card(list, Tr.t("SONIDO"));
+        c.addView(switchRow(Tr.t("Nivelar volumen (ReplayGain)"),
+                Tr.t("Si el archivo trae ReplayGain, baja las canciones que suenan más fuerte para que todas se oigan parecido. Nunca sube el volumen."),
+                prefs.getBoolean("replaygain", false), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("replaygain", v).apply();
+                        Player.I.applyReplayGain(Player.I.currentUri());
+                    }
+                }));
+
+        c.addView(body(Tr.t("Fundido entre canciones")));
+        final int[] xf = {0, 2, 4, 6, 8, 10};
+        int xs = 0;
+        for (int i = 0; i < xf.length; i++) {
+            if (xf[i] == prefs.getInt("crossfade", 0)) {
+                xs = i;
+            }
+        }
+        String[] xl = new String[xf.length];
+        for (int i = 0; i < xf.length; i++) {
+            xl[i] = xf[i] == 0 ? Tr.t("NO") : xf[i] + "S";
+        }
+        c.addView(segmented(xl, xs, new Pick() {
+            @Override
+            public void on(int v) {
+                prefs.edit().putInt("crossfade", xf[v]).apply();
+                Player.I.applyCrossfade();
+                redo();
+            }
+        }));
+        c.addView(muted(Tr.t("Las últimas canciones se mezclan con la siguiente cuando suena sola (necesita la precarga activada). Al saltar a mano no hay fundido.")));
+
         // PRECARGA
         c = card(list, Tr.t("PRECARGA"));
         c.addView(body(Tr.t("Canciones listas en memoria")));
@@ -568,7 +602,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.44");
+        about.setText("SCRATCH 0.45");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);
