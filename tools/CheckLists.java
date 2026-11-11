@@ -195,6 +195,7 @@ public final class CheckLists {
         lyricsTests();
         extraTests();
         gainTests();
+        bigEditTests();
         System.out.println(fails == 0 ? "LISTAS OK" : fails + " FALLOS");
         System.exit(fails == 0 ? 0 : 1);
     }
@@ -324,5 +325,76 @@ public final class CheckLists {
         byte[] flac = cat(b("fLaC"), new byte[] {(byte) 0x84, 0, 0, (byte) vc.length}, vc, new byte[32]);
         ok(Math.abs(LyricsReader.read(LyricsReader.of(flac)).gainDb + 3.1) < 1e-9, "ReplayGain FLAC");
         ok(Double.isNaN(LyricsReader.read(LyricsReader.of(id3(3, frame("TIT2", cat(new byte[] {0}, b("x")))))).gainDb), "sin ReplayGain");
+    }
+
+    private static void bigEditTests() {
+        java.util.List<BigLayout.Item> d = BigLayout.defaults();
+        BigLayout.freeze(d, BigLayout.COLS);
+        for (BigLayout.Item it : d) {
+            ok(!it.on || it.fixed(), "freeze fija " + it.id);
+        }
+        java.util.List<BigLayout.Placed> a = BigLayout.pack(d, BigLayout.COLS);
+        BigLayout.freeze(d, BigLayout.COLS);
+        java.util.List<BigLayout.Placed> b2 = BigLayout.pack(d, BigLayout.COLS);
+        boolean same = a.size() == b2.size();
+        for (int i = 0; same && i < a.size(); i++) {
+            same = a.get(i).col == b2.get(i).col && a.get(i).row == b2.get(i).row && a.get(i).w == b2.get(i).w
+                    && a.get(i).h == b2.get(i).h;
+        }
+        ok(same, "freeze no cambia la disposición");
+        // serialización con posiciones y tamaños libres
+        BigLayout.Item cov = null;
+        for (BigLayout.Item it : d) {
+            if (it.id.equals("cover")) {
+                cov = it;
+            }
+        }
+        cov.on = true;
+        cov.col = 1;
+        cov.row = 20;
+        cov.cw = 3;
+        cov.ch = 5;
+        java.util.List<BigLayout.Item> back = BigLayout.parse(BigLayout.serialize(d));
+        BigLayout.Item c2 = null;
+        for (BigLayout.Item it : back) {
+            if (it.id.equals("cover")) {
+                c2 = it;
+            }
+        }
+        ok(c2.col == 1 && c2.row == 20 && c2.cw == 3 && c2.ch == 5 && c2.w() == 3 && c2.h() == 5, "pos y tamaño libres se guardan");
+        ok(BigLayout.canPlace(d, cov, 1, 20, 3, 5, 4), "cabe donde está");
+        ok(!BigLayout.canPlace(d, cov, 2, 20, 3, 5, 4), "no se sale por la derecha");
+        BigLayout.Item wave = null;
+        for (BigLayout.Item it : d) {
+            if (it.id.equals("wave")) {
+                wave = it;
+            }
+        }
+        ok(!BigLayout.canPlace(d, cov, wave.col, wave.row, 2, 2, 4), "no pisa a otro módulo");
+        int[] ff = BigLayout.firstFree(d, cov, 4, 2, 4);
+        ok(BigLayout.canPlace(d, cov, ff[0], ff[1], 4, 2, 4), "primer hueco libre válido");
+        // posición fija que choca: el módulo pasa a automático y nada se pisa
+        java.util.List<BigLayout.Item> x = new java.util.ArrayList<BigLayout.Item>();
+        BigLayout.Item i1 = new BigLayout.Item("cover", 0, true);
+        i1.col = 0; i1.row = 0;
+        BigLayout.Item i2 = new BigLayout.Item("wheel", 0, true);
+        i2.col = 1; i2.row = 1;
+        x.add(i1);
+        x.add(i2);
+        java.util.List<BigLayout.Placed> px = BigLayout.pack(x, 4);
+        boolean[][] occ = new boolean[40][4];
+        boolean clash = false;
+        for (BigLayout.Placed q : px) {
+            for (int yy = q.row; yy < q.row + q.h; yy++) {
+                for (int xx = q.col; xx < q.col + q.w; xx++) {
+                    clash |= occ[yy][xx];
+                    occ[yy][xx] = true;
+                }
+            }
+        }
+        ok(!clash && px.size() == 2, "choque de posiciones se resuelve");
+        // formato antiguo (3 campos) sigue leyéndose
+        java.util.List<BigLayout.Item> old = BigLayout.parse("cover:1:1;wave:0:1");
+        ok(!old.get(0).fixed() && old.get(0).w() == 3, "formato antiguo");
     }
 }
