@@ -1010,6 +1010,34 @@ public class Check {
             }
             ok(detSame && sums[0] > 0, "determinismo: mismas órdenes, mismo audio muestra a muestra (suma " + sums[0] + ")");
         }
+        {
+            // El hilo de audio no debe crear objetos: ni con keylock, ni con efectos, ni con el sampler.
+            com.sun.management.ThreadMXBean mx = (com.sun.management.ThreadMXBean)
+                    java.lang.management.ManagementFactory.getThreadMXBean();
+            ScratchEngine ae = new ScratchEngine();
+            ae.setOutputRate(48000);
+            ae.load(DemoTrack.generate());
+            ae.setKeyLock(true);
+            ae.setGraphicEq(new double[] {3, -2, 1, -1, 4});
+            ae.setEq(1.2, 0.8, 1.1);
+            ae.setFilter(-0.3);
+            ae.setEcho(0.3);
+            ae.setFlanger(true);
+            ae.setPhaser(true);
+            ae.setPlaying(true);
+            short[] ab = new short[512];
+            ae.render(ab, 256);
+            long id = Thread.currentThread().getId();
+            long a0 = mx.getThreadAllocatedBytes(id);
+            for (int k = 0; k < 300; k++) {
+                if (k % 100 == 0) {
+                    ae.triggerSample(k / 100);
+                }
+                ae.render(ab, 256);
+            }
+            long perBlock = (mx.getThreadAllocatedBytes(id) - a0) / 300;
+            ok(perBlock < 64, "hilo de audio sin asignaciones: " + perBlock + " bytes por bloque");
+        }
         System.out.println(fails == 0 ? "TODO OK" : (fails + " FALLOS"));
         System.exit(fails == 0 ? 0 : 1);
     }
