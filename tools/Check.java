@@ -970,6 +970,46 @@ public class Check {
             ok(pe.getPositionSeconds() > at + 0.05 || pe.getPositionSeconds() > 2.0, "parcial: continúa por la parte nueva: " + pe.getPositionSeconds());
             ok(Math.abs(pe.getDurationSeconds() - 4.0) < 0.01, "entera: duración 4 s");
         }
+        {
+            // Determinismo: dos motores con las mismas órdenes generan exactamente el mismo audio
+            // (red de seguridad para las optimizaciones del hilo de audio).
+            PcmData dt = DemoTrack.generate();
+            long[] sums = new long[2];
+            boolean detSame = true;
+            short[][] outs = new short[2][512];
+            ScratchEngine[] de = {new ScratchEngine(), new ScratchEngine()};
+            for (ScratchEngine x : de) {
+                x.setOutputRate(48000);
+                x.load(dt);
+                x.setGraphicEq(new double[] {3, -2, 1, -1, 4});
+                x.setEcho(0.3);
+                x.setPlaying(true);
+            }
+            for (int k = 0; k < 600; k++) {
+                for (int m = 0; m < 2; m++) {
+                    ScratchEngine x = de[m];
+                    if (k == 150) {
+                        x.touchDown();
+                    }
+                    if (k > 150 && k < 350) {
+                        x.rotate(0.3 * Math.sin(k * 0.21));
+                    }
+                    if (k == 350) {
+                        x.touchUp();
+                    }
+                    if (k == 400) {
+                        x.setKeyLock(true);
+                        x.triggerSample(0);
+                    }
+                    x.render(outs[m], 256);
+                    for (int dq = 0; dq < 512; dq++) {
+                        sums[m] += Math.abs(outs[m][dq]);
+                    }
+                }
+                detSame &= java.util.Arrays.equals(outs[0], outs[1]);
+            }
+            ok(detSame && sums[0] > 0, "determinismo: mismas órdenes, mismo audio muestra a muestra (suma " + sums[0] + ")");
+        }
         System.out.println(fails == 0 ? "TODO OK" : (fails + " FALLOS"));
         System.exit(fails == 0 ? 0 : 1);
     }
