@@ -102,3 +102,22 @@ adb shell dumpsys media.audio_flinger > flinger.txt
 ```
 
 Del archivo `flinger.txt` interesan: tamaño del búfer en frames, si la pista sale con la marca `FAST` (ruta de baja latencia) y el contador de *underruns* tras un minuto de scratch.
+
+## T2 · Hilo de audio limpio (v0.53)
+
+Mismo equipo y mismo método que la línea base. **Todas las huellas CRC son idénticas a las de T1**: el audio generado no cambia ni en un bit.
+
+| Medida | Antes (0.52) | Después (0.53) |
+|---|---:|---:|
+| Reproducción + keylock, media | 19,4 µs | 13,2 µs (−32 %) |
+| Scratch + keylock, media | 18,7 µs | 13,2 µs (−29 %) |
+| EQ 5 bandas, media | 18,8 µs | 15,4 µs (−18 %) |
+| Modo DJ completo, media | 44,2 µs | 36,3 µs (−18 %) |
+| Sampler (bocina), media | 31,8 µs | 27,8 µs (−13 %) |
+| Reproducción normal / scratch | 7,43 / 9,95 µs | 7,43 / 9,35 µs |
+| Asignaciones con el sampler | 10 176 bytes/bloque | 0 |
+| Asignaciones al grabar (`WavRecorder`) | 1 040 bytes/bloque | 0 (anillo fijo) |
+| `setEq()` con el cerrojo | 525 ns | 31 ns |
+| `setFilter()` con el cerrojo | 647 ns | 132 ns |
+
+Qué se hizo: ventana Hann en tabla (antes un `Math.cos` por grano y muestra), notas de la bocina como constante, cada orden de efectos recalcula solo sus coeficientes (antes los 16 biquads siempre), constantes del bucle fuera del bucle, índices circulares sin `%`, y grabación con anillo preasignado.
