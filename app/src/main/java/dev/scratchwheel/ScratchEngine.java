@@ -285,6 +285,7 @@ public final class ScratchEngine {
         totalFrames = 0;
         sampleRate = n.sampleRate;
         pos = 0;
+        histReset();
         swapped = true;
         for (int i = 0; i < cues.length; i++) {
             cues[i] = -1;
@@ -385,6 +386,7 @@ public final class ScratchEngine {
         }
         pos = f;
         scratchTarget = f;
+        histReset();
     }
 
     /** Salto relativo en segundos (beat jump a mano). */
@@ -877,6 +879,20 @@ public final class ScratchEngine {
 
     // ----- estado publicado: lo que la interfaz consulta muchas veces por segundo se lee de aquí sin cerrojo
     private volatile double pubPosSec;
+    private volatile double pubHeardSec;
+    /** Latencia de salida a compensar al mostrar la posición (s). */
+    private volatile double dispLat;
+    /** 1 = compensación completa (sonando); baja a 0 mientras el dedo sujeta el disco. */
+    private double dispComp = 1;
+    /** Posición del motor al final de cada uno de los últimos 256 bloques. */
+    private final double[] hist = new double[256];
+    private int histAt;
+    private double blockSec = 256 / 48000.0;
+
+    /** Tras un salto (cargar, buscar, cambiar de pista) el historial empieza de cero en la posición nueva. */
+    private void histReset() {
+        java.util.Arrays.fill(hist, pos);
+    }
     private volatile double pubDurSec;
     private volatile double pubRate;
     private volatile double pubLevel;
@@ -900,6 +916,18 @@ public final class ScratchEngine {
     private void publish() {
         pubPosFrames = pos;
         pubPosSec = pos / sampleRate;
+        // Lo que se oye ahora es lo que el motor generó hace «dispLat» segundos: se busca en el historial.
+        double back = dispLat / blockSec;
+        if (back > 254) {
+            back = 254;
+        }
+        int b0 = (int) back;
+        int hi = histAt - 1 - b0;
+        double p0 = hist[hi & 255];
+        double delayed = p0 + (hist[(hi - 1) & 255] - p0) * (back - b0);
+        double heard = (pos - dispComp * (pos - delayed)) / sampleRate;
+        double end = (double) Math.max(frames - 1, 0) / sampleRate;
+        pubHeardSec = dispLat == 0 ? pubPosSec : (heard < 0 ? 0 : (heard > end ? end : heard));
         pubDurSec = (double) Math.max(frames, partial ? totalFrames : 0) / sampleRate;
         pubRate = rate;
         pubLevel = level;
@@ -1016,6 +1044,7 @@ public final class ScratchEngine {
         totalFrames = pcm.totalFrames;
         sampleRate = pcm.sampleRate;
         pos = 0;
+        histReset();
         rate = 0;
         scratchTarget = 0;
         scratching = false;
@@ -1215,6 +1244,7 @@ public final class ScratchEngine {
         double f = Math.max(0, Math.min(Math.max(frames - 1, 0), seconds * sampleRate));
         pos = f;
         scratchTarget = f;
+        histReset();
         publish();
     }
 
@@ -1334,6 +1364,27 @@ public final class ScratchEngine {
 
     public double getPositionSeconds() {
         return pubPosSec;
+    }
+
+    /**
+     * Latencia de salida (lo que tarda en oírse lo que el motor genera). No cambia el audio: solo sirve para
+     * que {@link #getHeardSeconds()} diga qué punto de la canción está sonando de verdad.
+     */
+    public void setDisplayLatency(double seconds) {
+        dispLat = Math.max(0, Math.min(0.5, seconds));
+    }
+
+    public double getDisplayLatency() {
+        return dispLat;
+    }
+
+    /**
+     * Posición que se está OYENDO ahora (la del motor menos la latencia de salida), para la rueda, el tiempo y
+     * la letra. Mientras el dedo sujeta el disco coincide con la del motor, para que la rueda vaya pegada al dedo;
+     * el paso de una a otra es gradual (0,15 s) y no da saltos.
+     */
+    public double getHeardSeconds() {
+        return pubHeardSec;
     }
 
     public double getDurationSeconds() {
@@ -1693,6 +1744,15 @@ public final class ScratchEngine {
         }
         if (!extClock) {
             nowNanos += (long) (n * 1e9 / outRate);
+        }
+        hist[histAt & 255] = pos;
+        histAt++;
+        blockSec = n * dtOut;
+        double compStep = n * dtOut / 0.15;
+        if (scratching) {
+            dispComp = dispComp > compStep ? dispComp - compStep : 0;
+        } else {
+            dispComp = dispComp < 1 - compStep ? dispComp + compStep : 1;
         }
         double lv = Math.min(1.0, levelAcc / 24000.0);
         level = Math.max(lv, level * 0.8);
