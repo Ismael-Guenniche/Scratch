@@ -511,12 +511,14 @@ public class MainActivity extends Activity {
         panel.addView(search);
 
         listHeader = new LinearLayout(this);
-        listHeader.setOrientation(LinearLayout.HORIZONTAL);
-        listHeader.setGravity(Gravity.CENTER_VERTICAL);
+        listHeader.setOrientation(LinearLayout.VERTICAL);
         listHeader.setPadding(0, dp(8), 0, dp(10));
         listHeader.setVisibility(View.GONE);
+        LinearLayout lhTop = new LinearLayout(this);
+        lhTop.setOrientation(LinearLayout.HORIZONTAL);
+        lhTop.setGravity(Gravity.CENTER_VERTICAL);
         listCover = CoverCache.view(this, 14);
-        listHeader.addView(listCover, new LinearLayout.LayoutParams(dp(76), dp(76)));
+        lhTop.addView(listCover, new LinearLayout.LayoutParams(dp(76), dp(76)));
         LinearLayout lhText = new LinearLayout(this);
         lhText.setOrientation(LinearLayout.VERTICAL);
         lhText.setPadding(dp(14), 0, dp(8), 0);
@@ -527,21 +529,26 @@ public class MainActivity extends Activity {
         listCount.setPadding(0, dp(4), 0, 0);
         lhText.addView(listName);
         lhText.addView(listCount);
+        lhTop.addView(lhText, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        listHeader.addView(lhTop);
+
         LinearLayout lhBtns = new LinearLayout(this);
         lhBtns.setOrientation(LinearLayout.HORIZONTAL);
         lhBtns.setGravity(Gravity.CENTER_VERTICAL);
-        lhBtns.setPadding(0, dp(6), 0, 0);
+        lhBtns.setPadding(0, dp(12), 0, 0);
         DotIconView listPlay = new DotIconView(this, th).ghost(false);
         listPlay.set(DotIcons.PLAY, th.accent);
+        listPlay.setBackground(pill(true));
         listPlay.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 playWholeList();
             }
         });
-        lhBtns.addView(listPlay, new LinearLayout.LayoutParams(dp(52), dp(52)));
+        lhBtns.addView(listPlay, cell());
         listShuffle = new DotIconView(this, th);
         listShuffle.set(DotIcons.SHUFFLE, th.ink);
+        listShuffle.setBackground(pill(false));
         listShuffle.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -549,25 +556,20 @@ public class MainActivity extends Activity {
                 listShuffle.set(DotIcons.SHUFFLE, Player.I.isShuffle() ? th.accent : th.ink);
             }
         });
-        LinearLayout.LayoutParams lsp = new LinearLayout.LayoutParams(dp(44), dp(44));
-        lsp.leftMargin = dp(6);
-        lhBtns.addView(listShuffle, lsp);
-        lhText.addView(lhBtns);
-        listHeader.addView(lhText, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        TextView sortChip = th.chip(this, Tr.t("ORDEN"), false, 16);
-        LinearLayout.LayoutParams sclp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, dp(44));
-        sclp.rightMargin = dp(8);
-        listHeader.addView(sortChip, sclp);
+        lhBtns.addView(listShuffle, cell());
+        TextView sortChip = th.chip(this, Tr.t("ORDEN"), false, 4);
+        sortChip.setGravity(Gravity.CENTER);
+        lhBtns.addView(sortChip, cell());
         sortChip.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 showSortMenu(v);
             }
         });
-        TextView editChip = th.chip(this, Tr.t("EDITAR"), false, 16);
-        listHeader.addView(editChip, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT, dp(44)));
+        TextView editChip = th.chip(this, Tr.t("EDITAR"), false, 4);
+        editChip.setGravity(Gravity.CENTER);
+        lhBtns.addView(editChip, cell());
+        listHeader.addView(lhBtns);
         View.OnClickListener editList = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -798,6 +800,23 @@ public class MainActivity extends Activity {
         lp.rightMargin = dp(8);
         bar.addView(barLine, lp);
         return bar;
+    }
+
+    /** Fondo redondeado para los botones de la cabecera de lista. */
+    private android.graphics.drawable.Drawable pill(boolean accent) {
+        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+        g.setCornerRadius(dp(16));
+        g.setColor(accent ? Lucent.withAlpha(th.accent, 0.16f) : th.glass);
+        g.setStroke(dp(1), accent ? th.accent : th.glassLine);
+        return g;
+    }
+
+    /** Celda de ancho igual para la fila de botones de lista. */
+    private LinearLayout.LayoutParams cell() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, dp(48), 1f);
+        lp.leftMargin = dp(4);
+        lp.rightMargin = dp(4);
+        return lp;
     }
 
     private void refreshBar() {

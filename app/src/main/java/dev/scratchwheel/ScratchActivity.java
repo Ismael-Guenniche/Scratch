@@ -375,7 +375,7 @@ public class ScratchActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
         wlp.topMargin = dp(10);
         wlp.bottomMargin = dp(10);
-        wheelCard.setMinimumHeight(land ? dp(120) : dp(340));
+        wheelCard.setMinimumHeight(dp(120));
         if (land) {
             wlp.topMargin = 0;
             wlp.bottomMargin = 0;
@@ -426,17 +426,8 @@ public class ScratchActivity extends Activity {
         if (land) {
             return root;
         }
-        // En modo DJ hay más controles que alto de pantalla: la rueda mantiene su tamaño y se desplaza.
-        android.widget.ScrollView sv = new android.widget.ScrollView(this);
-        sv.setFillViewport(true);
-        sv.setVerticalScrollBarEnabled(false);
-        sv.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        mainScroll = sv;
-        applyScrollBar();
-        sv.addView(root, new android.widget.FrameLayout.LayoutParams(
-                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT));
-        return sv;
+        // Sin scroll: en modo DJ la rueda se encoge para que todo quepa en pantalla.
+        return root;
     }
 
     /** Opción pequeña: icono de puntos con su etiqueta debajo. */
