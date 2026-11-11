@@ -1011,6 +1011,48 @@ public class Check {
             ok(detSame && sums[0] > 0, "determinismo: mismas órdenes, mismo audio muestra a muestra (suma " + sums[0] + ")");
         }
         {
+            // Búfer adaptativo: empieza en dos bloques y solo crece con underruns, de bloque en bloque.
+            dev.scratchwheel.BufferTuner bt = new dev.scratchwheel.BufferTuner(192, 1920, 0);
+            ok(bt.frames() == 384 && Math.abs(bt.millis(48000) - 8.0) < 0.01, "búfer: empieza en dos ráfagas (8 ms)");
+            int ch = 0;
+            for (int k = 0; k < 75; k++) {
+                ch += bt.onBlock(k < 5 ? k : 5) > 0 ? 1 : 0;
+            }
+            ok(ch == 0 && bt.frames() == 384, "búfer: los underruns del arranque no cuentan");
+            for (int k = 0; k < 2000; k++) {
+                ch += bt.onBlock(5) > 0 ? 1 : 0;
+            }
+            ok(ch == 0, "búfer: sin underruns nuevos no cambia");
+            int nw = bt.onBlock(6);
+            ok(nw == 576 && bt.frames() == 576, "búfer: un underrun lo sube una ráfaga (" + nw + ")");
+            ok(bt.onBlock(9) == -1, "búfer: tras crecer espera antes de volver a reaccionar");
+            int und = 9;
+            for (int k = 0; k < 20000; k++) {
+                bt.onBlock(++und);
+            }
+            ok(bt.frames() == 1920, "búfer: nunca pasa de la capacidad (" + bt.frames() + ")");
+            dev.scratchwheel.BufferTuner b2 = new dev.scratchwheel.BufferTuner(192, 1920, 768);
+            ok(b2.frames() == 768, "búfer: recuerda el tamaño aprendido al despertar");
+            ok(dev.scratchwheel.BufferTuner.blockFor(192) == 192 && dev.scratchwheel.BufferTuner.blockFor(0) == 256
+                    && dev.scratchwheel.BufferTuner.blockFor(4096) == 256, "búfer: bloque = ráfaga si es razonable");
+            ScratchEngine ve = new ScratchEngine();
+            ve.setOutputRate(48000);
+            ve.load(DemoTrack.generate());
+            ve.setPlaying(true);
+            short[] vb = new short[2048];
+            int[] sizes = {96, 192, 240, 480, 1024};
+            for (int k = 0; k < 500; k++) {
+                ve.render(vb, sizes[k % sizes.length]);
+            }
+            double exp = 0;
+            for (int k = 0; k < 500; k++) {
+                exp += sizes[k % sizes.length];
+            }
+            exp = exp / 48000.0;
+            ok(Math.abs(ve.getPositionSeconds() - exp) < 0.15, "bloques de tamaño variable: avanza " + ve.getPositionSeconds()
+                    + " s de " + exp);
+        }
+        {
             // La rueda y las consultas de la interfaz no esperan al cerrojo del motor (ni lo retienen).
             final ScratchEngine le = new ScratchEngine();
             le.setOutputRate(48000);

@@ -116,6 +116,8 @@ final class Player {
     private MediaSession session;
     private boolean initialized;
     private int outRate = 48000;
+    /** Ráfaga nativa del dispositivo (frames por búfer del HAL); 0 si no se sabe. */
+    private int burst;
 
     private AudioTrack track;
     private boolean audioRunning;
@@ -505,6 +507,13 @@ final class Player {
         }
         if (outRate < 8000 || outRate > 192000) {
             outRate = 48000;
+        }
+        try {
+            String fb = am.getProperty(AudioManager.PROPERTY_OUTPUT_FRAMES_PER_BUFFER);
+            if (fb != null) {
+                burst = Integer.parseInt(fb.trim());
+            }
+        } catch (RuntimeException ignored) {
         }
         engine.setOutputRate(outRate);
         applyCrossfade();
@@ -1468,7 +1477,8 @@ final class Player {
             }
             int minBuf = AudioTrack.getMinBufferSize(outRate, AudioFormat.CHANNEL_OUT_STEREO,
                     AudioFormat.ENCODING_PCM_16BIT);
-            int bytes = Math.max(minBuf, BLOCK * 4 * 2);
+            final int block = BufferTuner.blockFor(burst);
+            int bytes = Math.max(minBuf, block * 4 * 2);
             AudioTrack.Builder tb = new AudioTrack.Builder()
                     .setAudioAttributes(new AudioAttributes.Builder()
                             .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -1497,7 +1507,7 @@ final class Player {
             new Thread(new Runnable() {
                 @Override
                 public void run() {
-                    audioLoop(t);
+                    audioLoop(t, block);
                 }
             }, "audio").start();
         }
@@ -1618,14 +1628,17 @@ final class Player {
         return dst.getPath();
     }
 
-    private void audioLoop(AudioTrack t) {
+    private void audioLoop(AudioTrack t, int block) {
         Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO);
-        short[] buf = new short[BLOCK * 2];
+        short[] buf = new short[block * 2];
+        // El búfer efectivo empieza en dos bloques y solo crece si el móvil da underruns (ver BufferTuner).
+        BufferTuner tuner = AudioTune.start(t, block, burst, outRate);
+        final int idleBlocks = Math.max(8, IDLE_BLOCKS * BLOCK / block);
         int idle = 0;
         int errors = 0;
         try {
             while (true) {
-                engine.render(buf, BLOCK);
+                engine.render(buf, block);
                 WavRecorder wr = recorder;
                 if (wr != null) {
                     wr.feed(buf, buf.length);
@@ -1637,6 +1650,7 @@ final class Player {
                 } else {
                     errors = 0;
                 }
+                AudioTune.step(t, tuner, outRate);
                 if (engine.hasSwapped() && !swapPosted) {
                     swapPosted = true;
                     main.post(new Runnable() {
@@ -1658,7 +1672,7 @@ final class Player {
                     });
                 }
                 if (engine.isIdle()) {
-                    if (++idle > IDLE_BLOCKS) {
+                    if (++idle > idleBlocks) {
                         synchronized (audioLock) {
                             if (engine.isIdle()) {
                                 audioRunning = false;

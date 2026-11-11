@@ -9,7 +9,7 @@ Todo vive en `ScratchEngine.java`: Java puro, **sin dependencias de Android**, p
 El límite es de 20 millones de frames (≈ 7,5 min a 44,1 kHz, unos 80 MB); si la pista es más larga se recorta y la interfaz lo avisa («RECORTADA»).
 
 ## Salida
-`Player` abre un `AudioTrack` en modo de **baja latencia** a la frecuencia nativa del dispositivo y un hilo con prioridad de audio llama a `engine.render()` en bloques de 256 frames. El hilo se duerme tras ~120 bloques de inactividad y se despierta al tocar la rueda o disparar un sonido.
+`Player` abre un `AudioTrack` en modo de **baja latencia** a la frecuencia nativa del dispositivo y un hilo con prioridad de audio llama a `engine.render()` en bloques del tamaño de la **ráfaga nativa** del móvil (256 frames si no se conoce). El búfer efectivo lo decide `BufferTuner`: empieza en dos bloques y solo crece cuando el `AudioTrack` cuenta underruns (`AudioTune` lo aplica con `setBufferSizeInFrames` y lo escribe en logcat con la etiqueta `ScratchAudio`). El hilo se duerme tras ~120 bloques de inactividad y se despierta al tocar la rueda o disparar un sonido.
 
 ## Hilos y cerrojo
 `render()` y las órdenes que cambian el estado siguen siendo `synchronized`, pero lo que la interfaz llama muchas veces por segundo **no coge el cerrojo**:
