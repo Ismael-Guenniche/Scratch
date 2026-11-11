@@ -22,6 +22,8 @@ import android.os.Process;
 import android.widget.Toast;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.List;
 import java.util.Random;
 
@@ -265,8 +267,174 @@ final class Player {
         public void run() {
             prepScheduled = false;
             prepNext();
+            refillCache();
         }
     };
+    // ---- caché de precarga: las próximas N pistas ya decodificadas en memoria (se cargan de una en una)
+    private final LinkedHashMap<String, PcmData> cache = new LinkedHashMap<String, PcmData>();
+    private final HashSet<String> cacheFailed = new HashSet<String>();
+    private String cacheJobKey;
+    private AtomicBoolean cacheJobCancel;
+    private int cacheGen;
+    private long cacheCapOom = Long.MAX_VALUE;
+    private AtomicBoolean loadCancel = new AtomicBoolean();
+    /** true mientras el motor solo tiene el principio de la pista actual. */
+    private boolean partialLive;
+
+    int precacheCount() {
+        return prefs == null ? 5 : prefs.getInt("precache", 5);
+    }
+
+    /** Se llama al cambiar el ajuste de precarga. */
+    void precacheChanged() {
+        main.post(new Runnable() {
+            @Override
+            public void run() {
+                refillCache();
+            }
+        });
+    }
+
+    private long cacheBytes() {
+        long b = 0;
+        for (PcmData d : cache.values()) {
+            b += (long) d.stereo.length * 2;
+        }
+        return b;
+    }
+
+    /** Las pistas que sonarán a continuación (cola, aleatorio o siguiente de la lista), hasta n. */
+    private List<Track> upcoming(int n) {
+        ArrayList<Track> out = new ArrayList<Track>();
+        for (Track q : queue) {
+            if (out.size() >= n) {
+                return out;
+            }
+            out.add(q);
+        }
+        int sz = tracks.size();
+        if (repeat == 2 || index < 0 || sz < 2) {
+            return out;
+        }
+        if (shuffle) {
+            ensureOrder();
+            for (int k = orderPos + 1; order != null && k < order.length && out.size() < n; k++) {
+                out.add(tracks.get(order[k]));
+            }
+            return out;
+        }
+        int i = index;
+        while (out.size() < n) {
+            i++;
+            if (i >= sz) {
+                if (repeat != 1) {
+                    break;
+                }
+                i = 0;
+            }
+            if (i == index) {
+                break;
+            }
+            out.add(tracks.get(i));
+        }
+        return out;
+    }
+
+    private void cancelCacheJob() {
+        if (cacheJobKey != null) {
+            cacheJobCancel.set(true);
+            cacheJobKey = null;
+            cacheGen++;
+        }
+    }
+
+    /** Mantiene en memoria las próximas N pistas, cargando una cada vez. */
+    private void refillCache() {
+        int n = precacheCount();
+        if (n <= 0) {
+            cancelCacheJob();
+            cache.clear();
+            return;
+        }
+        if (loading) {
+            return;
+        }
+        List<Track> up = upcoming(n);
+        HashSet<String> want = new HashSet<String>();
+        for (Track t : up) {
+            want.add(t.uri.toString());
+        }
+        java.util.Iterator<String> it = cache.keySet().iterator();
+        while (it.hasNext()) {
+            if (!want.contains(it.next())) {
+                it.remove();
+            }
+        }
+        if (cacheJobKey != null) {
+            if (want.contains(cacheJobKey)) {
+                return;
+            }
+            cancelCacheJob();
+        }
+        long cap = Math.min(Runtime.getRuntime().maxMemory() * 45 / 100, cacheCapOom);
+        long used = cacheBytes();
+        for (Track t : up) {
+            String key = t.uri.toString();
+            if (cache.containsKey(key) || cacheFailed.contains(key)) {
+                continue;
+            }
+            if (used > cap) {
+                return;
+            }
+            startCacheJob(t.uri, key);
+            return;
+        }
+    }
+
+    private void startCacheJob(final Uri u, final String key) {
+        final int g = ++cacheGen;
+        final AtomicBoolean cancel = new AtomicBoolean();
+        cacheJobKey = key;
+        cacheJobCancel = cancel;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
+                } catch (RuntimeException ignored) {
+                }
+                PcmData pcm = null;
+                boolean oom = false;
+                try {
+                    pcm = AudioLoader.load(app, u, null, cancel);
+                } catch (OutOfMemoryError e) {
+                    oom = true;
+                } catch (Throwable ignored) {
+                }
+                final PcmData fp = pcm;
+                final boolean fo = oom;
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (g != cacheGen) {
+                            return;
+                        }
+                        cacheJobKey = null;
+                        if (fo) {
+                            // sin memoria: no se guarda más de lo que ya hay
+                            cacheCapOom = Math.max(cacheBytes(), 1);
+                        } else if (fp == null) {
+                            cacheFailed.add(key);
+                        } else {
+                            cache.put(key, fp);
+                        }
+                        refillCache();
+                    }
+                });
+            }
+        }, "precache").start();
+    }
+
     private int errorStreak;
     private boolean shuffle;
     private int repeat;
@@ -443,6 +611,13 @@ final class Player {
         dropPrep();
         prepKey = key;
         prepTrack = t;
+        PcmData hit = cache.get(key);
+        if (hit != null) {
+            prepFailed = null;
+            prepPcm = hit;
+            engine.queueNext(hit);
+            return;
+        }
         final int g = prepGen;
         final Uri u = t.uri;
         new Thread(new Runnable() {
@@ -468,6 +643,9 @@ final class Player {
                         }
                         prepFailed = null;
                         prepPcm = fp;
+                        if (precacheCount() > 0) {
+                            cache.put(key, fp);
+                        }
                         engine.queueNext(fp);
                     }
                 });
@@ -509,6 +687,7 @@ final class Player {
         updateSession();
         syncService();
         changed();
+        refillCache();
     }
 
     private void toast(String msg) {
@@ -682,8 +861,19 @@ final class Player {
         if (engine.consumeSwapped()) {
             onGapless();
         }
-        final PcmData reuse = uri != null && prepPcm != null && uri.toString().equals(prepKey) ? prepPcm : null;
+        PcmData ru = null;
+        if (uri != null) {
+            String k = uri.toString();
+            ru = prepPcm != null && k.equals(prepKey) ? prepPcm : cache.get(k);
+        }
+        // la carga de la pista que se pide va primero: se para la precarga y se retoma al terminar
+        cancelCacheJob();
+        final PcmData reuse = ru;
         dropPrep();
+        loadCancel.set(true);
+        loadCancel = new AtomicBoolean();
+        final AtomicBoolean cancel = loadCancel;
+        partialLive = false;
         final int gen = ++loadGen;
         playWhenReady = autoplay;
         loading = true;
@@ -707,7 +897,20 @@ final class Player {
                 PcmData pcm = null;
                 Throwable err = null;
                 try {
-                    pcm = uri == null ? DemoTrack.generate() : AudioLoader.load(app, uri);
+                    // Arranque rápido: en cuanto están los primeros segundos se empieza a sonar y el resto
+                    // se completa detrás (hasta entonces el scratch solo llega a ese fragmento).
+                    AudioLoader.Early early = startSec >= 5 ? null : new AudioLoader.Early() {
+                        @Override
+                        public void onEarly(final PcmData part) {
+                            main.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    finishLoad(gen, part, null, name, startSec);
+                                }
+                            });
+                        }
+                    };
+                    pcm = uri == null ? DemoTrack.generate() : AudioLoader.load(app, uri, early, cancel);
                 } catch (Throwable e) {
                     err = e;
                 }
@@ -716,11 +919,34 @@ final class Player {
                 main.post(new Runnable() {
                     @Override
                     public void run() {
-                        finishLoad(gen, fp, fe, name, startSec);
+                        finishFull(gen, fp, fe, name, startSec);
                     }
                 });
             }
         }, "loader").start();
+    }
+
+    /** Llega la pista entera: si el motor tenía solo el principio, se completa en caliente. */
+    private void finishFull(int gen, PcmData pcm, Throwable err, String name, double startSec) {
+        if (gen != loadGen) {
+            return;
+        }
+        if (!partialLive) {
+            finishLoad(gen, pcm, err, name, startSec);
+            return;
+        }
+        partialLive = false;
+        if (err != null || pcm == null) {
+            engine.finishPartial();
+            toast(Tr.t("La canción no se cargó entera: el scratch no estará disponible"));
+            changed();
+            return;
+        }
+        engine.replaceData(pcm);
+        truncated = pcm.truncated;
+        analyzeBpm(currentUri, pcm);
+        changed();
+        refillCache();
     }
 
     private void finishLoad(int gen, PcmData pcm, Throwable err, String name, double startSec) {
@@ -743,8 +969,12 @@ final class Player {
         errorStreak = 0;
         engine.load(pcm);
         engine.seekTo(startSec);
-        analyzeBpm(currentUri, pcm);
-        truncated = pcm.truncated;
+        if (pcm.partial) {
+            partialLive = true;
+        } else {
+            analyzeBpm(currentUri, pcm);
+            truncated = pcm.truncated;
+        }
         loadCoverAsync(gen);
         if (playWhenReady) {
             playWhenReady = false;
@@ -756,6 +986,9 @@ final class Player {
             changed();
         }
         savePos();
+        if (!pcm.partial) {
+            refillCache();
+        }
     }
 
     android.graphics.Bitmap cover() {
@@ -1804,6 +2037,7 @@ final class Player {
             }
             found = merged;
         }
+        cacheFailed.clear();
         tracks.clear();
         tracks.addAll(found);
         order = null;

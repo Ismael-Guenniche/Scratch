@@ -340,6 +340,32 @@ public class SettingsActivity extends Activity {
                     }
                 }));
 
+        // PRECARGA
+        c = card(list, Tr.t("PRECARGA"));
+        c.addView(body(Tr.t("Canciones listas en memoria")));
+        final int[] preVals = {0, 2, 3, 5, 8, 12};
+        int preSel = 3;
+        for (int i = 0; i < preVals.length; i++) {
+            if (preVals[i] == prefs.getInt("precache", 5)) {
+                preSel = i;
+            }
+        }
+        String[] preLabels = new String[preVals.length];
+        for (int i = 0; i < preVals.length; i++) {
+            preLabels[i] = String.valueOf(preVals[i]);
+        }
+        c.addView(segmented(preLabels, preSel, new Pick() {
+            @Override
+            public void on(int v) {
+                prefs.edit().putInt("precache", preVals[v]).apply();
+                Player.I.precacheChanged();
+                redo();
+            }
+        }));
+        TextView preNote = muted(Tr.t("Las próximas canciones se cargan de una en una para que al cambiar no haya espera. Cada una ocupa unos 40 MB de memoria; si la app va justa, baja el número. Con 0 solo se prepara la siguiente."));
+        preNote.setPadding(0, dp(8), 0, 0);
+        c.addView(preNote);
+
         // ECUALIZADOR (5 bandas)
         c = card(list, Tr.t("ECUALIZADOR"));
         c.addView(switchRow(Tr.t("Ecualizador"),
@@ -462,7 +488,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.37");
+        about.setText("SCRATCH 0.38");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);

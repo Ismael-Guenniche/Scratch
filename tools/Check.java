@@ -924,6 +924,52 @@ public class Check {
                 ok(br != null && dph < 0.04, "BPM " + tempos[ti] + ": fase del pulso correcta (error " + dph + " s)");
             }
         }
+        // arranque rápido: fragmento parcial -> espera en silencio al final -> pista entera en caliente
+        {
+            int sr = 44100;
+            int total = sr * 4;
+            PcmData.Builder fb = new PcmData.Builder(total);
+            PcmData part = null;
+            for (int i = 0; i < total; i++) {
+                short v = (short) (8000 * Math.sin(2 * Math.PI * 440 * i / sr));
+                fb.append(v, v);
+                if (i == sr * 2 - 1) {
+                    part = fb.snapshot(sr, total);
+                }
+            }
+            PcmData full = fb.build(sr);
+            ScratchEngine pe = new ScratchEngine();
+            pe.setOutputRate(sr);
+            pe.load(part);
+            ok(pe.isPartial(), "parcial: el motor lo marca como parcial");
+            ok(Math.abs(pe.getDurationSeconds() - 4.0) < 0.01, "parcial: la duración es la de la pista entera");
+            pe.setPlaying(true);
+            short[] pbuf = new short[512];
+            boolean loud = false;
+            for (int k = 0; k < (int) (sr * 3.2 / 256); k++) {
+                pe.render(pbuf, 256);
+                if (k > 2 && k < 300) {
+                    for (int qq = 0; qq < 512; qq++) {
+                        if (Math.abs(pbuf[qq]) > 1000) {
+                            loud = true;
+                        }
+                    }
+                }
+            }
+            ok(loud, "parcial: suena mientras hay audio");
+            ok(!pe.consumeEnded(), "parcial: no da la pista por terminada al llegar al final del fragmento");
+            ok(pe.isPlaying(), "parcial: sigue en reproducción esperando");
+            double at = pe.getPositionSeconds();
+            ok(at > 1.9 && at < 2.01, "parcial: la posición se queda al final del fragmento: " + at);
+            pe.replaceData(full);
+            ok(!pe.isPartial(), "parcial: tras reemplazar ya no es parcial");
+            boolean moving = false;
+            for (int k = 0; k < 40; k++) {
+                pe.render(pbuf, 256);
+            }
+            ok(pe.getPositionSeconds() > at + 0.05 || pe.getPositionSeconds() > 2.0, "parcial: continúa por la parte nueva: " + pe.getPositionSeconds());
+            ok(Math.abs(pe.getDurationSeconds() - 4.0) < 0.01, "entera: duración 4 s");
+        }
         System.out.println(fails == 0 ? "TODO OK" : (fails + " FALLOS"));
         System.exit(fails == 0 ? 0 : 1);
     }

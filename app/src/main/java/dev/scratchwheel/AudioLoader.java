@@ -21,7 +21,20 @@ final class AudioLoader {
         return DemoTrack.generate();
     }
 
+    /** Se llama una vez con el principio de la pista en cuanto está decodificado (arranque rápido). */
+    interface Early {
+        void onEarly(PcmData part);
+    }
+
+    private static final int EARLY_SECONDS = 8;
+
     static PcmData load(Context c, Uri uri) throws IOException {
+        return load(c, uri, null, null);
+    }
+
+    /** {@code early} recibe un fragmento al principio y {@code cancel} permite abandonar la decodificación. */
+    static PcmData load(Context c, Uri uri, Early early,
+                        java.util.concurrent.atomic.AtomicBoolean cancel) throws IOException {
         try {
             InputStream in = c.getContentResolver().openInputStream(uri);
             if (in == null) {
@@ -33,11 +46,12 @@ final class AudioLoader {
                 in.close();
             }
         } catch (WavParser.NotWavException e) {
-            return decode(c, uri);
+            return decode(c, uri, early, cancel);
         }
     }
 
-    private static PcmData decode(Context c, Uri uri) throws IOException {
+    private static PcmData decode(Context c, Uri uri, Early early,
+                                  java.util.concurrent.atomic.AtomicBoolean cancel) throws IOException {
         MediaExtractor ex = new MediaExtractor();
         MediaCodec codec = null;
         try {
@@ -75,7 +89,15 @@ final class AudioLoader {
             MediaCodec.BufferInfo info = new MediaCodec.BufferInfo();
             boolean inDone = false;
             boolean outDone = false;
+            boolean earlySent = early == null || expected <= 0;
             while (!outDone) {
+                if (cancel != null && cancel.get()) {
+                    throw new IOException("cancelado");
+                }
+                if (!earlySent && b.frames() >= (long) sr * EARLY_SECONDS && expected > b.frames() * 5L / 4) {
+                    earlySent = true;
+                    early.onEarly(b.snapshot(sr, expected));
+                }
                 if (!inDone) {
                     int ii = codec.dequeueInputBuffer(10000);
                     if (ii >= 0) {

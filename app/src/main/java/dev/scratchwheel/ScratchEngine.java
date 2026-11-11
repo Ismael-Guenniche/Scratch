@@ -22,6 +22,9 @@ public final class ScratchEngine {
 
     private short[] data = new short[0];
     private int frames;
+    /** true mientras solo está cargado el principio de la pista (arranque rápido). */
+    private boolean partial;
+    private long totalFrames;
     private int sampleRate = 44100;
     private int outRate = 44100;
 
@@ -203,6 +206,8 @@ public final class ScratchEngine {
         nextPcm = null;
         data = n.stereo;
         frames = n.frames;
+        partial = false;
+        totalFrames = 0;
         sampleRate = n.sampleRate;
         pos = 0;
         swapped = true;
@@ -704,6 +709,8 @@ public final class ScratchEngine {
         swapped = false;
         data = pcm.stereo;
         frames = pcm.frames;
+        partial = pcm.partial;
+        totalFrames = pcm.totalFrames;
         sampleRate = pcm.sampleRate;
         pos = 0;
         rate = 0;
@@ -720,6 +727,27 @@ public final class ScratchEngine {
         loopIn = -1;
         slipping = false;
         reverse = false;
+    }
+
+    /** Sustituye el fragmento inicial por la pista entera sin tocar la posición (el principio es idéntico). */
+    public synchronized void replaceData(PcmData full) {
+        if (!partial || full.sampleRate != sampleRate) {
+            return;
+        }
+        data = full.stereo;
+        frames = full.frames;
+        partial = false;
+        totalFrames = 0;
+    }
+
+    /** La carga completa falló: lo que hay se trata como la pista entera. */
+    public synchronized void finishPartial() {
+        partial = false;
+        totalFrames = 0;
+    }
+
+    public synchronized boolean isPartial() {
+        return partial;
     }
 
     public synchronized void setOutputRate(int hz) {
@@ -861,7 +889,7 @@ public final class ScratchEngine {
     }
 
     public synchronized double getDurationSeconds() {
-        return (double) frames / sampleRate;
+        return (double) Math.max(frames, partial ? totalFrames : 0) / sampleRate;
     }
 
     public synchronized double getRate() {
@@ -951,7 +979,11 @@ public final class ScratchEngine {
                     rate = 0;
                 }
             }
-            if (pos > last && playing && !scratching && nextPcm != null && !reverse) {
+            if (partial && pos > last) {
+                // Aún falta por decodificar: se espera en silencio al final del fragmento.
+                pos = last;
+                rate = 0;
+            } else if (pos > last && playing && !scratching && nextPcm != null && !reverse) {
                 swapToNext();
                 ratio = (double) sampleRate / outRate;
                 tau = 0.02 * sampleRate;

@@ -10,12 +10,19 @@ public final class PcmData {
     public final int frames;
     public final int sampleRate;
     public final boolean truncated;
+    /** true si solo es el principio de la pista (arranque rápido): el resto llega después. */
+    public final boolean partial;
+    /** En un fragmento parcial, los frames que tendrá la pista entera (para mostrar la duración real). */
+    public final long totalFrames;
 
-    private PcmData(short[] stereo, int frames, int sampleRate, boolean truncated) {
+    private PcmData(short[] stereo, int frames, int sampleRate, boolean truncated, boolean partial,
+                    long totalFrames) {
         this.stereo = stereo;
         this.frames = frames;
         this.sampleRate = sampleRate;
         this.truncated = truncated;
+        this.partial = partial;
+        this.totalFrames = totalFrames;
     }
 
     public static final class Builder {
@@ -78,7 +85,12 @@ public final class PcmData {
         }
 
         public PcmData build(int sampleRate) {
-            return new PcmData(buf, frames, sampleRate, truncated);
+            return new PcmData(buf, frames, sampleRate, truncated, false, 0);
+        }
+
+        /** Copia de lo decodificado hasta ahora, marcada como parcial (el decodificador sigue después). */
+        public PcmData snapshot(int sampleRate, long totalFrames) {
+            return new PcmData(Arrays.copyOf(buf, 2 * frames), frames, sampleRate, false, true, totalFrames);
         }
     }
 }
