@@ -79,6 +79,79 @@ public class BenchQuality {
         return 20 * Math.log10(Math.max(Math.sqrt(s / x.length), 1e-3) / (AMP / Math.sqrt(2)));
     }
 
+    /** Keylock: reproduce {@code pcm} a la velocidad {@code pitch} manteniendo el tono; 1 s de salida estable. */
+    static double[] keylock(PcmData pcm, double pitch) {
+        ScratchEngine e = new ScratchEngine();
+        e.setOutputRate(OUT);
+        e.load(pcm);
+        e.setKeyLock(true);
+        e.setPitch(pitch);
+        e.setPlaying(true);
+        short[] buf = new short[512];
+        for (int k = 0; k < 2 * OUT / 256; k++) {
+            e.render(buf, 256);
+        }
+        int n = OUT / 256 * 256;
+        double[] out = new double[n];
+        for (int k = 0; k < n / 256; k++) {
+            e.render(buf, 256);
+            for (int i = 0; i < 256; i++) {
+                out[k * 256 + i] = buf[2 * i];
+            }
+        }
+        return out;
+    }
+
+    /** Temblor de volumen: desviación del nivel (ventanas de 10 ms) respecto a su media, en %. */
+    static double tremolo(double[] x) {
+        int w = OUT / 100;
+        int n = x.length / w;
+        double[] lv = new double[n];
+        double m = 0;
+        for (int k = 0; k < n; k++) {
+            double s = 0;
+            for (int i = 0; i < w; i++) {
+                s += x[k * w + i] * x[k * w + i];
+            }
+            lv[k] = Math.sqrt(s / w);
+            m += lv[k];
+        }
+        m /= n;
+        double v = 0;
+        for (int k = 0; k < n; k++) {
+            v += (lv[k] - m) * (lv[k] - m);
+        }
+        return 100 * Math.sqrt(v / n) / m;
+    }
+
+    static PcmData rich(int secs) {
+        PcmData.Builder b = new PcmData.Builder(SRC * secs);
+        for (int i = 0; i < SRC * secs; i++) {
+            double t = i / (double) SRC;
+            double s = 0;
+            for (int h = 1; h <= 6; h++) {
+                s += Math.sin(2 * Math.PI * 196 * h * t + h) / h;
+            }
+            short v = (short) Math.round(5000 * s);
+            b.append(v, v);
+        }
+        return b.build(SRC);
+    }
+
+    static void keylockTable() {
+        System.out.println();
+        System.out.println("| Keylock (mantener el tono) | Señal/ruido dB | Temblor de volumen |");
+        System.out.println("|---|---:|---:|");
+        double[] pitches = {0.8, 1.2};
+        for (double p : pitches) {
+            for (double h : new double[] {220, 440, 1000}) {
+                double[] x = keylock(sine(h, 12), p);
+                System.out.println("| Tono de " + (int) h + " Hz a " + p + "× | " + f(fit(x, h)[1]) + " | " + f(tremolo(x)) + " % |");
+            }
+            System.out.println("| Nota con 6 armónicos (196 Hz) a " + p + "× | — | " + f(tremolo(keylock(rich(12), p))) + " % |");
+        }
+    }
+
     static String f(double v) {
         return String.format(Locale.US, "%.1f", v);
     }
@@ -100,5 +173,6 @@ public class BenchQuality {
         System.out.println("| 14 kHz a 2× (28 kHz → se pliega a 20 kHz) | " + f(rmsDb(play(14000, 2.0))) + " |");
         System.out.println("| 12 kHz a 3× (36 kHz → se pliega a 12 kHz) | " + f(rmsDb(play(12000, 3.0))) + " |");
         System.out.println("| 10 kHz a 4× (40 kHz → se pliega a 8 kHz) | " + f(rmsDb(play(10000, 4.0))) + " |");
+        keylockTable();
     }
 }

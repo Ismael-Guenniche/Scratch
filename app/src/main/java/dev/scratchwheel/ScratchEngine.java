@@ -1510,6 +1510,54 @@ public final class ScratchEngine {
     }
 
     private final double[] gOut = new double[2];
+    private int lastGrain = -1;
+
+    /**
+     * Busca, alrededor de {@code nom} (±6 ms), el punto de la pista cuya onda más se parece a la que está
+     * sonando en {@code ref} (la continuación natural del grano anterior), por correlación normalizada sobre
+     * 12 ms. Búsqueda gruesa (cada 2 muestras, comparando 1 de cada 4) y ajuste fino al final.
+     */
+    private double wsola(double nom, double ref, int dir, int last) {
+        final short[] d = data;
+        int span = (int) (0.006 * sampleRate);
+        int win = (int) (0.012 * sampleRate);
+        int r0 = (int) ref;
+        int n0 = (int) nom;
+        int lo = Math.min(r0, n0 - span);
+        int hi = Math.max(r0, n0 + span);
+        if (dir > 0 ? (lo < 0 || hi + win > last) : (lo - win < 0 || hi > last)) {
+            return nom; // junto a los bordes de la pista no se busca
+        }
+        int best = 0;
+        double bestScore = -1e300;
+        for (int pass = 0; pass < 2; pass++) {
+            int from = pass == 0 ? -span : best - 1;
+            int to = pass == 0 ? span : best + 1;
+            int stepC = pass == 0 ? 2 : 1;
+            for (int c = from; c <= to; c += stepC) {
+                long dot = 0;
+                long en = 0;
+                int a = 2 * r0;
+                int b = 2 * (n0 + c);
+                int inc = 8 * dir;
+                for (int k = 0; k < win; k += 4) {
+                    int x = d[a] + d[a + 1];
+                    int y = d[b] + d[b + 1];
+                    dot += (long) x * y;
+                    en += (long) y * y;
+                    a += inc;
+                    b += inc;
+                }
+                double score = dot / Math.sqrt(en + 1.0);
+                if (score > bestScore) {
+                    bestScore = score;
+                    best = c;
+                }
+            }
+        }
+        // Misma fracción de muestra que la referencia: la alineación queda exacta también entre muestras.
+        return n0 + best + (ref - r0);
+    }
 
     /**
      * Síntesis granular (OLA con ventana Hann y solape del 50 %): cada grano suena a velocidad normal
@@ -1535,7 +1583,14 @@ public final class ScratchEngine {
             }
             if (slot >= 0) {
                 double half = len * ratio / 2.0;
-                gPos[slot] = pos - lastDir * half;
+                double start = pos - lastDir * half;
+                int pv = lastGrain;
+                if (pv >= 0 && gOn[pv] && gDir[pv] == lastDir) {
+                    // WSOLA: el grano nuevo empieza donde su onda mejor continúa la del grano anterior.
+                    start = wsola(start, gPos[pv], (int) lastDir, last);
+                }
+                lastGrain = slot;
+                gPos[slot] = start;
                 gDir[slot] = lastDir;
                 gAge[slot] = 0;
                 gOn[slot] = true;
