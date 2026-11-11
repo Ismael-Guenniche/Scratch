@@ -1011,6 +1011,36 @@ public class Check {
             ok(detSame && sums[0] > 0, "determinismo: mismas órdenes, mismo audio muestra a muestra (suma " + sums[0] + ")");
         }
         {
+            // Sonido de vinilo: ruido de surco muy bajo solo con el disco girando, y la oscilación del tono no
+            // desplaza la posición.
+            PcmData.Builder vb2 = new PcmData.Builder(48000 * 14);
+            for (int i = 0; i < 48000 * 14; i++) {
+                vb2.append((short) 0, (short) 0);
+            }
+            ScratchEngine vy = new ScratchEngine();
+            vy.setOutputRate(48000);
+            vy.load(vb2.build(48000));
+            vy.setVinyl(1.0);
+            short[] vyb = new short[512];
+            vy.render(vyb, 256);
+            ok(energy(vyb, 256) == 0, "vinilo: con el disco parado no hay ruido");
+            vy.setPlaying(true);
+            double vsum = 0;
+            int vpeak = 0;
+            for (int k = 0; k < 1875; k++) {
+                vy.render(vyb, 256);
+                for (int i = 0; i < 512; i++) {
+                    vsum += (double) vyb[i] * vyb[i];
+                    vpeak = Math.max(vpeak, Math.abs(vyb[i]));
+                }
+            }
+            double vrms = Math.sqrt(vsum / (1875 * 512));
+            ok(vrms > 2 && vrms < 40 && vpeak < 1500, "vinilo: ruido de surco bajo (RMS " + Math.round(vrms) + ", pico "
+                    + vpeak + " de 32767)");
+            ok(Math.abs(vy.getPositionSeconds() - (10.0 - 0.1)) < 0.02, "vinilo: la oscilación no desplaza la posición ("
+                    + vy.getPositionSeconds() + " s tras 10 s)");
+        }
+        {
             // Keylock con WSOLA: un tono de 440 Hz a 1,2× sigue siendo un tono limpio de 440 Hz.
             PcmData.Builder kb = new PcmData.Builder(44100 * 8);
             for (int i = 0; i < 44100 * 8; i++) {
