@@ -303,7 +303,20 @@ final class Player {
     private long cacheBytes() {
         long b = 0;
         for (PcmData d : cache.values()) {
-            b += (long) d.stereo.length * 2;
+            b += d.heapBytes(); // las pistas en disco no ocupan heap
+        }
+        return b;
+    }
+
+    /** Tope de disco temporal para la precarga (las pistas en disco no gastan RAM, pero sí almacenamiento). */
+    private static final long PRECACHE_DISK_MAX = 600L << 20;
+
+    private long cacheDiskBytes() {
+        long b = 0;
+        for (PcmData d : cache.values()) {
+            if (d.mapped()) {
+                b += 4L * d.frames;
+            }
         }
         return b;
     }
@@ -388,7 +401,7 @@ final class Player {
             if (cache.containsKey(key) || cacheFailed.contains(key)) {
                 continue;
             }
-            if (used > cap) {
+            if (used > cap || cacheDiskBytes() > PRECACHE_DISK_MAX) {
                 return;
             }
             startCacheJob(t.uri, key);

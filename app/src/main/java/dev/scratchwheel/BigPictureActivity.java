@@ -444,8 +444,13 @@ public class BigPictureActivity extends Activity {
             ScratchEngine.Snap s = Player.I.engine.snap();
             double dur = Player.I.engine.getDurationSeconds();
             frac = dur > 0 ? (float) Math.max(0, Math.min(1, Player.I.engine.getPositionSeconds() / dur)) : 0f;
-            String k = System.identityHashCode(s.data) + ":" + s.frames + ":" + s.partial;
-            if (!k.equals(key) && !computing && s.frames > 0) {
+            String k = System.identityHashCode(s.peaks != null ? (Object) s.peaks : (Object) s.data) + ":" + s.frames
+                    + ":" + s.partial;
+            if (!k.equals(key) && s.peaks != null) {
+                // pista en disco: la forma de onda ya viene calculada (o de la caché)
+                peaks = s.peaks;
+                key = k;
+            } else if (!k.equals(key) && !computing && s.frames > 0 && s.have >= s.frames) {
                 computing = true;
                 final ScratchEngine.Snap fs = s;
                 final String fk = k;
@@ -547,7 +552,7 @@ public class BigPictureActivity extends Activity {
             boolean active = Player.I.isPlayingOrPending() || e.isScratching() || Math.abs(e.getRate()) > 0.02;
             if (active) {
                 ScratchEngine.Snap s = e.snap();
-                Waveform.spectrum(s.data, s.frames, s.pos, s.rate, lv);
+                Waveform.spectrum(s.data, s.have, s.pos - s.base, s.rate, lv);
                 float gain = (float) Math.min(1.0, Math.abs(e.getRate()) * 4.0);
                 for (int i = 0; i < lv.length; i++) {
                     lv[i] *= gain;
