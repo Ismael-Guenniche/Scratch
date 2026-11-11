@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.54: Audio T3: la rueda y las consultas de la interfaz ya no cogen el cerrojo del motor, así que la interfaz no puede dejar esperando al hilo de audio. Mismo sonido bit a bit; esperas del audio por el cerrojo de hasta 11,7 ms a 0,02 ms en la prueba de estrés.
 - 0.53: Audio T2: el hilo de audio ya no crea objetos (sampler y grabación), ventana Hann del keylock en tabla y filtros que solo recalculan lo que cambia. Mismo sonido bit a bit; keylock un 30 % más barato.
 - 0.52: Audio T1 (sin cambios en la app): auditoría del motor y benchmark base reproducible en la JVM (`tools/Bench.java`, resultados en docs/BENCHMARKS.md: coste por bloque, asignaciones, cerrojo, latencia teórica y memoria); nuevo test de determinismo en `tools/Check.java`.
 - 0.51: Cola: al volver atrás con anterior y pulsar siguiente se reproduce la canción de la que venías (A → B → atrás → A → siguiente → B), en vez de saltar a otra distinta.

@@ -121,3 +121,17 @@ Mismo equipo y mismo método que la línea base. **Todas las huellas CRC son id�
 | `setFilter()` con el cerrojo | 647 ns | 132 ns |
 
 Qué se hizo: ventana Hann en tabla (antes un `Math.cos` por grano y muestra), notas de la bocina como constante, cada orden de efectos recalcula solo sus coeficientes (antes los 16 biquads siempre), constantes del bucle fuera del bucle, índices circulares sin `%`, y grabación con anillo preasignado.
+
+## T3 · Menos cerrojo (v0.54)
+
+Medida nueva en `Bench`: 4 hilos de interfaz llamando sin pausa a la rueda y a las consultas (más hilos que núcleos, para forzar que alguno sea desalojado con el cerrojo cogido) mientras el audio renderiza a ritmo real. Se mide cuánto espera el hilo de audio para conseguir el cerrojo antes de cada bloque. **Huellas CRC idénticas a T1/T2.**
+
+| Medida | Antes (0.53) | Después (0.54) |
+|---|---:|---:|
+| Espera por el cerrojo, p99 | 5 089 µs | 1,56 µs |
+| Espera por el cerrojo, máxima | 11 679 µs (más de 2 bloques: corte seguro) | 19,7 µs |
+| Bloques con espera > 1 ms | 240 / 4000 | 0 / 4000 |
+| Veces que el bucle de audio coge el cerrojo por bloque | 4 | 1 |
+| `rotate()` | 14 ns con cerrojo | 7 ns sin cerrojo |
+| `snap()` | 63 ns con cerrojo | 26 ns sin cerrojo |
+| Coste de `render()` (scratch / modo DJ) | 9,35 / 36,3 µs | 9,42 / 37,6 µs (igual, dentro del ruido) |
