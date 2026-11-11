@@ -299,6 +299,67 @@ public class Bench {
         return stats(ns);
     }
 
+    /**
+     * Inversión de prioridad simulada: {@code threads} hilos de interfaz llaman sin pausa a la rueda y a los
+     * getters (más hilos que núcleos), mientras este renderiza a ritmo real. Mide cuánto espera el hilo de
+     * audio para conseguir el cerrojo del motor antes de cada bloque. Devuelve {p50, p99, máx (µs), esperas > 1 ms}.
+     */
+    static double[] lockWait(int threads, int n) throws Exception {
+        final ScratchEngine e = fresh();
+        scenario(3).init(e);
+        final boolean[] stop = {false};
+        Thread[] ui = new Thread[threads];
+        for (int t = 0; t < threads; t++) {
+            ui[t] = new Thread(new Runnable() {
+                public void run() {
+                    int k = 0;
+                    double sink = 0;
+                    while (!stop[0]) {
+                        e.rotate(0.0005 * Math.sin(k++ * 0.01));
+                        sink += e.getPositionSeconds() + e.getRate() + e.getLevel() + e.getDurationSeconds();
+                        if (e.isPlaying() || !e.isScratching()) {
+                            sink += 1;
+                        }
+                    }
+                }
+            }, "ui-sim-" + t);
+            ui[t].setDaemon(true);
+            ui[t].start();
+        }
+        short[] buf = new short[BLOCK * 2];
+        long[] ns = new long[n];
+        long period = (long) (BUDGET_US * 1000);
+        long next = System.nanoTime();
+        for (int i = 0; i < 200 + n; i++) {
+            long t0 = System.nanoTime();
+            long t1;
+            synchronized (e) {
+                t1 = System.nanoTime();
+                e.render(buf, BLOCK);
+            }
+            if (i >= 200) {
+                ns[i - 200] = t1 - t0;
+            }
+            next += period;
+            long w = next - System.nanoTime();
+            if (w > 0) {
+                java.util.concurrent.locks.LockSupport.parkNanos(w);
+            }
+        }
+        stop[0] = true;
+        for (Thread t : ui) {
+            t.join();
+        }
+        Arrays.sort(ns);
+        int late = 0;
+        for (long v : ns) {
+            if (v > 1000000) {
+                late++;
+            }
+        }
+        return new double[] {ns[n / 2] / 1000.0, ns[(int) (n * 0.99)] / 1000.0, ns[n - 1] / 1000.0, late};
+    }
+
     /** Coste medio (ns) de una orden de la interfaz: es el tiempo que retiene el cerrojo del motor. */
     static double callNs(int which) {
         ScratchEngine e = fresh();
@@ -386,6 +447,11 @@ public class Bench {
         Res c1 = contend(3, 1000, false, n);
         System.out.println("| Scratch, rueda + ticker a 1000 Hz | " + f(c1.mean) + " | " + f(c1.p99) + " | "
                 + f(c1.max) + " | " + c1.over + " / " + n + " |");
+        double[] lw = lockWait(4, n);
+        System.out.println();
+        System.out.println("Espera del hilo de audio por el cerrojo con 4 hilos de interfaz sin pausa: p50 " + f(lw[0])
+                + " µs, p99 " + f(lw[1]) + " µs, máx " + f(lw[2]) + " µs, esperas > 1 ms: " + (int) lw[3] + " / " + n);
+        System.out.println();
         Res c2 = contend(6, 1000, true, n);
         System.out.println("| Modo DJ, faders EQ/filtro a 1000 Hz | " + f(c2.mean) + " | " + f(c2.p99) + " | "
                 + f(c2.max) + " | " + c2.over + " / " + n + " |");

@@ -11,6 +11,14 @@ El límite es de 20 millones de frames (≈ 7,5 min a 44,1 kHz, unos 80 MB); si 
 ## Salida
 `Player` abre un `AudioTrack` en modo de **baja latencia** a la frecuencia nativa del dispositivo y un hilo con prioridad de audio llama a `engine.render()` en bloques de 256 frames. El hilo se duerme tras ~120 bloques de inactividad y se despierta al tocar la rueda o disparar un sonido.
 
+## Hilos y cerrojo
+`render()` y las órdenes que cambian el estado siguen siendo `synchronized`, pero lo que la interfaz llama muchas veces por segundo **no coge el cerrojo**:
+- `rotate()` acumula el giro en un `AtomicLong` y el hilo de audio lo aplica al empezar el bloque siguiente;
+- `getPositionSeconds()`, `getDurationSeconds()`, `getRate()`, `getLevel()`, `isPlaying()`, `isScratching()`, `isIdle()`, `hasSwapped()` y `snap()` leen campos `volatile` que se publican al final de cada bloque y de cada orden (`publish()`);
+- el bucle de audio ya solo coge el cerrojo una vez por bloque (antes cuatro).
+
+Así, mientras haces scratch la interfaz no puede retener el cerrojo y dejar esperando al hilo de audio (inversión de prioridad). Las órdenes puntuales (play, efectos, cues) lo cogen durante nanosegundos.
+
 ## Cómo suena el scratch
 Como un vinilo: el motor lee la pista a **velocidad variable** con **interpolación cúbica** (Catmull-Rom). Mientras el dedo está en la rueda, la posición de lectura *persigue* a una posición objetivo que mueve el dedo:
 - velocidad = distancia al objetivo / τ (τ = 20 ms), limitada a ±12×;
