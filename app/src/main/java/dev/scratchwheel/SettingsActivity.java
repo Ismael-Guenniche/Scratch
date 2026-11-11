@@ -454,6 +454,16 @@ public class SettingsActivity extends Activity {
         }));
         c.addView(muted(Tr.t("Las últimas canciones se mezclan con la siguiente cuando suena sola (necesita la precarga activada). Al saltar a mano no hay fundido.")));
 
+        // ANDROID AUTO
+        c = card(list, Tr.t("ANDROID AUTO"));
+        c.addView(muted(Tr.t("Vista previa de lo que verás en el coche: usa el mismo servicio que Android Auto (explorador, búsqueda, cola y controles), con filas y botones grandes. Sirve también como modo coche.")));
+        c.addView(actionRow(Tr.t("Probar sin coche"), Tr.t("ABRIR"), new Runnable() {
+            @Override
+            public void run() {
+                startActivity(new Intent(SettingsActivity.this, CarPreviewActivity.class));
+            }
+        }));
+
         // PRECARGA
         c = card(list, Tr.t("PRECARGA"));
         c.addView(body(Tr.t("Canciones listas en memoria")));
@@ -602,7 +612,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.46");
+        about.setText("SCRATCH 0.48");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);

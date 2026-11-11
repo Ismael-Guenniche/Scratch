@@ -6,3 +6,7 @@ Como la app no viene de Google Play, hay que activarlo una vez:
 1. Ajustes del móvil → Android Auto → toca 10 veces en "Versión" → menú de tres puntos → Ajustes de desarrollador.
 2. Activa "Orígenes desconocidos".
 3. Conecta el coche; Scratch saldrá en la lista de apps multimedia.
+
+## Probar sin coche
+- **Vista previa en la app:** Ajustes → ANDROID AUTO → ABRIR. Se conecta a `PlayerService` como lo haría el coche (explorador, búsqueda, cola, controles y botones de aleatorio/repetir), con filas y botones grandes. No dibuja la pantalla real de Android Auto, pero prueba exactamente los datos y órdenes que recibirá.
+- **Emulador oficial (Desktop Head Unit):** en el móvil, app Android Auto → toca 10 veces en "Versión" → ⋮ → "Iniciar servidor de unidad principal". En el PC, instala "Android Auto Desktop Head Unit Emulator" desde Android Studio (SDK Manager → SDK Tools), ejecuta `adb forward tcp:5277 tcp:5277` y después `desktop-head-unit` (carpeta `extras/google/auto` del SDK).

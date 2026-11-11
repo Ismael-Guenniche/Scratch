@@ -156,6 +156,10 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".CarPreviewActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".QueueActivity"
             android:exported="false"
             android:screenOrientation="portrait" />
