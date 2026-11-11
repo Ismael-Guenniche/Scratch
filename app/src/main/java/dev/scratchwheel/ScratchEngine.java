@@ -199,29 +199,33 @@ public final class ScratchEngine {
         geqPre = Math.pow(10, -(max * 0.7) / 20); // evita saturar al subir bandas
         refreshGeq();
         updateFxActive();
+        publish();
     }
 
     /** Encola la siguiente pista: al acabar la actual entra sin hueco. */
     public synchronized void queueNext(PcmData pcm) {
         nextPcm = pcm;
+        publish();
     }
 
     public synchronized void clearNext() {
         nextPcm = null;
+        publish();
     }
 
     public synchronized boolean hasNext() {
         return nextPcm != null;
     }
 
-    public synchronized boolean hasSwapped() {
-        return swapped;
+    public boolean hasSwapped() {
+        return pubSwapped;
     }
 
     /** true una vez cuando el motor ha saltado solo a la pista encolada. */
     public synchronized boolean consumeSwapped() {
         boolean e = swapped;
         swapped = false;
+        publish();
         return e;
     }
 
@@ -252,6 +256,7 @@ public final class ScratchEngine {
         eqMid = Math.max(0, Math.min(1.6, mid));
         eqHigh = Math.max(0, Math.min(1.6, high));
         updateFxActive();
+        publish();
     }
 
     /** -1 = paso bajo cerrado, 0 = sin filtro, +1 = paso alto cerrado. */
@@ -259,23 +264,27 @@ public final class ScratchEngine {
         filter = Math.max(-1, Math.min(1, f));
         refreshSweep();
         updateFxActive();
+        publish();
     }
 
     public synchronized void setEcho(double mix) {
         echo = Math.max(0, Math.min(1, mix));
         ensureDelay();
         updateFxActive();
+        publish();
     }
 
     /** Duración del frenado al pausar (s). */
     public synchronized void setBrake(double seconds) {
         spinDown = Math.max(0.1, Math.min(6.0, seconds));
+        publish();
     }
 
     /** Efecto de rebobinado rápido que se frena (como tirar del disco hacia atrás). */
     public synchronized void backspin() {
         backspinTotal = (int) (0.75 * outRate);
         backspinLeft = backspinTotal;
+        publish();
     }
 
     /** Vuelve todo a neutro (al salir del modo DJ). */
@@ -287,6 +296,7 @@ public final class ScratchEngine {
         backspinLeft = 0;
         resetGimmicks();
         refreshFx();
+        publish();
     }
 
     // ================= gimmicks de DJ =================
@@ -296,6 +306,7 @@ public final class ScratchEngine {
         if (i >= 0 && i < cues.length && frames > 0) {
             cues[i] = pos / sampleRate;
         }
+        publish();
     }
 
     /** Salta al hot cue i. Devuelve false si el pad está vacío. */
@@ -304,6 +315,7 @@ public final class ScratchEngine {
             return false;
         }
         jumpTo(cues[i] * sampleRate);
+        publish();
         return true;
     }
 
@@ -311,6 +323,7 @@ public final class ScratchEngine {
         if (i >= 0 && i < cues.length) {
             cues[i] = -1;
         }
+        publish();
     }
 
     /** Segundos del cue i, o -1 si está vacío. */
@@ -330,11 +343,13 @@ public final class ScratchEngine {
     /** Salto relativo en segundos (beat jump a mano). */
     public synchronized void jump(double seconds) {
         jumpTo(pos + seconds * sampleRate);
+        publish();
     }
 
     // ----- bucles
     public synchronized void loopIn() {
         loopIn = pos;
+        publish();
     }
 
     public synchronized void loopOut() {
@@ -345,6 +360,7 @@ public final class ScratchEngine {
             rolling = false;
             slipBegin(false);
         }
+        publish();
     }
 
     public synchronized void loopExit() {
@@ -352,6 +368,7 @@ public final class ScratchEngine {
         rolling = false;
         loopIn = -1;
         slipEnd();
+        publish();
     }
 
     /** Multiplica la longitud del bucle (0,5 o 2). */
@@ -362,6 +379,7 @@ public final class ScratchEngine {
                 loopEnd = Math.min(Math.max(frames - 1, 0), loopStart + len);
             }
         }
+        publish();
     }
 
     public synchronized boolean isLoopOn() {
@@ -375,11 +393,13 @@ public final class ScratchEngine {
     /** Loop roll: mientras se mantiene, repite los últimos segundos; al soltar vuelve a donde habría llegado la canción. */
     public synchronized void rollStart(double seconds) {
         if (!playing || frames == 0 || (loopOn && !rolling)) {
+            publish();
             return;
         }
         loopStart = pos;
         loopEnd = Math.min(Math.max(frames - 1, 0), pos + seconds * sampleRate);
         if (loopEnd <= loopStart + 100) {
+            publish();
             return;
         }
         if (!rolling) {
@@ -387,6 +407,7 @@ public final class ScratchEngine {
             slipBegin(true);
         }
         loopOn = true;
+        publish();
     }
 
     public synchronized void rollEnd() {
@@ -395,6 +416,7 @@ public final class ScratchEngine {
             loopOn = false;
             slipEnd();
         }
+        publish();
     }
 
     // ----- slip
@@ -403,6 +425,7 @@ public final class ScratchEngine {
         if (!on) {
             slipEnd();
         }
+        publish();
     }
 
     private void slipBegin(boolean force) {
@@ -423,6 +446,7 @@ public final class ScratchEngine {
     // ----- reverse / cut / gate
     public synchronized void setReverse(boolean on) {
         if (on == reverse) {
+            publish();
             return;
         }
         reverse = on;
@@ -431,15 +455,18 @@ public final class ScratchEngine {
         } else {
             slipEnd();
         }
+        publish();
     }
 
     public synchronized void setCut(boolean on) {
         cut = on;
+        publish();
     }
 
     /** Trans/gate rítmico: hz = 0 apagado. */
     public synchronized void setGate(double hz) {
         gateHz = Math.max(0, Math.min(30, hz));
+        publish();
     }
 
     public synchronized double getGate() {
@@ -455,11 +482,13 @@ public final class ScratchEngine {
             flBufR = new float[n];
         }
         updateFxActive();
+        publish();
     }
 
     public synchronized void setPhaser(boolean on) {
         phaser = on;
         updateFxActive();
+        publish();
     }
 
     public synchronized boolean isFlanger() {
@@ -480,12 +509,14 @@ public final class ScratchEngine {
         }
         echoOutLeft = (int) (3.0 * outRate);
         updateFxActive();
+        publish();
     }
 
     /** Parada de vinilo: la próxima pausa frena en esta duración (se borra al volver a reproducir). */
     public synchronized void armVinylStop(double seconds) {
         stopSecs = Math.max(0.2, seconds);
         stopFlag = true;
+        publish();
     }
 
     /** Dispara un sonido del sampler: 0 bocina, 1 sirena, 2 láser, 3 riser. */
@@ -496,12 +527,14 @@ public final class ScratchEngine {
                 svType[v] = id;
                 svT[v] = 0;
                 svPh[v] = 0;
+                publish();
                 return;
             }
         }
         svType[0] = id;
         svT[0] = 0;
         svPh[0] = 0;
+        publish();
     }
 
     private boolean samplerActive() {
@@ -514,8 +547,8 @@ public final class ScratchEngine {
     }
 
     /** Nivel de salida 0..1 (para el vúmetro). */
-    public synchronized double getLevel() {
-        return level;
+    public double getLevel() {
+        return pubLevel;
     }
 
     /** Deja los gimmicks en reposo (al salir del modo DJ o al cargar otra pista). */
@@ -535,6 +568,7 @@ public final class ScratchEngine {
         echoOutLeft = 0;
         stopFlag = false;
         slip = false;
+        publish();
     }
 
     /** Un paso del sampler: suma las voces activas (frecuencia de salida). */
@@ -759,6 +793,56 @@ public final class ScratchEngine {
 
     private final double[] tmp = new double[2];
 
+    // ----- estado publicado: lo que la interfaz consulta muchas veces por segundo se lee de aquí sin cerrojo
+    private volatile double pubPosSec;
+    private volatile double pubDurSec;
+    private volatile double pubRate;
+    private volatile double pubLevel;
+    private volatile boolean pubPlaying;
+    private volatile boolean pubScratching;
+    private volatile boolean pubIdle = true;
+    private volatile boolean pubSwapped;
+    private volatile boolean pubEnded;
+    private volatile boolean pubPartial;
+    private volatile short[] pubData = new short[0];
+    private volatile int pubFrames;
+    private volatile int pubSampleRate = 44100;
+    private volatile double pubPosFrames;
+    /** Giro de la rueda pendiente de aplicar (radianes, como bits de double): rotate() no coge el cerrojo. */
+    private final java.util.concurrent.atomic.AtomicLong pendingRot = new java.util.concurrent.atomic.AtomicLong();
+
+    /** Copia el estado a los campos publicados. Se llama con el cerrojo cogido al final de cada orden y de cada bloque. */
+    private void publish() {
+        pubPosFrames = pos;
+        pubPosSec = pos / sampleRate;
+        pubDurSec = (double) Math.max(frames, partial ? totalFrames : 0) / sampleRate;
+        pubRate = rate;
+        pubLevel = level;
+        pubPlaying = playing;
+        pubScratching = scratching;
+        pubSwapped = swapped;
+        pubEnded = ended;
+        pubPartial = partial;
+        pubSampleRate = sampleRate;
+        pubFrames = frames;
+        pubData = data;
+        pubIdle = !playing && !scratching && seek == 0 && rate == 0 && echoOutLeft == 0 && !samplerActive();
+    }
+
+    /** Aplica el giro acumulado por rotate() (con el cerrojo cogido). */
+    private void applyRotation() {
+        long bits = pendingRot.getAndSet(0L);
+        if (bits == 0L) {
+            return;
+        }
+        double radians = Double.longBitsToDouble(bits);
+        if (!scratching) {
+            return;
+        }
+        scratchTarget += (invert ? -radians : radians) / (2 * Math.PI) * secPerRev * sampleRate;
+        scratchTarget = Math.max(0, Math.min(Math.max(frames - 1, 0), scratchTarget));
+    }
+
     public synchronized void load(PcmData pcm) {
         nextPcm = null;
         swapped = false;
@@ -782,6 +866,7 @@ public final class ScratchEngine {
         loopIn = -1;
         slipping = false;
         reverse = false;
+        publish();
     }
 
     /** Vista de solo lectura del audio cargado para dibujar la onda y el espectro (el array no se modifica nunca). */
@@ -801,25 +886,31 @@ public final class ScratchEngine {
         }
     }
 
-    public synchronized Snap snap() {
-        return new Snap(data, frames, sampleRate, partial, (int) Math.max(0, Math.min(frames - 1, pos)));
+    public Snap snap() {
+        // pubData se lee una sola vez: los frames se acotan a ese array por si la pista cambia a mitad.
+        short[] d = pubData;
+        int f = Math.min(pubFrames, d.length / 2);
+        return new Snap(d, f, pubSampleRate, pubPartial, (int) Math.max(0, Math.min(f - 1, pubPosFrames)));
     }
 
     /** Sustituye el fragmento inicial por la pista entera sin tocar la posición (el principio es idéntico). */
     public synchronized void replaceData(PcmData full) {
         if (!partial || full.sampleRate != sampleRate) {
+            publish();
             return;
         }
         data = full.stereo;
         frames = full.frames;
         partial = false;
         totalFrames = 0;
+        publish();
     }
 
     /** La carga completa falló: lo que hay se trata como la pista entera. */
     public synchronized void finishPartial() {
         partial = false;
         totalFrames = 0;
+        publish();
     }
 
     public synchronized boolean isPartial() {
@@ -830,6 +921,7 @@ public final class ScratchEngine {
         outRate = Math.max(8000, hz);
         makeHann();
         refreshFx();
+        publish();
     }
 
     public synchronized int getSampleRate() {
@@ -838,20 +930,24 @@ public final class ScratchEngine {
 
     public synchronized void setCrossfade(double secs) {
         xfadeSecs = Math.max(0, Math.min(12, secs));
+        publish();
     }
 
     /** Ganancia por pista (ReplayGain), aparte del volumen de fundidos y temporizador. */
     public synchronized void setTrackGain(float g) {
         trackGain = Math.max(0.05f, Math.min(1f, g));
+        publish();
     }
 
     public synchronized void setVolume(float v) {
         volume = Math.max(0f, Math.min(1f, v));
+        publish();
     }
 
     /** Velocidad de reproducción normal (como el pitch de una mesa): 1,0 = original. */
     public synchronized void setPitch(double p) {
         pitch = Math.max(0.5, Math.min(1.5, p));
+        publish();
     }
 
     public synchronized void setPlaying(boolean p) {
@@ -865,32 +961,40 @@ public final class ScratchEngine {
         } else {
             slipping = false;
         }
+        publish();
     }
 
-    public synchronized boolean isPlaying() {
-        return playing;
+    public boolean isPlaying() {
+        return pubPlaying;
     }
 
-    public synchronized boolean isScratching() {
-        return scratching;
+    public boolean isScratching() {
+        return pubScratching;
     }
 
     /** true si no hay nada que sonar: se puede parar el hilo de audio. */
-    public synchronized boolean isIdle() {
-        return !playing && !scratching && seek == 0 && rate == 0 && echoOutLeft == 0 && !samplerActive();
+    public boolean isIdle() {
+        return pubIdle && pendingRot.get() == 0L;
     }
 
     /** true una vez cuando la pista llega al final reproduciéndose. */
-    public synchronized boolean consumeEnded() {
-        boolean e = ended;
-        ended = false;
-        return e;
+    public boolean consumeEnded() {
+        if (!pubEnded) {
+            return false;
+        }
+        synchronized (this) {
+            boolean e = ended;
+            ended = false;
+            publish();
+            return e;
+        }
     }
 
     public synchronized void seekTo(double seconds) {
         double f = Math.max(0, Math.min(Math.max(frames - 1, 0), seconds * sampleRate));
         pos = f;
         scratchTarget = f;
+        publish();
     }
 
     /** Avance/retroceso rápido con audio: -1, 0 o 1. */
@@ -899,6 +1003,7 @@ public final class ScratchEngine {
             seekMag = SEEK_RATE;
         }
         seek = Integer.signum(dir) * seekMag;
+        publish();
     }
 
     /** Cambia la velocidad del avance rápido en curso (0,5× a 4×). */
@@ -907,11 +1012,13 @@ public final class ScratchEngine {
         if (seek != 0) {
             seek = Math.signum(seek) * seekMag;
         }
+        publish();
     }
 
     /** Segundos de audio por vuelta de la rueda (menos = más sensible). */
     public synchronized void setSecondsPerRev(double s) {
         secPerRev = Math.max(0.3, Math.min(10, s));
+        publish();
     }
 
     public synchronized double getSecondsPerRev() {
@@ -920,6 +1027,7 @@ public final class ScratchEngine {
 
     public synchronized void setInvert(boolean inv) {
         invert = inv;
+        publish();
     }
 
     public synchronized boolean isInverted() {
@@ -935,6 +1043,7 @@ public final class ScratchEngine {
             }
             hopCnt = 0;
         }
+        publish();
     }
 
     public synchronized boolean isKeyLock() {
@@ -942,48 +1051,60 @@ public final class ScratchEngine {
     }
 
     public synchronized void touchDown() {
+        pendingRot.set(0L);
         freeSpin = false;
         slipBegin(false);
         scratching = true;
         scratchTarget = pos;
+        publish();
     }
 
-    public synchronized void rotate(double radians) {
-        if (!scratching) {
+    /** Giro de la rueda. No coge el cerrojo: se acumula y el hilo de audio lo aplica al empezar el bloque. */
+    public void rotate(double radians) {
+        if (!pubScratching || radians == 0) {
             return;
         }
-        scratchTarget += (invert ? -radians : radians) / (2 * Math.PI) * secPerRev * sampleRate;
-        scratchTarget = Math.max(0, Math.min(Math.max(frames - 1, 0), scratchTarget));
+        while (true) {
+            long old = pendingRot.get();
+            long upd = Double.doubleToRawLongBits(Double.longBitsToDouble(old) + radians);
+            if (pendingRot.compareAndSet(old, upd)) {
+                return;
+            }
+        }
     }
 
     /** Inercia: al soltar la rueda lanzada sigue girando con fricción (tau en segundos) hasta pararse. */
     public synchronized void setInertia(boolean on, double tauSeconds) {
         inertia = on;
         frictionTau = Math.max(0.2, Math.min(8, tauSeconds));
+        publish();
     }
 
     public synchronized void touchUp() {
+        applyRotation();
         if (scratching && inertia && !playing && backspinLeft == 0 && Math.abs(rate) > 0.15) {
             freeSpin = true;
         }
         scratching = false;
         slipEnd();
+        publish();
     }
 
-    public synchronized double getPositionSeconds() {
-        return pos / sampleRate;
+    public double getPositionSeconds() {
+        return pubPosSec;
     }
 
-    public synchronized double getDurationSeconds() {
-        return (double) Math.max(frames, partial ? totalFrames : 0) / sampleRate;
+    public double getDurationSeconds() {
+        return pubDurSec;
     }
 
-    public synchronized double getRate() {
-        return rate;
+    public double getRate() {
+        return pubRate;
     }
 
     /** Rellena out con n frames estéreo intercalados a la frecuencia de salida. */
     public synchronized void render(short[] out, int n) {
+        applyRotation();
         double ratio = (double) sampleRate / outRate;
         double tau = 0.02 * sampleRate;
         final double aScale = 44100.0 / outRate;
@@ -1182,6 +1303,7 @@ public final class ScratchEngine {
         double lv = Math.min(1.0, levelAcc / 24000.0);
         level = Math.max(lv, level * 0.8);
         levelAcc = 0;
+        publish();
     }
 
     private boolean samplerActiveFlag() {
