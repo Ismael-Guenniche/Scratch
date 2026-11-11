@@ -1011,6 +1011,91 @@ public class Check {
             ok(detSame && sums[0] > 0, "determinismo: mismas órdenes, mismo audio muestra a muestra (suma " + sums[0] + ")");
         }
         {
+            // Pista en disco (mmap + ventana): mismo audio muestra a muestra que la misma pista en memoria, con
+            // reproducción, saltos, scratch, keylock, fundido y cambio de pista sin hueco; y sin ocupar heap.
+            java.io.File pdir = new java.io.File(dir, "pcm");
+            int dn = 44100 * 40;
+            PcmData.Builder hb = new PcmData.Builder(dn);
+            PcmData.Builder db = new PcmData.Builder(dn, pdir);
+            PcmData.Builder hb2 = new PcmData.Builder(dn);
+            PcmData.Builder db2 = new PcmData.Builder(dn, pdir);
+            long seed = 777;
+            for (int i = 0; i < dn; i++) {
+                seed = seed * 6364136223846793005L + 1442695040888963407L;
+                short l = (short) (9000 * Math.sin(i * 0.031) + ((seed >>> 50) - 8192) / 8);
+                short r = (short) (9000 * Math.sin(i * 0.047) - ((seed >>> 50) - 8192) / 8);
+                hb.append(l, r);
+                db.append(l, r);
+                hb2.append(r, l);
+                db2.append(r, l);
+            }
+            ok(db.onDisk(), "disco: el constructor escribe a un archivo temporal");
+            PcmData[] trk = {hb.build(44100), db.build(44100)};
+            PcmData[] nxt = {hb2.build(44100), db2.build(44100)};
+            ok(trk[1].mapped() && trk[1].heapBytes() == 0 && trk[0].heapBytes() > 100000000L / 20,
+                    "disco: la pista proyectada no ocupa heap (" + trk[1].heapBytes() + " frente a " + trk[0].heapBytes() + ")");
+            String[] left = pdir.list();
+            ok(left != null && left.length == 0, "disco: el archivo temporal se borra al proyectarlo");
+            ok(trk[1].peaks != null && java.util.Arrays.equals(trk[1].peaks,
+                    dev.scratchwheel.Waveform.peaks(trk[0].stereo, trk[0].frames, PcmData.PEAKS)),
+                    "disco: la forma de onda precalculada coincide con la de memoria");
+            double[] bpmH = BpmDetect.detect(trk[0]);
+            double[] bpmD = BpmDetect.detect(trk[1]);
+            ok(java.util.Arrays.equals(bpmH, bpmD), "disco: el BPM sale igual leyendo de disco");
+            ScratchEngine[] me2 = {new ScratchEngine(), new ScratchEngine()};
+            short[][] mo = new short[2][512];
+            boolean eqAll = true;
+            int firstBad = -1;
+            for (int k = 0; k < 9000 && eqAll; k++) {
+                for (int m = 0; m < 2; m++) {
+                    ScratchEngine x = me2[m];
+                    if (k == 0) {
+                        x.setOutputRate(48000);
+                        x.load(trk[m]);
+                        x.setCrossfade(2);
+                        x.setPlaying(true);
+                    }
+                    if (k == 300) {
+                        x.seekTo(25);
+                    }
+                    if (k == 600) {
+                        x.touchDown();
+                    }
+                    if (k > 600 && k < 1100) {
+                        x.rotate(-0.5 * Math.abs(Math.sin(k * 0.05)));
+                    }
+                    if (k == 1100) {
+                        x.touchUp();
+                        x.setKeyLock(true);
+                    }
+                    if (k == 1500) {
+                        x.setKeyLock(false);
+                        x.seekTo(3);
+                        x.jump(30);
+                    }
+                    if (k == 1800) {
+                        x.queueNext(nxt[m]);
+                        x.seekTo(37);
+                    }
+                    x.render(mo[m], 256);
+                }
+                eqAll = java.util.Arrays.equals(mo[0], mo[1]);
+                firstBad = eqAll ? -1 : k;
+            }
+            ok(eqAll, "disco: audio idéntico al de memoria en 48 s de uso variado (primer bloque distinto: " + firstBad + ")");
+            ok(me2[1].consumeSwapped() && me2[1].getPositionSeconds() > 5, "disco: cambio de pista sin hueco con la siguiente en disco ("
+                    + me2[1].getPositionSeconds() + " s)");
+            ScratchEngine.Snap ms = me2[1].snap();
+            ok(ms.peaks != null && ms.have > 0 && ms.have <= 262144 && ms.pos >= ms.base && ms.pos < ms.base + ms.have,
+                    "disco: la vista para la interfaz da la ventana cargada (" + ms.have + " frames) y los picos");
+            java.io.File wdir = new java.io.File(dir, "wave");
+            dev.scratchwheel.WaveCache.put(wdir, "content://x/1", trk[1].frames, trk[1].peaks);
+            ok(java.util.Arrays.equals(dev.scratchwheel.WaveCache.get(wdir, "content://x/1", trk[1].frames, PcmData.PEAKS), trk[1].peaks)
+                    && dev.scratchwheel.WaveCache.get(wdir, "content://x/1", trk[1].frames + 1, PcmData.PEAKS) == null
+                    && dev.scratchwheel.WaveCache.get(wdir, "content://x/2", trk[1].frames, PcmData.PEAKS) == null,
+                    "caché de onda: guarda, recupera y no confunde canciones ni versiones");
+        }
+        {
             // Limitador suave: si los efectos suben la señal por encima del máximo, la cresta se redondea en vez
             // de quedar plana; sin efectos la señal no se toca.
             PcmData.Builder lb2 = new PcmData.Builder(48000 * 4);
