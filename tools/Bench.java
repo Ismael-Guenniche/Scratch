@@ -85,7 +85,24 @@ public class Bench {
         "Reproducción + modo DJ completo",
         "Reproducción + sampler (bocina)",
         "Reproducción + sonido de vinilo",
+        "Reproducción (pista en disco)",
+        "Scratch (pista en disco)",
     };
+
+    static PcmData trackDisk;
+
+    /** La misma pista de prueba, pero guardada en disco y proyectada (como las canciones reales desde la 0.65). */
+    static PcmData diskTrack() {
+        if (trackDisk == null) {
+            java.io.File d = new java.io.File(System.getProperty("java.io.tmpdir"), "scratch-bench-pcm");
+            PcmData.Builder b = new PcmData.Builder(track.frames, d);
+            for (int i = 0; i < track.frames; i++) {
+                b.append(track.stereo[2 * i], track.stereo[2 * i + 1]);
+            }
+            trackDisk = b.build(SRC_RATE);
+        }
+        return trackDisk;
+    }
 
     static Setup scenario(int i) {
         switch (i) {
@@ -141,6 +158,21 @@ public class Bench {
                         e.setPhaser(true);
                         e.setGate(8);
                         e.setPlaying(true);
+                    }
+                };
+            case 9:
+                return new Base() {
+                    public void init(ScratchEngine e) {
+                        e.load(diskTrack());
+                        e.setPlaying(true);
+                    }
+                };
+            case 10:
+                return new Scratch() {
+                    public void init(ScratchEngine e) {
+                        e.load(diskTrack());
+                        e.seekTo(60);
+                        e.touchDown();
                     }
                 };
             case 8:

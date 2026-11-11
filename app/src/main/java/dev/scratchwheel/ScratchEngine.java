@@ -27,7 +27,17 @@ public final class ScratchEngine {
     private static final double GRIP_TAU = 0.004;
     private static final double SPIN_DOWN = 0.7;
 
+    /** Muestras legibles ahora: la pista entera (en memoria) o la ventana cargada de una pista en disco. */
     private short[] data = new short[0];
+    /** Primer frame de la pista que hay en {@link #data} y cuántos hay. */
+    private int base;
+    private int have;
+    /** Pista en disco de la que se rellena la ventana (null si la pista está entera en memoria). */
+    private PcmData disk;
+    /** Ventana de lectura para pistas en disco (≈ 6 s a 44,1 kHz; 1 MB). Se reserva una sola vez. */
+    private static final int WIN = 262144;
+    private static final int WIN_MARGIN = 65536;
+    private short[] win;
     private int frames;
     /** true mientras solo está cargado el principio de la pista (arranque rápido). */
     private boolean partial;
@@ -239,6 +249,9 @@ public final class ScratchEngine {
 
     /** Encola la siguiente pista: al acabar la actual entra sin hueco. */
     public synchronized void queueNext(PcmData pcm) {
+        if (pcm != null && pcm.mapped() && win == null) {
+            win = new short[2 * WIN]; // aquí y no en el hilo de audio
+        }
         nextPcm = pcm;
         publish();
     }
@@ -267,8 +280,7 @@ public final class ScratchEngine {
     private void swapToNext() {
         PcmData n = nextPcm;
         nextPcm = null;
-        data = n.stereo;
-        frames = n.frames;
+        attach(n);
         partial = false;
         totalFrames = 0;
         sampleRate = n.sampleRate;
@@ -876,6 +888,9 @@ public final class ScratchEngine {
     private volatile boolean pubPartial;
     private volatile short[] pubData = new short[0];
     private volatile int pubFrames;
+    private volatile int pubBase;
+    private volatile int pubHave;
+    private volatile float[] pubPeaks;
     private volatile int pubSampleRate = 44100;
     private volatile double pubPosFrames;
     /** Giro de la rueda pendiente de aplicar (radianes, como bits de double): rotate() no coge el cerrojo. */
@@ -895,6 +910,9 @@ public final class ScratchEngine {
         pubPartial = partial;
         pubSampleRate = sampleRate;
         pubFrames = frames;
+        pubBase = base;
+        pubHave = have;
+        pubPeaks = peaksNow;
         pubData = data;
         pubIdle = !playing && !scratching && seek == 0 && rate == 0 && echoOutLeft == 0 && !samplerActive();
     }
@@ -993,8 +1011,7 @@ public final class ScratchEngine {
     public synchronized void load(PcmData pcm) {
         nextPcm = null;
         swapped = false;
-        data = pcm.stereo;
-        frames = pcm.frames;
+        attach(pcm);
         partial = pcm.partial;
         totalFrames = pcm.totalFrames;
         sampleRate = pcm.sampleRate;
@@ -1016,28 +1033,77 @@ public final class ScratchEngine {
         publish();
     }
 
+    /** Conecta el motor a una pista: entera en memoria, o en disco leída por ventanas. */
+    private void attach(PcmData pcm) {
+        frames = pcm.frames;
+        if (pcm.mapped()) {
+            if (win == null) {
+                win = new short[2 * WIN];
+            }
+            disk = pcm;
+            data = win;
+            // vacía: el hilo de audio la carga alrededor de la posición antes de leer la primera muestra
+            base = 0;
+            have = 0;
+        } else {
+            disk = null;
+            data = pcm.stereo;
+            base = 0;
+            have = pcm.frames;
+        }
+        peaksNow = pcm.peaks;
+    }
+
+    /** Carga en la ventana el tramo de la pista en disco centrado en {@code p}. */
+    private void fillWindow(double p) {
+        int nb = (int) p - WIN / 2;
+        if (nb > frames - WIN) {
+            nb = frames - WIN;
+        }
+        if (nb < 0) {
+            nb = 0;
+        }
+        int cnt = Math.min(WIN, frames - nb);
+        disk.copy(nb, win, 0, cnt);
+        base = nb;
+        have = cnt;
+    }
+
+    private float[] peaksNow;
+
     /** Vista de solo lectura del audio cargado para dibujar la onda y el espectro (el array no se modifica nunca). */
     public static final class Snap {
         public final short[] data;
         public final int frames;
         public final int rate;
         public final boolean partial;
+        /** Posición de lectura, en frames de la pista. */
         public final int pos;
+        /** Primer frame de la pista que hay en {@link #data} y cuántos hay (toda la pista si está en memoria). */
+        public final int base;
+        public final int have;
+        /** Forma de onda ya calculada de la pista entera, o null (entonces se calcula de {@link #data}). */
+        public final float[] peaks;
 
-        Snap(short[] data, int frames, int rate, boolean partial, int pos) {
+        Snap(short[] data, int frames, int rate, boolean partial, int pos, int base, int have, float[] peaks) {
             this.data = data;
             this.frames = frames;
             this.rate = rate;
             this.partial = partial;
             this.pos = pos;
+            this.base = base;
+            this.have = have;
+            this.peaks = peaks;
         }
     }
 
     public Snap snap() {
         // pubData se lee una sola vez: los frames se acotan a ese array por si la pista cambia a mitad.
         short[] d = pubData;
-        int f = Math.min(pubFrames, d.length / 2);
-        return new Snap(d, f, pubSampleRate, pubPartial, (int) Math.max(0, Math.min(f - 1, pubPosFrames)));
+        int f = pubFrames;
+        int h = Math.min(pubHave, d.length / 2);
+        return new Snap(d, f, pubSampleRate, pubPartial, (int) Math.max(0, Math.min(f - 1, pubPosFrames)),
+                pubBase, h, pubPeaks);
     }
 
     /** Sustituye el fragmento inicial por la pista entera sin tocar la posición (el principio es idéntico). */
@@ -1046,8 +1112,7 @@ public final class ScratchEngine {
             publish();
             return;
         }
-        data = full.stereo;
-        frames = full.frames;
+        attach(full);
         partial = false;
         totalFrames = 0;
         publish();
@@ -1474,6 +1539,13 @@ public final class ScratchEngine {
                 }
             }
 
+            if (disk != null) {
+                // Pista en disco: si la lectura se acerca al borde de la ventana cargada, se recarga centrada.
+                int ip = (int) pos;
+                if ((ip - base < WIN_MARGIN && base > 0) || (base + have - ip < WIN_MARGIN && base + have < frames)) {
+                    fillWindow(pos);
+                }
+            }
             double vl = 0;
             double vr = 0;
             if (frames > 0) {
@@ -1535,7 +1607,6 @@ public final class ScratchEngine {
                         xFor = np;
                         xPos = 0;
                     }
-                    short[] nd = np.stereo;
                     int nl = Math.max(np.frames - 1, 0);
                     xPos = Math.min(nl, xPos + rate * ((double) np.sampleRate / outRate));
                     int j = (int) xPos;
@@ -1544,8 +1615,10 @@ public final class ScratchEngine {
                     double f = Math.max(0, Math.min(1, 1 - remain / xf));
                     double gc = Math.cos(f * Math.PI / 2);
                     double gn = Math.sin(f * Math.PI / 2) * volume;
-                    vl = vl * gc + (nd[2 * j] + (nd[2 * j2] - nd[2 * j]) * fr) * gn;
-                    vr = vr * gc + (nd[2 * j + 1] + (nd[2 * j2 + 1] - nd[2 * j + 1]) * fr) * gn;
+                    int a0 = np.sample(2 * j);
+                    int a1 = np.sample(2 * j + 1);
+                    vl = vl * gc + (a0 + (np.sample(2 * j2) - a0) * fr) * gn;
+                    vr = vr * gc + (a1 + (np.sample(2 * j2 + 1) - a1) * fr) * gn;
                     xActive = true;
                 } else {
                     xActive = false;
@@ -1647,8 +1720,10 @@ public final class ScratchEngine {
         int n0 = (int) nom;
         int lo = Math.min(r0, n0 - span);
         int hi = Math.max(r0, n0 + span);
-        if (dir > 0 ? (lo < 0 || hi + win > last) : (lo - win < 0 || hi > last)) {
-            return nom; // junto a los bordes de la pista no se busca
+        int wl = base;
+        int wh = base + have - 1;
+        if (dir > 0 ? (lo < wl || hi + win > wh) : (lo - win < wl || hi > wh)) {
+            return nom; // junto a los bordes de la pista (o de la ventana cargada) no se busca
         }
         int best = 0;
         double bestScore = -1e300;
@@ -1659,8 +1734,8 @@ public final class ScratchEngine {
             for (int c = from; c <= to; c += stepC) {
                 long dot = 0;
                 long en = 0;
-                int a = 2 * r0;
-                int b = 2 * (n0 + c);
+                int a = 2 * (r0 - wl);
+                int b = 2 * (n0 + c - wl);
                 int inc = 8 * dir;
                 for (int k = 0; k < win; k += 4) {
                     int x = d[a] + d[a + 1];
@@ -1731,10 +1806,12 @@ public final class ScratchEngine {
                 continue;
             }
             double w = hann[gAge[k]];
-            double p = Math.max(0, Math.min(last, gPos[k]));
+            double p = Math.max(base, Math.min(base + have - 1, gPos[k]));
             int i0 = (int) p;
-            int i1 = Math.min(i0 + 1, last);
+            int i1 = Math.min(i0 + 1, base + have - 1);
             double f = p - i0;
+            i0 -= base;
+            i1 -= base;
             l += w * (data[2 * i0] + (data[2 * i1] - data[2 * i0]) * f);
             r += w * (data[2 * i0 + 1] + (data[2 * i1 + 1] - data[2 * i0 + 1]) * f);
             gPos[k] += gDir[k] * ratio;
@@ -1830,9 +1907,11 @@ public final class ScratchEngine {
             int ra = pi * POLY_N;
             int rb = ra + POLY_N;
             final float[] c = POLY;
-            int base = i0 - (SINC_Z - 1);
-            if (base >= 0 && base + POLY_N - 1 <= last) {
-                int q = 2 * base;
+            int first = i0 - (SINC_Z - 1);
+            final int lo = base;
+            final int hi = base + have - 1;
+            if (first >= lo && first + POLY_N - 1 <= hi) {
+                int q = 2 * (first - lo);
                 for (int k = 0; k < POLY_N; k++) {
                     float w = c[ra + k] + (c[rb + k] - c[ra + k]) * fr;
                     l += w * d[q];
@@ -1842,8 +1921,8 @@ public final class ScratchEngine {
             } else {
                 for (int k = 0; k < POLY_N; k++) {
                     float w = c[ra + k] + (c[rb + k] - c[ra + k]) * fr;
-                    int j = base + k;
-                    int q = 2 * (j < 0 ? 0 : (j > last ? last : j));
+                    int j = first + k;
+                    int q = 2 * ((j < lo ? lo : (j > hi ? hi : j)) - lo);
                     l += w * d[q];
                     r += w * d[q + 1];
                 }
@@ -1860,7 +1939,9 @@ public final class ScratchEngine {
         int j1 = (int) (p + half + 64) - 64;
         double step = SINC_L / s;
         double ws = 0;
-        boolean inside = j0 >= 0 && j1 <= last;
+        final int lo = base;
+        final int hi = base + have - 1;
+        boolean inside = j0 >= lo && j1 <= hi;
         for (int j = j0; j <= j1; j++) {
             double t = (j - p) * step;
             if (t < 0) {
@@ -1868,7 +1949,7 @@ public final class ScratchEngine {
             }
             int ti = (int) t;
             double w = tab[ti] + (tab[ti + 1] - tab[ti]) * (t - ti);
-            int q = inside ? 2 * j : 2 * (j < 0 ? 0 : (j > last ? last : j));
+            int q = inside ? 2 * (j - lo) : 2 * ((j < lo ? lo : (j > hi ? hi : j)) - lo);
             l += w * d[q];
             r += w * d[q + 1];
             ws += w;

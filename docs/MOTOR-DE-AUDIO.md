@@ -3,10 +3,13 @@
 Todo vive en `ScratchEngine.java`: Java puro, **sin dependencias de Android**, por eso se puede probar en cualquier JVM (`tools/Check.java`).
 
 ## Decodificación
-`AudioLoader` carga el archivo completo en memoria como PCM estéreo de 16 bits:
+`AudioLoader` decodifica el archivo a PCM estéreo de 16 bits:
 - **WAV** con lector propio (`WavParser`: PCM 8/16/24/32 bits y float).
 - **MP3/AAC/OGG/FLAC…** con `MediaCodec`/`MediaExtractor` del sistema.
-El límite es de 20 millones de frames (≈ 7,5 min a 44,1 kHz, unos 80 MB); si la pista es más larga se recorta y la interfaz lo avisa («RECORTADA»).
+
+Desde la 0.65 el PCM **no se queda en la RAM de la app**: se escribe en un archivo temporal (`cache/pcm`) mientras se decodifica y al terminar se proyecta en memoria (`mmap`) y se borra su nombre, así el espacio se libera solo cuando se suelta la pista o se cierra la app. El motor lee de ahí por una **ventana** de 262 144 frames (≈ 6 s, 1 MB) que el hilo de audio recarga centrada en la posición cuando la lectura se acerca a un borde (una copia de memoria, sin crear objetos). Una canción ya no ocupa ~42 MB de heap y el límite pasa de 7,5 min a unas 2,5 h. Los WAV de menos de 30 s, la pista de prueba y el fragmento de arranque rápido siguen en memoria. Si no hay espacio de sobra o el disco falla, se carga en memoria como antes (con el límite de 20 millones de frames y el aviso «RECORTADA»).
+
+La forma de onda (480 picos) se calcula al terminar de decodificar y se guarda por canción en `cache/wave` (`WaveCache`); el BPM ya se guardaba en las preferencias `bpm`. La precarga de las siguientes pistas ya no está limitada por la RAM, solo por 600 MB de disco temporal.
 
 ## Salida
 `Player` abre un `AudioTrack` en modo de **baja latencia** a la frecuencia nativa del dispositivo y un hilo con prioridad de audio llama a `engine.render()` en bloques del tamaño de la **ráfaga nativa** del móvil (256 frames si no se conoce). El búfer efectivo lo decide `BufferTuner`: empieza en dos bloques y solo crece cuando el `AudioTrack` cuenta underruns (`AudioTune` lo aplica con `setBufferSizeInFrames` y lo escribe en logcat con la etiqueta `ScratchAudio`). El hilo se duerme tras ~120 bloques de inactividad y se despierta al tocar la rueda o disparar un sonido.

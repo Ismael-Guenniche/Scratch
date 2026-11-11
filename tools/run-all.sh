@@ -12,7 +12,7 @@ SEP=":"; case "$(uname -s)" in MINGW*|MSYS*|CYGWIN*) SEP=";";; esac
 rm -rf "$B"; mkdir -p "$B/cls" "$B/out" "$B/mp3"
 # Clases sin Android (el motor y lo que usan los tests) + sustituto de Tr.
 javac -nowarn -encoding UTF-8 -d "$B/cls" tools/stubs/dev/scratchwheel/Tr.java \
-  $S/{BpmDetect,ShuffleOrder,DotFont,DemoTrack,PcmData,ScratchEngine,BufferTuner,SeekSpeed,Stats,WavParser,DotIcons,Playlists,SpotifyImport,TrackEdits,BigLayout,Waveform,LyricsReader,M3u,WavRecorder}.java
+  $S/{BpmDetect,ShuffleOrder,DotFont,DemoTrack,PcmData,ScratchEngine,BufferTuner,WaveCache,SeekSpeed,Stats,WavParser,DotIcons,Playlists,SpotifyImport,TrackEdits,BigLayout,Waveform,LyricsReader,M3u,WavRecorder}.java
 javac -nowarn -encoding UTF-8 -cp "$B/cls" -d "$B/cls" tools/Check.java tools/CheckXfade.java tools/CheckLists.java tools/Bench*.java
 MP3=""
 if command -v ffmpeg >/dev/null 2>&1; then

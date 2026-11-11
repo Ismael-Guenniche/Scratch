@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.65: Audio T9, T10 y T11: las canciones ya no se cargan enteras en la RAM de la app: el audio decodificado va a un archivo temporal proyectado en memoria y el motor lo lee por ventanas (mismo sonido muestra a muestra). Se acaba el límite de 7,5 min (ahora unas 2,5 h), la precarga de las siguientes pistas no gasta memoria y la forma de onda se guarda en caché por canción.
 - 0.64: Audio T14: los efectos del modo DJ se procesan por bloque en vez de por muestra (mismo sonido bit a bit, algo menos de CPU).
 - 0.63: Audio T20: limitador suave de salida (con efectos, sampler o fundido las crestas se redondean en vez de recortarse en seco). Guía de perfilado en el móvil (docs/PERFILADO.md) y estado del plan de audio (docs/AUDIO-PENDIENTE.md).
 - 0.62: Audio T17: nuevo ajuste «Sonido de vinilo» (Ajustes → RUEDA, apagado por defecto): excentricidad y flutter del disco, siseo de surco y chasquidos suaves, con coste de CPU mínimo.

@@ -10,8 +10,8 @@ android {
         applicationId 'dev.scratchwheel'
         minSdk 24
         targetSdk 36
-        versionCode 64
-        versionName '0.64'
+        versionCode 65
+        versionName '0.65'
     }
 
     // personal = uso propio (incluye japonés experimental). play = lo que se sube a Google Play.

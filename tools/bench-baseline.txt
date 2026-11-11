@@ -1,10 +1,12 @@
 # Coste p50 por bloque / carga de referencia (tools/Bench.java baseline)
-0=0.0709  # Parado (silencio)
-1=1.1996  # Reproducción normal
-2=1.0671  # Reproducción + keylock (pitch 1,2)
-3=10.5678  # Scratch
-4=1.1301  # Scratch + keylock
-5=1.7483  # Reproducción + EQ 5 bandas
-6=3.5357  # Reproducción + modo DJ completo
-7=2.8214  # Reproducción + sampler (bocina)
-8=1.6763  # Reproducción + sonido de vinilo
+0=0.1610  # Parado (silencio)
+1=1.1862  # Reproducción normal
+2=0.9345  # Reproducción + keylock (pitch 1,2)
+3=3.1520  # Scratch
+4=0.9857  # Scratch + keylock
+5=1.9805  # Reproducción + EQ 5 bandas
+6=3.3978  # Reproducción + modo DJ completo
+7=2.9704  # Reproducción + sampler (bocina)
+8=1.6837  # Reproducción + sonido de vinilo
+9=1.2169  # Reproducción (pista en disco)
+10=3.2333  # Scratch (pista en disco)
