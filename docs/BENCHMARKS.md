@@ -255,3 +255,15 @@ El coste sube porque cada 25 ms se busca el mejor punto de enganche (búsqueda g
 ## T18 · Regresión de rendimiento automática (v0.61)
 
 `tools/run-all.sh` ejecuta todos los tests y `Bench regress`: el coste p50 por bloque de cada escenario, dividido por una carga de referencia medida en la misma pasada (para que no dependa de la máquina), se compara con `tools/bench-baseline.txt`. Falla si un escenario sube más del 30 % (el ruido entre pasadas en la máquina de pruebas llega al 15 %). Tras un cambio de coste aceptado (como el sinc de T6) se regenera con `tools/run-all.sh baseline`.
+
+## T17 · Sonido de vinilo opcional (v0.62)
+
+Con el ajuste apagado (por defecto) el audio es idéntico bit a bit al de la 0.61 (mismas huellas CRC). Encendido:
+
+| Medida | Valor |
+|---|---:|
+| Coste extra por bloque | +5,8 µs (de 14,7 a 20,5 µs; 0,1 % del plazo) |
+| Nivel del ruido de surco | RMS 12 de 32767 (−69 dB), picos de los chasquidos hasta 644 (−34 dB) |
+| Oscilación del tono | ±0,12 % a 0,556 Hz y ±0,03 % a 7,3 Hz |
+| Deriva de posición tras 10 s | < 1 ms |
+| Asignaciones en el hilo de audio | 0 |
