@@ -206,11 +206,11 @@ public class ScratchActivity extends Activity {
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
         header.setPadding(0, 0, 0, dp(10));
-        DotIconView back = icon(DotIcons.DOWN, th.ink);
+        DotIconView back = icon(DotIcons.QUEUE, th.ink);
         back.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                closeAnimated();
+                startActivity(new Intent(ScratchActivity.this, QueueActivity.class));
             }
         });
         header.addView(back, new LinearLayout.LayoutParams(dp(48), dp(48)));
@@ -236,6 +236,14 @@ public class ScratchActivity extends Activity {
                 showMenu(menu);
             }
         });
+        DotIconView lyr = icon(DotIcons.LYRICS, th.ink);
+        lyr.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(ScratchActivity.this, LyricsActivity.class));
+            }
+        });
+        header.addView(lyr, new LinearLayout.LayoutParams(dp(48), dp(48)));
         header.addView(menu, new LinearLayout.LayoutParams(dp(48), dp(48)));
         root.addView(header);
 

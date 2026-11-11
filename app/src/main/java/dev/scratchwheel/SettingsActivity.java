@@ -169,6 +169,12 @@ public class SettingsActivity extends Activity {
         // RUEDA
         c = card(list, Tr.t("RUEDA"));
         wheelCard = c;
+        previewBox = buildWheelPreview();
+        LinearLayout.LayoutParams pbl = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(200));
+        pbl.topMargin = dp(6);
+        pbl.bottomMargin = dp(10);
+        c.addView(previewBox, pbl);
         c.addView(switchRow(Tr.t("Carátula del disco"),
                 Tr.t("Muestra la imagen incrustada del archivo en vez del plato de puntos."),
                 prefs.getBoolean("cover", false), true, new Toggle() {
@@ -571,7 +577,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.47");
+        about.setText("SCRATCH 0.48");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);
@@ -598,21 +604,6 @@ public class SettingsActivity extends Activity {
         }
         root.addView(sv, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
-        previewBox = buildWheelPreview();
-        root.addView(previewBox, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(210)));
-        sv.setOnScrollChangeListener(new View.OnScrollChangeListener() {
-            @Override
-            public void onScrollChange(View v, int x, int y, int ox, int oy) {
-                updatePreviewVisibility();
-            }
-        });
-        sv.post(new Runnable() {
-            @Override
-            public void run() {
-                updatePreviewVisibility();
-            }
-        });
         return root;
     }
 
@@ -674,17 +665,6 @@ public class SettingsActivity extends Activity {
         return t;
     }
 
-    /** La rueda de prueba solo se muestra mientras se ve la tarjeta RUEDA. */
-    private void updatePreviewVisibility() {
-        if (wheelCard == null || previewBox == null || scroll == null) {
-            return;
-        }
-        int top = wheelCard.getTop() - scroll.getScrollY();
-        int bottom = wheelCard.getBottom() - scroll.getScrollY();
-        boolean show = bottom > dp(40) && top < scroll.getHeight() - dp(40);
-        previewBox.setVisibility(show ? View.VISIBLE : View.GONE);
-    }
-
     private float previewAngle;
     private boolean previewTouching;
     private boolean previewPlaying = true;
@@ -707,9 +687,6 @@ public class SettingsActivity extends Activity {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         box.setGravity(Gravity.CENTER);
-        box.setBackground(th.card(Lucent.R_L));
-        box.setPadding(dp(8), dp(6), dp(8), dp(6));
-        box.setVisibility(View.GONE);
         previewWheel = new JogWheelView(this, th);
         previewWheel.setHaptic(prefs.getBoolean("haptic", true));
         previewWheel.setLocked(prefs.getBoolean("wlock", false));
