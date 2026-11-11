@@ -1011,6 +1011,39 @@ public class Check {
             ok(detSame && sums[0] > 0, "determinismo: mismas órdenes, mismo audio muestra a muestra (suma " + sums[0] + ")");
         }
         {
+            // La rueda y las consultas de la interfaz no esperan al cerrojo del motor (ni lo retienen).
+            final ScratchEngine le = new ScratchEngine();
+            le.setOutputRate(48000);
+            le.load(DemoTrack.generate());
+            le.seekTo(1.0);
+            le.touchDown();
+            final double[] got = new double[2];
+            Thread uiT = new Thread(new Runnable() {
+                public void run() {
+                    for (int k = 0; k < 1000; k++) {
+                        le.rotate(0.001);
+                        got[0] = le.getPositionSeconds() + le.getRate() + le.getLevel() + le.getDurationSeconds();
+                        got[1] = le.snap().frames + (le.isScratching() ? 1 : 0) + (le.isIdle() ? 1 : 0);
+                    }
+                }
+            });
+            synchronized (le) {
+                uiT.start();
+                uiT.join(3000);
+                ok(!uiT.isAlive(), "sin cerrojo: rueda y consultas terminan aunque otro hilo retenga el motor");
+            }
+            short[] lb = new short[512];
+            double before = le.getPositionSeconds();
+            for (int k = 0; k < 40; k++) {
+                le.render(lb, 256);
+            }
+            ok(le.getPositionSeconds() > before + 0.2, "sin cerrojo: el giro acumulado se aplica en el siguiente bloque ("
+                    + (le.getPositionSeconds() - before) + " s)");
+            le.touchUp();
+            le.rotate(1.0);
+            ok(le.isIdle() || !le.isScratching(), "sin cerrojo: girar sin tocar no hace nada");
+        }
+        {
             // El hilo de audio no debe crear objetos: ni con keylock, ni con efectos, ni con el sampler.
             com.sun.management.ThreadMXBean mx = (com.sun.management.ThreadMXBean)
                     java.lang.management.ManagementFactory.getThreadMXBean();
