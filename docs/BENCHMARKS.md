@@ -225,3 +225,14 @@ Herramienta nueva: `tools/BenchCut.java` (con una pista de valor constante la sa
 Antes la ganancia seguía una exponencial (arranque brusco, cola larga); ahora es una rampa de 2 ms con forma de S. Los −91 dB son ya el ruido de cuantificación de 16 bits.
 
 En el test de baby scratch (vaivén de 3 Hz sobre un tono de 440 Hz) el mayor salto entre muestras consecutivas era de 6 269 sobre 12 000: un clic de amplitud en cada cambio de sentido, porque el volumen ligado a la velocidad cambiaba de golpe al pasar por cero. Ahora ese volumen se suaviza 1,5 ms y el salto máximo queda dentro de lo que da la propia onda (ver `Check.java`).
+
+## T14 · Efectos por bloque: probado y descartado
+
+Se reescribió la cadena de efectos para procesar el bloque entero etapa a etapa (filtros con el estado en variables locales, etapas neutras saltadas una vez por bloque). Resultado en la JVM, mismo equipo:
+
+| Escenario | Por muestra (0.59) | Por bloque (prueba) |
+|---|---:|---:|
+| Reproducción + EQ 5 bandas, p50 | 20,1 µs | 22,5 µs (+12 %) |
+| Reproducción + modo DJ completo, p50 | 41,0 µs | 40,2 µs (−2 %) |
+
+No mejora (el JIT ya hacía ese trabajo) y además el flanger y el phaser comparten oscilador, así que procesarlos por etapas cambiaba el sonido del modo DJ. Como la cadena completa ya cuesta menos del 1 % del plazo, **se descarta** y el código queda como estaba. SIMD solo tendría sentido con un módulo nativo (T13), que tampoco se justifica por CPU.
