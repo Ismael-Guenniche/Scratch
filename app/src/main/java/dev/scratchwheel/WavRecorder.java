@@ -3,18 +3,19 @@ package dev.scratchwheel;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Graba a WAV (PCM 16 bits estéreo) lo que sale por el audio. {@link #feed} se llama desde el hilo de audio y solo
- * copia el bloque a una cola; la escritura a disco va en otro hilo para no cortar el sonido. Sin dependencias de
- * Android.
+ * copia el bloque a un anillo ya reservado (no crea objetos ni bloquea); la escritura a disco va en otro hilo para
+ * no cortar el sonido. Sin dependencias de Android.
  */
 final class WavRecorder {
     private final File file;
     private final int rate;
-    private final ArrayBlockingQueue<short[]> queue = new ArrayBlockingQueue<short[]>(256);
+    /** Anillo de muestras (≈1,5 s): un único hilo escribe (audio) y otro lee (disco). */
+    private final short[] ring;
+    private volatile long wr;
+    private volatile long rd;
     private volatile boolean running;
     private volatile boolean dropped;
     private Thread writer;
@@ -24,6 +25,7 @@ final class WavRecorder {
     WavRecorder(File file, int rate) {
         this.file = file;
         this.rate = rate;
+        this.ring = new short[Math.max(16384, rate * 3)];
     }
 
     void start() throws IOException {
@@ -35,21 +37,30 @@ final class WavRecorder {
             @Override
             public void run() {
                 try {
-                    byte[] out = new byte[0];
-                    while (running || !queue.isEmpty()) {
-                        short[] b = queue.poll(100, TimeUnit.MILLISECONDS);
-                        if (b == null) {
+                    byte[] out = new byte[16384];
+                    while (true) {
+                        long r = rd;
+                        int avail = (int) (wr - r);
+                        if (avail == 0) {
+                            if (!running) {
+                                break;
+                            }
+                            Thread.sleep(20);
                             continue;
                         }
-                        if (out.length < b.length * 2) {
-                            out = new byte[b.length * 2];
+                        int take = Math.min(avail, out.length / 2);
+                        int at = (int) (r % ring.length);
+                        for (int i = 0; i < take; i++) {
+                            short v = ring[at];
+                            if (++at == ring.length) {
+                                at = 0;
+                            }
+                            out[2 * i] = (byte) v;
+                            out[2 * i + 1] = (byte) (v >> 8);
                         }
-                        for (int i = 0; i < b.length; i++) {
-                            out[2 * i] = (byte) b[i];
-                            out[2 * i + 1] = (byte) (b[i] >> 8);
-                        }
-                        f.write(out, 0, b.length * 2);
-                        bytes += b.length * 2L;
+                        rd = r + take;
+                        f.write(out, 0, take * 2);
+                        bytes += take * 2L;
                     }
                     f.seek(0);
                     f.write(header(bytes));
@@ -73,11 +84,18 @@ final class WavRecorder {
         if (!running) {
             return;
         }
-        short[] c = new short[n];
-        System.arraycopy(buf, 0, c, 0, n);
-        if (!queue.offer(c)) {
+        long w = wr;
+        if (n > ring.length - (int) (w - rd)) {
             dropped = true;
+            return;
         }
+        int at = (int) (w % ring.length);
+        int first = Math.min(n, ring.length - at);
+        System.arraycopy(buf, 0, ring, at, first);
+        if (first < n) {
+            System.arraycopy(buf, first, ring, 0, n - first);
+        }
+        wr = w + n;
     }
 
     boolean hadDrops() {

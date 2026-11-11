@@ -25,12 +25,13 @@ Como un vinilo: el motor lee la pista a **velocidad variable** con **interpolaci
 - **Pitch:** velocidad de reproducción 0,5×–1,5× (el panel limita a ±20 %).
 
 ## Mantener el tono (keylock)
-Síntesis **granular (OLA)** con ventana Hann de 50 ms y solape del 50 %, hasta 4 granos simultáneos. Cada grano suena a velocidad normal (hacia delante o atrás según la rueda), así el tono no cambia aunque la posición avance más rápido o más lento.
+Síntesis **granular (OLA)** con ventana Hann de 50 ms (precalculada en una tabla al fijar la frecuencia de salida) y solape del 50 %, hasta 4 granos simultáneos. Cada grano suena a velocidad normal (hacia delante o atrás según la rueda), así el tono no cambia aunque la posición avance más rápido o más lento.
 
 ## Efectos (modo DJ)
 Cadena por muestra: EQ de 3 bandas (biquads LP 250 Hz / HP 2,5 kHz) → filtro barrido → eco / echo-out → flanger → phaser → corte/puerta → sampler → medidor de nivel.
 - Todos los biquads son RBJ de 2.º orden.
 - Con todo en neutro no se procesa nada (`fxActive`).
+- Cada orden recalcula solo sus coeficientes (`refreshGeq`, `refreshSweep`); el hilo de audio no crea objetos (hay un test que lo comprueba).
 - El corte/puerta usa ganancia suavizada para evitar clics.
 
 ## Gimmicks de transporte
