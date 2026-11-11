@@ -209,3 +209,19 @@ Herramienta nueva: `tools/BenchPlatter.java` (traza la velocidad cada 0,33 ms).
 | Frenado (pausa) | 50 % / parado | 350 / 699 ms | igual (ya era lineal) |
 
 El frenado y la inercia al soltar con la música parada no cambian. El coste de `render()` no varía de forma medible.
+
+## T8 · Corte sin clics (v0.59)
+
+Herramienta nueva: `tools/BenchCut.java` (con una pista de valor constante la salida es la curva de ganancia).
+
+| Medida | Antes (0.58) | Después (0.59) |
+|---|---:|---:|
+| Cerrar: del 90 % al 10 % | 4,35 ms | 1,02 ms |
+| Cerrar: hasta el silencio desde la orden | 9,15 ms | 1,77 ms |
+| Abrir: del 10 % al 90 % | 4,35 ms | 1,02 ms |
+| Abrir: hasta el 99 % desde la orden | 9,15 ms | 1,77 ms |
+| Clic por encima de 5 kHz, transformer a 8 / 16 / 30 Hz sobre un tono de 100 Hz | −78,5 / −75,5 / −72,8 dB | −91,5 / −91,3 / −90,9 dB |
+
+Antes la ganancia seguía una exponencial (arranque brusco, cola larga); ahora es una rampa de 2 ms con forma de S. Los −91 dB son ya el ruido de cuantificación de 16 bits.
+
+En el test de baby scratch (vaivén de 3 Hz sobre un tono de 440 Hz) el mayor salto entre muestras consecutivas era de 6 269 sobre 12 000: un clic de amplitud en cada cambio de sentido, porque el volumen ligado a la velocidad cambiaba de golpe al pasar por cero. Ahora ese volumen se suaviza 1,5 ms y el salto máximo queda dentro de lo que da la propia onda (ver `Check.java`).

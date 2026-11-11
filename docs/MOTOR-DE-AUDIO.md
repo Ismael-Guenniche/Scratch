@@ -45,7 +45,7 @@ Cadena por muestra: EQ de 3 bandas (biquads LP 250 Hz / HP 2,5 kHz) → filtro b
 - Todos los biquads son RBJ de 2.º orden.
 - Con todo en neutro no se procesa nada (`fxActive`).
 - Cada orden recalcula solo sus coeficientes (`refreshGeq`, `refreshSweep`); el hilo de audio no crea objetos (hay un test que lo comprueba).
-- El corte/puerta usa ganancia suavizada para evitar clics.
+- El corte/puerta usa una rampa de duración fija (2 ms) con forma de S y derivadas continuas: flancos rápidos para el transformer y sin clics.
 
 ## Gimmicks de transporte
 - **Hot cues, saltos:** simples reposicionamientos.
