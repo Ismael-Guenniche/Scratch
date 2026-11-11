@@ -31,7 +31,7 @@ public final class BpmDetect {
             int base = start + i * hop;
             for (int k = 0; k < hop; k++) {
                 int idx = 2 * (base + k);
-                double m = (pcm.stereo[idx] + pcm.stereo[idx + 1]) * 0.5 / 32768.0;
+                double m = (pcm.sample(idx) + pcm.sample(idx + 1)) * 0.5 / 32768.0;
                 e += m * m;
             }
             env[i] = Math.log(1 + 600 * e / hop);
