@@ -174,6 +174,27 @@ public class SettingsActivity extends Activity {
                         prefs.edit().putBoolean("cover", v).apply();
                     }
                 }));
+        c.addView(body(Tr.t("Aspecto del vinilo")));
+        final int vsel = prefs.getInt("vskin", 0);
+        c.addView(segmented(new String[] {Tr.t("CLÁSICO"), Tr.t("PUNTOS"), Tr.t("RAYAS"), Tr.t("ESPIRAL")},
+                vsel < 4 ? vsel : -1, new Pick() {
+                    @Override
+                    public void on(int v) {
+                        prefs.edit().putInt("vskin", v).apply();
+                        redo();
+                    }
+                }));
+        c.addView(segmented(new String[] {Tr.t("COLOR"), Tr.t("CRISTAL"), Tr.t("NEÓN")},
+                vsel >= 4 ? vsel - 4 : -1, new Pick() {
+                    @Override
+                    public void on(int v) {
+                        prefs.edit().putInt("vskin", v + 4).apply();
+                        redo();
+                    }
+                }));
+        TextView vnote = muted(Tr.t("Solo se ve con la carátula del disco activada."));
+        vnote.setPadding(0, dp(8), 0, 0);
+        c.addView(vnote);
         c.addView(dots());
         c.addView(switchRow(Tr.t("Mantener el tono"),
                 Tr.t("Al mover la rueda rápido o lento el tono no sube ni baja (el audio se estira en vez de acelerarse). También aplica al control de velocidad."),
@@ -488,7 +509,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.39");
+        about.setText("SCRATCH 0.40");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);

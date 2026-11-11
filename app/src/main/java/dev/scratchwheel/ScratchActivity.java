@@ -163,6 +163,7 @@ public class ScratchActivity extends Activity {
             return;
         }
         Player.I.addListener(listener);
+        wheel.setVinylSkin(Lucent.prefs(this).getInt("vskin", 0));
         if (djMode) {
             rebuildDj();
         }
@@ -356,6 +357,7 @@ public class ScratchActivity extends Activity {
         wheel.setLocked(locked);
         wheel.setHaptic(Lucent.prefs(this).getBoolean("haptic", true));
         wheel.setCoverOn(coverOn);
+        wheel.setVinylSkin(Lucent.prefs(this).getInt("vskin", 0));
         LinearLayout wheelCard = card();
         wheelCard.setPadding(dp(8), dp(8), dp(8), dp(8));
         wheelCard.addView(wheel, new LinearLayout.LayoutParams(

@@ -45,6 +45,7 @@ public class JogWheelView extends View {
     private Bitmap cover;
     private boolean locked;
     private boolean coverOn;
+    private int vinylSkin;
     private Listener listener;
     private boolean haptic = true;
     private double hapticAcc;
@@ -92,6 +93,124 @@ public class JogWheelView extends View {
         if (on != coverOn) {
             coverOn = on;
             invalidate();
+        }
+    }
+
+    /** Aspecto del vinilo con portada: 0 clásico, 1 puntos, 2 rayas, 3 espiral, 4 color, 5 cristal, 6 neón. */
+    public void setVinylSkin(int skin) {
+        if (skin != vinylSkin) {
+            vinylSkin = skin;
+            invalidate();
+        }
+    }
+
+    private void drawVinylBody(Canvas c, float cx, float cy, float r) {
+        float outer = r - dp(2);
+        float lab = r * 0.36f;
+        int a = accentColor;
+        switch (vinylSkin) {
+            case 1: { // puntos
+                scrim.setColor(0xFF101010);
+                c.drawCircle(cx, cy, outer, scrim);
+                float dotR = dp(1.5f);
+                for (int k = 0; k < 9; k++) {
+                    float rad = r * (0.47f + 0.055f * k);
+                    int n = Math.max(6, Math.round((float) (TWO_PI * rad / dp(11))));
+                    double step = TWO_PI / n;
+                    double stagger = (k % 2) * step / 2;
+                    for (int i = 0; i < n; i++) {
+                        double an = angle - Math.PI / 2 + i * step + stagger;
+                        c.drawCircle(cx + (float) Math.cos(an) * rad, cy + (float) Math.sin(an) * rad, dotR, dots);
+                    }
+                }
+                break;
+            }
+            case 2: { // rayas radiales
+                scrim.setColor(0xFF101010);
+                c.drawCircle(cx, cy, outer, scrim);
+                c.save();
+                c.rotate((float) Math.toDegrees(angle), cx, cy);
+                groove.setColor(0x40FFFFFF);
+                for (int d = 0; d < 360; d += 8) {
+                    double an = Math.toRadians(d);
+                    c.drawLine(cx + (float) Math.cos(an) * lab * 1.25f, cy + (float) Math.sin(an) * lab * 1.25f,
+                            cx + (float) Math.cos(an) * outer * 0.96f, cy + (float) Math.sin(an) * outer * 0.96f, groove);
+                }
+                c.restore();
+                groove.setColor(0x26FFFFFF);
+                c.drawCircle(cx, cy, outer * 0.97f, groove);
+                break;
+            }
+            case 3: { // una sola espiral, como el surco real
+                scrim.setColor(0xFF101010);
+                c.drawCircle(cx, cy, outer, scrim);
+                path.reset();
+                float r0 = lab * 1.2f;
+                float r1 = outer * 0.97f;
+                int turns = 22;
+                int steps = turns * 48;
+                for (int i = 0; i <= steps; i++) {
+                    float t = i / (float) steps;
+                    float rad = r0 + (r1 - r0) * t;
+                    double an = angle + t * turns * TWO_PI;
+                    float x = cx + (float) Math.cos(an) * rad;
+                    float y = cy + (float) Math.sin(an) * rad;
+                    if (i == 0) {
+                        path.moveTo(x, y);
+                    } else {
+                        path.lineTo(x, y);
+                    }
+                }
+                groove.setColor(0x4DFFFFFF);
+                c.drawPath(path, groove);
+                groove.setColor(0x26FFFFFF);
+                break;
+            }
+            case 4: { // color del tema
+                scrim.setColor((a & 0x00FFFFFF) | 0xFF000000);
+                c.drawCircle(cx, cy, outer, scrim);
+                groove.setColor(0x33000000);
+                for (float g = 0.44f; g < 0.97f; g += 0.04f) {
+                    c.drawCircle(cx, cy, r * g, groove);
+                }
+                groove.setColor(0x26FFFFFF);
+                break;
+            }
+            case 5: { // cristal: vinilo transparente
+                scrim.setColor(0x40FFFFFF);
+                c.drawCircle(cx, cy, outer, scrim);
+                groove.setColor(0x55FFFFFF);
+                for (float g = 0.44f; g < 0.97f; g += 0.05f) {
+                    c.drawCircle(cx, cy, r * g, groove);
+                }
+                c.drawCircle(cx, cy, outer, groove);
+                groove.setColor(0x26FFFFFF);
+                break;
+            }
+            case 6: { // neón: tres aros de color
+                scrim.setColor(0xFF0A0A0A);
+                c.drawCircle(cx, cy, outer, scrim);
+                groove.setColor(0x1FFFFFFF);
+                for (float g = 0.44f; g < 0.97f; g += 0.06f) {
+                    c.drawCircle(cx, cy, r * g, groove);
+                }
+                float w = groove.getStrokeWidth();
+                groove.setStrokeWidth(dp(2.2f));
+                groove.setColor((a & 0x00FFFFFF) | 0xCC000000);
+                c.drawCircle(cx, cy, r * 0.50f, groove);
+                c.drawCircle(cx, cy, r * 0.74f, groove);
+                c.drawCircle(cx, cy, r * 0.95f, groove);
+                groove.setStrokeWidth(w);
+                groove.setColor(0x26FFFFFF);
+                break;
+            }
+            default: { // clásico: plástico negro con surcos
+                scrim.setColor(0xFF101010);
+                c.drawCircle(cx, cy, outer, scrim);
+                for (float g = 0.44f; g < 0.97f; g += 0.04f) {
+                    c.drawCircle(cx, cy, r * g, groove);
+                }
+            }
         }
     }
 
@@ -195,12 +314,8 @@ public class JogWheelView extends View {
             c.drawRect(box, scrim);
             c.restore();
         } else if (showCover) {
-            // Disco de vinilo: plástico negro con surcos y la carátula como etiqueta circular en el centro.
-            scrim.setColor(0xFF101010);
-            c.drawCircle(cx, cy, r - dp(2), scrim);
-            for (float g = 0.44f; g < 0.97f; g += 0.04f) {
-                c.drawCircle(cx, cy, r * g, groove);
-            }
+            // Disco de vinilo: según el aspecto elegido, y la carátula como etiqueta circular en el centro.
+            drawVinylBody(c, cx, cy, r);
             float lr = r * 0.36f;
             clip.reset();
             clip.addCircle(cx, cy, lr, Path.Direction.CW);
