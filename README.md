@@ -4,7 +4,7 @@ Reproductor de música **local** para Android (MP3, WAV y los formatos que decod
 
 Sin cuentas, sin streaming, sin anuncios. Tu música, tu carpeta, tu rueda.
 
-> **Versión actual: 0.63 (beta).** La lógica del motor de audio se prueba con tests sin Android (`tools/Check.java`); la interfaz se ha ido probando en un Nothing Phone (4a).
+> **Versión actual: 0.64 (beta).** La lógica del motor de audio se prueba con tests sin Android (`tools/Check.java`); la interfaz se ha ido probando en un Nothing Phone (4a).
 
 ## Lo esencial
 

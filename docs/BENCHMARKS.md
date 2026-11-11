@@ -284,3 +284,15 @@ Tono de 440 Hz fuerte con los tres faders de EQ del modo DJ al máximo (×1,6, l
 ## Estado de las tareas que no se han podido cerrar aquí
 
 Ver [AUDIO-PENDIENTE.md](AUDIO-PENDIENTE.md): T9–T13 y T16 necesitan compilar con el SDK de Android y probar en el móvil.
+
+## T14 · Efectos por bloque, segunda vuelta (v0.64)
+
+Se rehízo la prueba descartada corrigiendo su fallo: flanger y phaser comparten oscilador, así que ahora van juntos en un mismo bucle y el resto de etapas (EQ gráfico, EQ de 3 bandas, filtro, eco) se procesan por bloque con el estado de los filtros en variables locales. **Todas las huellas CRC son idénticas a las de la 0.63**: el sonido no cambia en ningún escenario.
+
+| Escenario (p50, misma sesión) | Por muestra (0.63) | Por bloque (0.64) |
+|---|---:|---:|
+| Reproducción + EQ 5 bandas | 25,4 µs | 23,5 µs |
+| Reproducción + modo DJ completo | 50,7 µs | 39,7 µs |
+| Reproducción normal | 14,3 µs | 13,3 µs |
+
+La mejora en la JVM es pequeña (y dentro del ruido en el EQ) porque el JIT ya optimizaba el camino por muestra; en ART, que optimiza menos, debería notarse algo más. SIMD queda fuera: exige un módulo nativo.
