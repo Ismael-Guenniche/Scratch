@@ -66,7 +66,7 @@ Las preferencias van en `SharedPreferences` (claves en [AJUSTES.md](AJUSTES.md))
 `Lucent.load(ctx)` lee las preferencias y construye los *tokens* (colores, radios, tipografías). Si cambian, `Lucent.stamp` sube y las pantallas abiertas se recrean en `onResume`. Ver [ESTILO.md](ESTILO.md).
 
 ## Android Auto
-`PlayerService` extiende `MediaBrowserService`: expone Canciones, Favoritas, Recientes y las listas como árbol de medios y delega los controles en `Player`.
+`PlayerService` extiende `MediaBrowserService`: expone Canciones, Favoritas, Recientes, Artistas, Álbumes y las listas como árbol (con búsqueda) de medios y delega los controles en `Player`.
 
 ## Giro de pantalla
 `ScratchActivity` declara `screenOrientation="fullUser"` y gestiona `configChanges`: al girar monta de nuevo la interfaz con el diseño vertical u horizontal sin recrear la actividad (la música y los efectos no se interrumpen, y los faders conservan su valor).

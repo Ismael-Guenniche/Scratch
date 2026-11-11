@@ -29,6 +29,7 @@ Primera pantalla (`HomeView`).
 - **Letras** (`LyricsReader`, `LyricsStore`, `LyricsActivity`): lee la letra de las etiquetas del archivo (MP3 USLT/SYLT, FLAC/Ogg LYRICS, M4A ©lyr) y formato LRC; menú ⋮ → LETRAS; buscar en lrclib.net o importar un .lrc (se guarda en la app, no toca el archivo); módulo LETRA en Big Picture.
 - **Grabación y M3U:** menú ⋮ del scratch → GRABAR SESIÓN / PARAR GRABACIÓN (WAV 16 bits en Música/Scratch); menú de cada lista → EXPORTAR COMO M3U (la importación de M3U ya existía en importar listas).
 - **Sonido:** Ajustes → SONIDO: nivelar volumen con ReplayGain (solo baja, nunca sube) y fundido cruzado de 0 a 10 s (potencia constante; con la precarga activada y sin saltar a mano).
+- **Android Auto (rama android-auto):** Artistas y Álbumes en el explorador, búsqueda por voz (`onPlayFromSearch`/`onSearch`), cola, salto de posición y botones de aleatorio/repetir. Ver [ANDROID-AUTO.md](ANDROID-AUTO.md).
 - Acciones por canción: reproducir a continuación, añadir a la cola, añadir a favoritas, añadir a lista, quitar de lista, estadísticas de la canción.
 - Barra flotante con la canción actual; tocarla abre la rueda.
 - **Shuffle** sin repeticiones (Fisher-Yates): no repite hasta agotar la lista.

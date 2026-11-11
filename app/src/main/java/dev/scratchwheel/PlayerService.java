@@ -91,9 +91,17 @@ public class PlayerService extends MediaBrowserService {
             out.add(folder("ALL", Tr.t("Canciones")));
             out.add(folder("FAV", Tr.t("Favoritas")));
             out.add(folder("REC", Tr.t("Recientes")));
+            out.add(folder("AR", Tr.t("Artistas")));
+            out.add(folder("AL", Tr.t("Álbumes")));
             List<String> names = Playlists.I.names();
             for (int i = 0; i < names.size() && i < 20; i++) {
                 out.add(folder("PL:" + names.get(i), names.get(i)));
+            }
+        } else if ("AR".equals(parentId) || "AL".equals(parentId)) {
+            boolean ar = "AR".equals(parentId);
+            List<String> names = p.distinctNames(ar);
+            for (int i = 0; i < names.size() && i < 300; i++) {
+                out.add(folder((ar ? "AR:" : "AL:") + Player.safeId(names.get(i)), names.get(i)));
             }
         } else {
             List<Integer> idx = p.listFor(parentId);
@@ -105,6 +113,22 @@ public class PlayerService extends MediaBrowserService {
                         .setSubtitle(t.artist.length() > 0 ? t.artist : null)
                         .build(), MediaBrowser.MediaItem.FLAG_PLAYABLE));
             }
+        }
+        result.sendResult(out);
+    }
+
+    @Override
+    public void onSearch(String query, Bundle extras, Result<List<MediaBrowser.MediaItem>> result) {
+        Player p = Player.I;
+        List<MediaBrowser.MediaItem> out = new ArrayList<MediaBrowser.MediaItem>();
+        List<Integer> hits = p.search(query);
+        for (int k = 0; k < hits.size() && k < 50; k++) {
+            Player.Track t = p.tracks.get(hits.get(k));
+            out.add(new MediaBrowser.MediaItem(new MediaDescription.Builder()
+                    .setMediaId("ALL|" + t.uri)
+                    .setTitle(t.display())
+                    .setSubtitle(t.artist.length() > 0 ? t.artist : null)
+                    .build(), MediaBrowser.MediaItem.FLAG_PLAYABLE));
         }
         result.sendResult(out);
     }

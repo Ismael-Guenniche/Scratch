@@ -1290,6 +1290,15 @@ final class Player {
                     return x == y ? 0 : (x < y ? 1 : -1);
                 }
             });
+        } else if (folder != null && (folder.startsWith("AR:") || folder.startsWith("AL:"))) {
+            boolean ar = folder.startsWith("AR:");
+            String want = folder.substring(3);
+            for (int i = 0; i < tracks.size(); i++) {
+                Track t = tracks.get(i);
+                if (safeId(ar ? t.artist : t.album).equalsIgnoreCase(want)) {
+                    out.add(i);
+                }
+            }
         } else if (folder != null && folder.startsWith("PL:")) {
             java.util.HashMap<String, Integer> idx = new java.util.HashMap<String, Integer>();
             for (int i = 0; i < tracks.size(); i++) {
@@ -1300,6 +1309,43 @@ final class Player {
                 if (k != null) {
                     out.add(k);
                 }
+            }
+        }
+        return out;
+    }
+
+    /** Los ids de carpeta usan '|' como separador: se cambia en los nombres. */
+    static String safeId(String s) {
+        return s == null ? "" : s.replace('|', '/');
+    }
+
+    /** Nombres distintos de artistas (o álbumes) de la biblioteca, ordenados sin distinguir mayúsculas. */
+    List<String> distinctNames(boolean artists) {
+        java.util.TreeMap<String, String> m = new java.util.TreeMap<String, String>();
+        for (Track t : tracks) {
+            String n = (artists ? t.artist : t.album).trim();
+            if (n.length() > 0) {
+                m.put(n.toLowerCase(java.util.Locale.ROOT), n);
+            }
+        }
+        return new ArrayList<String>(m.values());
+    }
+
+    /** Búsqueda por voz o texto: todas las palabras deben estar en título, artista, álbum o nombre de archivo. */
+    List<Integer> search(String q) {
+        ArrayList<Integer> out = new ArrayList<Integer>();
+        String[] words = q == null ? new String[0] : q.toLowerCase(java.util.Locale.ROOT).trim().split("\\s+");
+        for (int i = 0; i < tracks.size(); i++) {
+            String h = tracks.get(i).lower;
+            boolean all = words.length > 0 && words[0].length() > 0;
+            for (String w : words) {
+                if (!h.contains(w)) {
+                    all = false;
+                    break;
+                }
+            }
+            if (all) {
+                out.add(i);
             }
         }
         return out;
@@ -1769,6 +1815,45 @@ final class Player {
                 public void onPlayFromMediaId(String mediaId, android.os.Bundle extras) {
                     playMediaId(mediaId);
                 }
+
+                @Override
+                public void onPlayFromSearch(String query, android.os.Bundle extras) {
+                    if (query == null || query.trim().length() == 0) {
+                        // "Pon música": biblioteca entera en aleatorio
+                        List<Integer> all = listFor("ALL");
+                        if (!all.isEmpty()) {
+                            setShuffle(true);
+                            playFrom(all, new java.util.Random().nextInt(all.size()));
+                        }
+                        return;
+                    }
+                    List<Integer> hits = search(query);
+                    if (!hits.isEmpty()) {
+                        playFrom(hits, 0);
+                    }
+                }
+
+                @Override
+                public void onSeekTo(long pos) {
+                    engine.seekTo(pos / 1000.0);
+                    updateSession();
+                }
+
+                @Override
+                public void onSkipToQueueItem(long id) {
+                    if (id >= 0 && id < queue.size()) {
+                        playQueueItem((int) id);
+                    }
+                }
+
+                @Override
+                public void onCustomAction(String action, android.os.Bundle extras) {
+                    if ("dev.scratchwheel.SHUFFLE".equals(action)) {
+                        setShuffle(!shuffle);
+                    } else if ("dev.scratchwheel.REPEAT".equals(action)) {
+                        cycleRepeat();
+                    }
+                }
             }, main);
             session.setActive(true);
         } catch (RuntimeException e) {
@@ -1786,10 +1871,25 @@ final class Player {
                     .setActions(PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE
                             | PlaybackState.ACTION_PLAY_PAUSE | PlaybackState.ACTION_SKIP_TO_NEXT
                             | PlaybackState.ACTION_SKIP_TO_PREVIOUS | PlaybackState.ACTION_STOP
-                            | PlaybackState.ACTION_PLAY_FROM_MEDIA_ID)
+                            | PlaybackState.ACTION_PLAY_FROM_MEDIA_ID | PlaybackState.ACTION_PLAY_FROM_SEARCH
+                            | PlaybackState.ACTION_SEEK_TO | PlaybackState.ACTION_SKIP_TO_QUEUE_ITEM)
+                    .addCustomAction("dev.scratchwheel.SHUFFLE",
+                            shuffle ? "Aleatorio: sí" : "Aleatorio: no", android.R.drawable.ic_menu_rotate)
+                    .addCustomAction("dev.scratchwheel.REPEAT",
+                            repeat == 0 ? "Repetir: no" : repeat == 1 ? "Repetir: lista" : "Repetir: canción",
+                            android.R.drawable.ic_menu_revert)
                     .setState(pl ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED,
                             (long) (engine.getPositionSeconds() * 1000), pl ? 1f : 0f);
             session.setPlaybackState(b.build());
+            ArrayList<MediaSession.QueueItem> qi = new ArrayList<MediaSession.QueueItem>();
+            for (int k = 0; k < queue.size() && k < 30; k++) {
+                Track qt = queue.get(k);
+                qi.add(new MediaSession.QueueItem(new android.media.MediaDescription.Builder()
+                        .setMediaId("Q|" + k).setTitle(qt.display())
+                        .setSubtitle(qt.artist.length() > 0 ? qt.artist : null).build(), k));
+            }
+            session.setQueue(qi);
+            session.setQueueTitle(Tr.t("Cola"));
             Track cur = index >= 0 && index < tracks.size() ? tracks.get(index) : null;
             session.setMetadata(new MediaMetadata.Builder()
                     .putString(MediaMetadata.METADATA_KEY_TITLE, title)

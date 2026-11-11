@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.46: Android Auto mejorado (rama android-auto): navegar por Artistas y Álbumes, búsqueda y voz (pon X en Scratch), cola visible, salto en la barra de progreso y botones de aleatorio y repetir
 - 0.45: ReplayGain (Ajustes → SONIDO: baja las canciones fuertes según la etiqueta REPLAYGAIN_TRACK_GAIN) y fundido cruzado entre canciones (0–10 s, cuando suena sola y la siguiente está precargada)
 - 0.44: grabar la sesión a WAV (menú ⋮ del scratch → GRABAR SESIÓN; se guarda en Música/Scratch con todo lo que suena, rueda y efectos incluidos); exportar una lista como M3U (menú de la lista)
 - 0.43: letras: lee la letra incrustada (ID3 USLT/SYLT, FLAC, Ogg, M4A) y archivos .lrc; pantalla LETRAS en el menú ⋮ del scratch con línea activa resaltada y saltar tocando; importar .lrc; búsqueda opcional en lrclib.net; módulo LETRA en Big Picture
