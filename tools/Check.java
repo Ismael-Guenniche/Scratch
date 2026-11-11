@@ -1011,6 +1011,43 @@ public class Check {
             ok(detSame && sums[0] > 0, "determinismo: mismas órdenes, mismo audio muestra a muestra (suma " + sums[0] + ")");
         }
         {
+            // Keylock con WSOLA: un tono de 440 Hz a 1,2× sigue siendo un tono limpio de 440 Hz.
+            PcmData.Builder kb = new PcmData.Builder(44100 * 8);
+            for (int i = 0; i < 44100 * 8; i++) {
+                short v = (short) Math.round(12000 * Math.sin(2 * Math.PI * 440.0 * i / 44100));
+                kb.append(v, v);
+            }
+            ScratchEngine ke = new ScratchEngine();
+            ke.setOutputRate(48000);
+            ke.load(kb.build(44100));
+            ke.setKeyLock(true);
+            ke.setPitch(1.2);
+            ke.setPlaying(true);
+            short[] kbuf = new short[512];
+            for (int k = 0; k < 2 * 48000 / 256; k++) {
+                ke.render(kbuf, 256);
+            }
+            double kss = 0, kcc = 0, ksc = 0, kxs = 0, kxc = 0, kxx = 0;
+            for (int k = 0; k < 180; k++) {
+                ke.render(kbuf, 256);
+                for (int i = 0; i < 256; i++) {
+                    double ph = 2 * Math.PI * 440.0 * (k * 256 + i) / 48000;
+                    double sn = Math.sin(ph), cs = Math.cos(ph), x = kbuf[2 * i];
+                    kss += sn * sn;
+                    kcc += cs * cs;
+                    ksc += sn * cs;
+                    kxs += x * sn;
+                    kxc += x * cs;
+                    kxx += x * x;
+                }
+            }
+            double kdet = kss * kcc - ksc * ksc;
+            double ka = (kxs * kcc - kxc * ksc) / kdet, kb2 = (kxc * kss - kxs * ksc) / kdet;
+            double ksig = ka * ka * kss + kb2 * kb2 * kcc + 2 * ka * kb2 * ksc;
+            double ksnr = 10 * Math.log10(ksig / Math.max(kxx - ksig, 1e-9));
+            ok(ksnr > 30, "keylock WSOLA: tono de 440 Hz a 1,2× con " + Math.round(ksnr) + " dB de señal/ruido");
+        }
+        {
             // Corte sin clics y gestos típicos: transformer (corte rítmico) y baby scratch (vaivén).
             PcmData.Builder cb = new PcmData.Builder(48000 * 6);
             PcmData.Builder sb2 = new PcmData.Builder(48000 * 6);
