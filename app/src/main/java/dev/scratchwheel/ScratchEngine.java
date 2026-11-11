@@ -729,6 +729,27 @@ public final class ScratchEngine {
         reverse = false;
     }
 
+    /** Vista de solo lectura del audio cargado para dibujar la onda y el espectro (el array no se modifica nunca). */
+    public static final class Snap {
+        public final short[] data;
+        public final int frames;
+        public final int rate;
+        public final boolean partial;
+        public final int pos;
+
+        Snap(short[] data, int frames, int rate, boolean partial, int pos) {
+            this.data = data;
+            this.frames = frames;
+            this.rate = rate;
+            this.partial = partial;
+            this.pos = pos;
+        }
+    }
+
+    public synchronized Snap snap() {
+        return new Snap(data, frames, sampleRate, partial, (int) Math.max(0, Math.min(frames - 1, pos)));
+    }
+
     /** Sustituye el fragmento inicial por la pista entera sin tocar la posición (el principio es idéntico). */
     public synchronized void replaceData(PcmData full) {
         if (!partial || full.sampleRate != sampleRate) {

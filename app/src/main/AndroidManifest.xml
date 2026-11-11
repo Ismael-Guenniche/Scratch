@@ -146,6 +146,11 @@
             android:screenOrientation="fullUser" />
 
         <activity
+            android:name=".BigPictureActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".QueueActivity"
             android:exported="false"
             android:screenOrientation="portrait" />

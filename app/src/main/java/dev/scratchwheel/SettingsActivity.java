@@ -192,6 +192,15 @@ public class SettingsActivity extends Activity {
                         redo();
                     }
                 }));
+        c.addView(body(Tr.t("Estilo de la rueda (sin carátula)")));
+        c.addView(segmented(new String[] {Tr.t("PUNTOS"), Tr.t("GRABADORA")}, prefs.getInt("wstyle", 0),
+                new Pick() {
+                    @Override
+                    public void on(int v) {
+                        prefs.edit().putInt("wstyle", v).apply();
+                        redo();
+                    }
+                }));
         TextView vnote = muted(Tr.t("Solo se ve con la carátula del disco activada."));
         vnote.setPadding(0, dp(8), 0, 0);
         c.addView(vnote);
@@ -361,6 +370,56 @@ public class SettingsActivity extends Activity {
                     }
                 }));
 
+        // BIG PICTURE
+        c = card(list, Tr.t("BIG PICTURE"));
+        c.addView(muted(Tr.t("Elige qué módulos salen, su tamaño en la rejilla y su orden.")));
+        final java.util.List<BigLayout.Item> bp = BigLayout.parse(prefs.getString("bp_cfg", null));
+        for (int i = 0; i < bp.size(); i++) {
+            final int at = i;
+            final BigLayout.Item it = bp.get(i);
+            c.addView(switchRow(Tr.t(BigLayout.NAMES[BigLayout.index(it.id)]),
+                    BigLayout.sizeLabel(it.id, it.size), it.on, true, new Toggle() {
+                        @Override
+                        public void on(boolean v) {
+                            it.on = v;
+                            prefs.edit().putString("bp_cfg", BigLayout.serialize(bp)).apply();
+                            redo();
+                        }
+                    }));
+            if (it.on) {
+                String[] sz = new String[BigLayout.sizeCount(it.id)];
+                for (int k = 0; k < sz.length; k++) {
+                    sz[k] = BigLayout.sizeLabel(it.id, k);
+                }
+                c.addView(segmented(sz, it.size, new Pick() {
+                    @Override
+                    public void on(int v) {
+                        it.size = v;
+                        prefs.edit().putString("bp_cfg", BigLayout.serialize(bp)).apply();
+                        redo();
+                    }
+                }));
+                if (at > 0) {
+                    c.addView(actionRow(Tr.t("Orden"), Tr.t("SUBIR"), new Runnable() {
+                        @Override
+                        public void run() {
+                            java.util.Collections.swap(bp, at, at - 1);
+                            prefs.edit().putString("bp_cfg", BigLayout.serialize(bp)).apply();
+                            redo();
+                        }
+                    }));
+                }
+            }
+            c.addView(dots());
+        }
+        c.addView(actionRow(Tr.t("Valores por defecto"), Tr.t("RESTABLECER"), new Runnable() {
+            @Override
+            public void run() {
+                prefs.edit().remove("bp_cfg").apply();
+                redo();
+            }
+        }));
+
         // PRECARGA
         c = card(list, Tr.t("PRECARGA"));
         c.addView(body(Tr.t("Canciones listas en memoria")));
@@ -509,7 +568,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.41");
+        about.setText("SCRATCH 0.42");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);

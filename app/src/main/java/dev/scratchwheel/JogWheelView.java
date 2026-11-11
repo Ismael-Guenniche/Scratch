@@ -46,6 +46,7 @@ public class JogWheelView extends View {
     private boolean locked;
     private boolean coverOn;
     private int vinylSkin;
+    private int wheelStyle;
     private Listener listener;
     private boolean haptic = true;
     private double hapticAcc;
@@ -102,6 +103,42 @@ public class JogWheelView extends View {
             vinylSkin = skin;
             invalidate();
         }
+    }
+
+    /** Aspecto de la rueda sin portada: 0 puntos (Nothing), 1 grabadora (aro fino, disco gris oscuro, punto rojo). */
+    public void setWheelStyle(int style) {
+        if (style != wheelStyle) {
+            wheelStyle = style;
+            invalidate();
+        }
+    }
+
+    private void drawRecorder(Canvas c, float cx, float cy, float r) {
+        // aro fino gris claro
+        ring.setColor(touching ? accentColor : 0xFFD6D6D6);
+        ring.setStrokeWidth(dp(2f));
+        c.drawCircle(cx, cy, r, ring);
+        ring.setStrokeWidth(dp(1.5f));
+        // disco central gris oscuro
+        hubFill.setColor(0xFF3A3A3C);
+        c.drawCircle(cx, cy, r * 0.80f, hubFill);
+        // tres marcas cortas que giran con la canción
+        ring.setColor(0xFFD6D6D6);
+        ring.setStrokeWidth(dp(2.5f));
+        ring.setStrokeCap(Paint.Cap.ROUND);
+        for (int i = 0; i < 3; i++) {
+            double a = angle - Math.PI / 2 + i * TWO_PI / 3;
+            float x1 = cx + (float) Math.cos(a) * r * 0.62f;
+            float y1 = cy + (float) Math.sin(a) * r * 0.62f;
+            float x2 = cx + (float) Math.cos(a) * r * 0.72f;
+            float y2 = cy + (float) Math.sin(a) * r * 0.72f;
+            c.drawLine(x1, y1, x2, y2, ring);
+        }
+        ring.setStrokeCap(Paint.Cap.BUTT);
+        ring.setStrokeWidth(dp(1.5f));
+        // punto rojo en el centro (tocar = play/pausa; al sonar se encoge)
+        hubFill.setColor(hubDown ? 0xFFFF6A5E : 0xFFE5392E);
+        c.drawCircle(cx, cy, r * (playing ? 0.085f : 0.12f), hubFill);
     }
 
     private void drawVinylBody(Canvas c, float cx, float cy, float r) {
@@ -296,6 +333,10 @@ public class JogWheelView extends View {
         }
         boolean showCover = coverOn && cover != null;
         boolean square = showCover && locked;
+        if (!showCover && wheelStyle == 1) {
+            drawRecorder(c, cx, cy, r);
+            return;
+        }
         if (!square) {
             ring.setColor(touching ? accentColor : (disco ? dc : ringIdle));
             c.drawCircle(cx, cy, r, ring);

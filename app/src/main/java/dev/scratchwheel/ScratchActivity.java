@@ -1393,7 +1393,7 @@ public class ScratchActivity extends Activity {
     private void showMenu(final View anchor) {
         int left = Player.I.sleepMinutes();
         DotMenu.show(this, th, anchor, new String[] {Tr.t("COLA"),
-            left > 0 ? Tr.t("TEMPORIZADOR · ") + left + " MIN" : Tr.t("TEMPORIZADOR"), Tr.t("ABRIR ARCHIVO"), Tr.t("AJUSTES")},
+            left > 0 ? Tr.t("TEMPORIZADOR · ") + left + " MIN" : Tr.t("TEMPORIZADOR"), Tr.t("ABRIR ARCHIVO"), Tr.t("AJUSTES"), Tr.t("BIG PICTURE")},
                 new DotMenu.Picked() {
                     @Override
                     public void onPick(int id) {
@@ -1411,8 +1411,10 @@ public class ScratchActivity extends Activity {
                             i.addCategory(Intent.CATEGORY_OPENABLE);
                             i.setType("audio/*");
                             startActivityForResult(i, REQ_OPEN);
-                        } else {
+                        } else if (id == 3) {
                             startActivity(new Intent(ScratchActivity.this, SettingsActivity.class));
+                        } else {
+                            startActivity(new Intent(ScratchActivity.this, BigPictureActivity.class));
                         }
                     }
                 });

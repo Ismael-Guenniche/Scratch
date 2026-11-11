@@ -6,7 +6,7 @@ import java.util.Arrays;
 /**
  * Pruebas de las listas (renombrar, mover, portada) y de los nombres editados. Solo Java puro:
  * compila con {@code javac -d /tmp/cl app/src/main/java/dev/scratchwheel/Playlists.java
- * app/src/main/java/dev/scratchwheel/TrackEdits.java tools/CheckLists.java} y ejecuta
+ * app/src/main/java/dev/scratchwheel/TrackEdits.java app/src/main/java/dev/scratchwheel/BigLayout.java app/src/main/java/dev/scratchwheel/Waveform.java tools/CheckLists.java} y ejecuta
  * {@code java -cp /tmp/cl dev.scratchwheel.CheckLists}.
  */
 public final class CheckLists {
@@ -103,6 +103,76 @@ public final class CheckLists {
         ok(q2.setOrder("Orden", Arrays.asList("c", "x", "a")), "setOrder cambia");
         ok(q2.uris("Orden").equals(Arrays.asList("c", "a", "b", "d")), "setOrder: lo que sobra va detrás: " + q2.uris("Orden"));
         ok(!q2.setOrder("Orden", Arrays.asList("c", "a", "b", "d")), "setOrder igual no cambia");
+
+        // Big Picture: rejilla de módulos
+        {
+            java.util.List<BigLayout.Item> d = BigLayout.defaults();
+            java.util.List<BigLayout.Placed> pl = BigLayout.pack(d, BigLayout.COLS);
+            ok(!pl.isEmpty(), "big: hay módulos activos de serie");
+            boolean[][] occ = new boolean[40][BigLayout.COLS];
+            boolean overlap = false;
+            boolean inside = true;
+            for (BigLayout.Placed x : pl) {
+                if (x.col < 0 || x.col + x.w > BigLayout.COLS) {
+                    inside = false;
+                }
+                for (int yy = x.row; yy < x.row + x.h; yy++) {
+                    for (int xx = x.col; xx < x.col + x.w; xx++) {
+                        if (occ[yy][xx]) {
+                            overlap = true;
+                        }
+                        occ[yy][xx] = true;
+                    }
+                }
+            }
+            ok(!overlap, "big: sin solapes");
+            ok(inside, "big: dentro de las columnas");
+            ok(pl.get(0).item.id.equals("info") && pl.get(0).row == 0 && pl.get(0).col == 0, "big: el primero arriba a la izquierda");
+            ok(pl.get(1).item.id.equals("cover") && pl.get(1).row == 1 && pl.get(1).col == 0, "big: portada bajo la info");
+            ok(pl.get(2).item.id.equals("wheel") && pl.get(2).row == 1 && pl.get(2).col == 2, "big: scratch junto a la portada");
+            // un módulo pequeño rellena el hueco que dejó uno grande
+            java.util.List<BigLayout.Item> t = new java.util.ArrayList<BigLayout.Item>();
+            t.add(new BigLayout.Item("cover", 1, true));  // 3x3
+            t.add(new BigLayout.Item("wave", 1, true));   // 4x2
+            t.add(new BigLayout.Item("volume", 0, true)); // 2x1
+            t.add(new BigLayout.Item("pitch", 0, true));  // 2x1
+            java.util.List<BigLayout.Placed> tp = BigLayout.pack(t, 4);
+            ok(tp.get(1).row == 3, "big: la onda 4x2 va debajo de la portada 3x3");
+            ok(tp.get(2).row == 5 && tp.get(3).row == 5, "big: volumen y pitch debajo de la onda: " + tp.get(2).row);
+            // serializar y leer
+            d.get(1).size = 2;
+            d.get(4).on = true;
+            String ser = BigLayout.serialize(d);
+            java.util.List<BigLayout.Item> back = BigLayout.parse(ser);
+            ok(BigLayout.serialize(back).equals(ser), "big: serializar y leer da lo mismo");
+            java.util.List<BigLayout.Item> junk = BigLayout.parse("zzz:1:1;cover:99:1;cover:0:1;wave:1:0");
+            ok(junk.size() == BigLayout.IDS.length, "big: lo desconocido se ignora y falta se completa: " + junk.size());
+            ok(junk.get(0).id.equals("cover") && junk.get(0).size == 0 && junk.get(0).on, "big: tamaño fuera de rango vuelve al de serie");
+            ok(junk.get(1).id.equals("wave") && !junk.get(1).on, "big: se respeta el orden y el estado guardados");
+            ok(BigLayout.rows(pl) >= 5, "big: filas");
+            // onda y espectro
+            short[] sig = new short[2 * 44100];
+            for (int i = 0; i < 44100; i++) {
+                short v = (short) (12000 * Math.sin(2 * Math.PI * 1000 * i / 44100.0));
+                sig[2 * i] = v;
+                sig[2 * i + 1] = v;
+            }
+            float[] pk = Waveform.peaks(sig, 44100, 10);
+            ok(pk.length == 10 && pk[3] > 0.3f && pk[3] < 0.4f, "onda: pico de un seno de 12000/32768: " + pk[3]);
+            float[] sp = new float[24];
+            Waveform.spectrum(sig, 44100, 20000, 44100, sp);
+            int best = 0;
+            for (int i = 1; i < sp.length; i++) {
+                if (sp[i] > sp[best]) {
+                    best = i;
+                }
+            }
+            double fc = 60 * Math.pow(Math.min(16000, 44100 * 0.45) / 60, (best + 0.5) / 24);
+            ok(fc > 700 && fc < 1500, "espectro: el seno de 1 kHz cae en la banda de " + Math.round(fc) + " Hz");
+            float[] sil = new float[24];
+            Waveform.spectrum(new short[2 * 4096], 4096, 2000, 44100, sil);
+            ok(sil[5] == 0f, "espectro: el silencio da 0");
+        }
 
         // nombres editados
         File ef = new File(dir, "edits.txt");
