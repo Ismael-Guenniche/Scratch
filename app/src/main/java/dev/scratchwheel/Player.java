@@ -1444,6 +1444,9 @@ final class Player {
         int fr = sp.getInt("wfric", 1);
         engine.setInertia(sp.getBoolean("inertia", true), fr == 0 ? 0.6 : fr == 2 ? 3.0 : 1.5);
         engine.setVinyl(sp.getBoolean("vinyl", false) ? 1.0 : 0.0);
+        AudioTune.compensate = sp.getInt("latcomp", 1) == 1;
+        AudioTune.trimSec = (sp.getInt("lattrim", 2) - 2) * 0.020;
+        AudioTune.apply(engine);
     }
 
     void touchDown() {
@@ -1666,7 +1669,7 @@ final class Player {
                 } else {
                     errors = 0;
                 }
-                AudioTune.step(t, tuner, outRate);
+                AudioTune.step(t, tuner, outRate, block, engine);
                 if (engine.hasSwapped() && !swapPosted) {
                     swapPosted = true;
                     main.post(new Runnable() {

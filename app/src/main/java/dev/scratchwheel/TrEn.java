@@ -241,6 +241,11 @@ final class TrEn {
         M.put("Cuánto audio recorre una vuelta: lenta = más preciso, rápida = más recorrido.", "How much audio one turn covers: slow = more precise, fast = more distance.");
         M.put("Inercia al soltar", "Release inertia");
         M.put("Sonido de vinilo", "Vinyl sound");
+        M.put("Compensar la latencia", "Latency compensation");
+        M.put("Ajuste fino", "Fine trim");
+        M.put("Latencia medida:", "Measured latency:");
+        M.put("La rueda, el tiempo y la letra se muestran donde suena el audio de verdad, no donde va el motor. Si la rueda va por delante del sonido, sube el ajuste fino (en milisegundos); si va por detrás, bájalo.",
+                "The wheel, the time and the lyrics are shown where the audio is actually sounding, not where the engine is. If the wheel runs ahead of the sound, raise the fine trim (in milliseconds); if it lags, lower it.");
         M.put("Añade el carácter de un disco real: una oscilación mínima del tono y un ruido de surco muy suave.",
                 "Adds the character of a real record: a tiny pitch wobble and a very soft groove noise.");
         M.put("Si sueltas la rueda lanzada con la música parada, sigue girando como un plato hasta frenarse.", "If you flick the wheel with the music stopped, it keeps spinning like a platter until it slows down.");
