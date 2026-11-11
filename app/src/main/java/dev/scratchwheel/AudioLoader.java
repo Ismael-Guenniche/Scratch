@@ -27,6 +27,17 @@ final class AudioLoader {
     }
 
     private static final int EARLY_SECONDS = 8;
+    private static boolean cleaned;
+
+    /** Carpeta del PCM temporal (caché de la app). La primera vez borra lo que dejara una ejecución anterior. */
+    private static synchronized java.io.File pcmDir(Context c) {
+        java.io.File d = new java.io.File(c.getCacheDir(), "pcm");
+        if (!cleaned) {
+            cleaned = true;
+            PcmData.cleanDir(d);
+        }
+        return d;
+    }
 
     static PcmData load(Context c, Uri uri) throws IOException {
         return load(c, uri, null, null);
@@ -41,19 +52,50 @@ final class AudioLoader {
                 throw new IOException(Tr.t("No se pudo abrir el archivo"));
             }
             try {
-                return WavParser.parse(in);
+                return withPeaks(c, uri, WavParser.parse(in, pcmDir(c)));
             } finally {
                 in.close();
             }
         } catch (WavParser.NotWavException e) {
-            return decode(c, uri, early, cancel);
+            try {
+                return withPeaks(c, uri, decode(c, uri, early, cancel, pcmDir(c)));
+            } catch (PcmData.DiskError de) {
+                // el disco falló a mitad (sin espacio…): otra vez, en memoria como antes
+                return decode(c, uri, null, cancel, null);
+            }
+        } catch (PcmData.DiskError de) {
+            InputStream in2 = c.getContentResolver().openInputStream(uri);
+            if (in2 == null) {
+                throw new IOException(Tr.t("No se pudo abrir el archivo"));
+            }
+            try {
+                return WavParser.parse(in2);
+            } finally {
+                in2.close();
+            }
         }
     }
 
+    /** Forma de onda: de la caché si la canción ya se analizó; si no, se guarda la recién calculada. */
+    private static PcmData withPeaks(Context c, Uri uri, PcmData pcm) {
+        if (pcm.peaks != null && uri != null) {
+            java.io.File dir = new java.io.File(c.getCacheDir(), "wave");
+            float[] cached = WaveCache.get(dir, uri.toString(), pcm.frames, PcmData.PEAKS);
+            if (cached != null) {
+                pcm.peaks = cached;
+            } else {
+                WaveCache.put(dir, uri.toString(), pcm.frames, pcm.peaks);
+            }
+        }
+        return pcm;
+    }
+
     private static PcmData decode(Context c, Uri uri, Early early,
-                                  java.util.concurrent.atomic.AtomicBoolean cancel) throws IOException {
+                                  java.util.concurrent.atomic.AtomicBoolean cancel, java.io.File dir)
+            throws IOException {
         MediaExtractor ex = new MediaExtractor();
         MediaCodec codec = null;
+        PcmData.Builder b = null;
         try {
             ex.setDataSource(c, uri, null);
             int track = -1;
@@ -82,7 +124,7 @@ final class AudioLoader {
 
             long expected = fmt.containsKey(MediaFormat.KEY_DURATION)
                     ? fmt.getLong(MediaFormat.KEY_DURATION) * sr / 1000000L : 0;
-            PcmData.Builder b = new PcmData.Builder(expected);
+            b = new PcmData.Builder(expected, dir);
             boolean isFloat = false;
             short[] tmp = new short[8192];
             float[] ftmp = new float[8192];
@@ -158,6 +200,9 @@ final class AudioLoader {
         } catch (IllegalStateException e) {
             throw new IOException(Tr.t("Formato no soportado"));
         } finally {
+            if (b != null) {
+                b.abort(); // cierra y borra el temporal (si ya se proyectó, la pista sigue viva)
+            }
             if (codec != null) {
                 try {
                     codec.stop();

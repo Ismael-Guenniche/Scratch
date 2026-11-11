@@ -15,7 +15,15 @@ public final class WavParser {
         }
     }
 
+    /** A partir de este tamaño (≈ 30 s) un WAV se guarda en disco si hay carpeta temporal. */
+    private static final long DISK_FROM_FRAMES = 1300000;
+
     public static PcmData parse(InputStream raw) throws IOException {
+        return parse(raw, null);
+    }
+
+    /** {@code pcmDir}: carpeta para el PCM temporal de los WAV largos (null = siempre en memoria). */
+    public static PcmData parse(InputStream raw, java.io.File pcmDir) throws IOException {
         InputStream in = new BufferedInputStream(raw, 1 << 16);
         byte[] hdr = new byte[12];
         if (readUpTo(in, hdr, 12) < 12 || !tag(hdr, 0, "RIFF") || !tag(hdr, 8, "WAVE")) {
@@ -50,7 +58,7 @@ public final class WavParser {
                     skip(in, 1);
                 }
             } else if (tag(ch, 0, "data")) {
-                return readData(in, size, fmtTag, channels, rate, bits);
+                return readData(in, size, fmtTag, channels, rate, bits, pcmDir);
             } else {
                 skip(in, size + (size & 1));
             }
@@ -58,7 +66,7 @@ public final class WavParser {
     }
 
     private static PcmData readData(InputStream in, long size, int fmtTag, int channels,
-                                    int rate, int bits) throws IOException {
+                                    int rate, int bits, java.io.File pcmDir) throws IOException {
         if (channels < 1 || channels > 16 || rate < 1000 || rate > 400000) {
             throw new IOException(Tr.t("Formato WAV no válido"));
         }
@@ -74,8 +82,12 @@ public final class WavParser {
         int frameBytes = bps * channels;
         boolean known = size > 0 && size < 0xFFFFFFF0L;
         long remaining = known ? size : Long.MAX_VALUE;
-        PcmData.Builder b = new PcmData.Builder();
+        // WAV grande y con carpeta temporal: a disco (sin límite de 7,5 min); si no, en memoria como siempre.
+        long expect = known ? size / frameBytes : 0;
+        PcmData.Builder b = pcmDir != null && expect > DISK_FROM_FRAMES ? new PcmData.Builder(expect, pcmDir)
+                : new PcmData.Builder();
         byte[] buf = new byte[frameBytes * 4096];
+        try {
         while (remaining > 0) {
             int want = (int) Math.min((long) buf.length, remaining);
             want -= want % frameBytes;
@@ -99,6 +111,13 @@ public final class WavParser {
             throw new IOException(Tr.t("WAV vacío"));
         }
         return b.build(rate);
+        } catch (IOException e) {
+            b.abort();
+            throw e;
+        } catch (RuntimeException e) {
+            b.abort();
+            throw e;
+        }
     }
 
     private static short sample(byte[] b, int o, int bps, boolean isFloat) {
