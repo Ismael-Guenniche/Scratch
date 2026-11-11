@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.64: Audio T14: los efectos del modo DJ se procesan por bloque en vez de por muestra (mismo sonido bit a bit, algo menos de CPU).
 - 0.63: Audio T20: limitador suave de salida (con efectos, sampler o fundido las crestas se redondean en vez de recortarse en seco). Guía de perfilado en el móvil (docs/PERFILADO.md) y estado del plan de audio (docs/AUDIO-PENDIENTE.md).
 - 0.62: Audio T17: nuevo ajuste «Sonido de vinilo» (Ajustes → RUEDA, apagado por defecto): excentricidad y flutter del disco, siseo de surco y chasquidos suaves, con coste de CPU mínimo.
 - 0.61: Audio T18 (sin cambios en la app): script único tools/run-all.sh que ejecuta todos los tests del motor sin Android SDK y una regresión de rendimiento que falla si un escenario cuesta más de un 30 % más que la línea base.
