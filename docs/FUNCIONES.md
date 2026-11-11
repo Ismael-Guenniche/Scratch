@@ -31,6 +31,7 @@ Primera pantalla (`HomeView`).
 - **Sonido:** Ajustes → SONIDO: nivelar volumen con ReplayGain (solo baja, nunca sube) y fundido cruzado de 0 a 10 s (potencia constante; con la precarga activada y sin saltar a mano).
 - **Editor de Big Picture** (`BigEditorActivity`): rejilla de 4 columnas con posición y tamaño libres por módulo (arrastrar, ancho/alto, añadir, quitar); se abre desde Ajustes → BIG PICTURE o desde el menú ⋮ de Big Picture. **Vista previa de la rueda** abajo en Ajustes → RUEDA: gira y se toca con el aspecto elegido.
 - Botones rápidos de cola y letras en la pantalla del scratch
+- Botón de cola en la cabecera de la pantalla principal
 - Acciones por canción: reproducir a continuación, añadir a la cola, añadir a favoritas, añadir a lista, quitar de lista, estadísticas de la canción.
 - Barra flotante con la canción actual; tocarla abre la rueda.
 - **Shuffle** sin repeticiones (Fisher-Yates): no repite hasta agotar la lista.

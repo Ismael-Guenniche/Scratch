@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.49: Pantalla principal: botón de cola siempre visible en la cabecera, junto a la búsqueda.
 - 0.48: Scratch: la flecha de bajar (sin sentido, ya se cierra con atrás) pasa a ser el botón de cola y se añade un botón de letras junto al menú. Ajustes: la rueda de prueba ya no aparece y desaparece ni queda pegada abajo; va dentro de la tarjeta RUEDA y se desplaza con ella.
 - 0.47: Big Picture totalmente personalizable: editor a pantalla completa (arrastrar módulos, ancho y alto libres, añadir, quitar, restablecer) y rueda de prueba interactiva en Ajustes → RUEDA para ver cada skin
 - 0.45: ReplayGain (Ajustes → SONIDO: baja las canciones fuertes según la etiqueta REPLAYGAIN_TRACK_GAIN) y fundido cruzado entre canciones (0–10 s, cuando suena sola y la siguiente está precargada)

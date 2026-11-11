@@ -444,6 +444,15 @@ public class MainActivity extends Activity {
             }
         });
         head.addView(searchBtn, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        DotIconView headQueue = new DotIconView(this, th);
+        headQueue.set(DotIcons.QUEUE, th.ink);
+        headQueue.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, QueueActivity.class));
+            }
+        });
+        head.addView(headQueue, new LinearLayout.LayoutParams(dp(48), dp(48)));
         final DotIconView menu = new DotIconView(this, th);
         menu.set(DotIcons.MENU, th.ink);
         menu.setOnClickListener(new View.OnClickListener() {
