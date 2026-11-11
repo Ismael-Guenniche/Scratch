@@ -1096,6 +1096,32 @@ public class Check {
                     "caché de onda: guarda, recupera y no confunde canciones ni versiones");
         }
         {
+            // Compensación de latencia: lo mostrado va por detrás del motor justo la latencia mientras suena, y
+            // se pega al motor (sin saltos) mientras el dedo sujeta el disco. No cambia el audio.
+            ScratchEngine la = new ScratchEngine();
+            la.setOutputRate(48000);
+            la.load(DemoTrack.generate());
+            la.setPlaying(true);
+            short[] lab = new short[512];
+            for (int k = 0; k < 300; k++) {
+                la.render(lab, 256);
+            }
+            ok(la.getHeardSeconds() == la.getPositionSeconds(), "latencia: sin medida, lo mostrado es la posición del motor");
+            la.setDisplayLatency(0.05);
+            la.render(lab, 256);
+            ok(Math.abs(la.getPositionSeconds() - la.getHeardSeconds() - 0.05) < 1e-6, "latencia: sonando a 1× se muestra 50 ms antes ("
+                    + (la.getPositionSeconds() - la.getHeardSeconds()) * 1000 + " ms)");
+            la.touchDown();
+            double hprev = la.getHeardSeconds(), hjump = 0;
+            for (int k = 0; k < 60; k++) {
+                la.render(lab, 256);
+                hjump = Math.max(hjump, Math.abs(la.getHeardSeconds() - hprev));
+                hprev = la.getHeardSeconds();
+            }
+            ok(hjump < 0.012 && Math.abs(la.getHeardSeconds() - la.getPositionSeconds()) < 1e-6,
+                    "latencia: con el dedo en el disco lo mostrado se pega al motor sin saltos (máx " + hjump * 1000 + " ms por bloque)");
+        }
+        {
             // Limitador suave: si los efectos suben la señal por encima del máximo, la cresta se redondea en vez
             // de quedar plana; sin efectos la señal no se toca.
             PcmData.Builder lb2 = new PcmData.Builder(48000 * 4);
