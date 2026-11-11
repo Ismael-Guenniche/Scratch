@@ -42,6 +42,21 @@ public final class ScratchEngine {
     private final boolean[] gOn = new boolean[MAXG];
     private int hopCnt;
     private double lastDir = 1;
+    /** Ventana Hann de los granos, precalculada para la frecuencia de salida actual. */
+    private int grainLen;
+    private double[] hann = new double[0];
+
+    private void makeHann() {
+        int len = Math.max(64, (int) (0.05 * outRate));
+        if (len != grainLen) {
+            double[] h = new double[len];
+            for (int i = 0; i < len; i++) {
+                h[i] = 0.5 * (1 - Math.cos(2 * Math.PI * i / len));
+            }
+            hann = h;
+            grainLen = len;
+        }
+    }
 
     private double pos;
     private double rate;
@@ -100,6 +115,8 @@ public final class ScratchEngine {
     private double level;
     private double levelAcc;
     private static final int NV = 4;
+    /** Notas de la bocina del sampler (constante: no se crea nada en el hilo de audio). */
+    private static final double[] HORN_HZ = {415.3, 523.3, 622.3};
     private final int[] svType = new int[NV];
     private final double[] svT = new double[NV];
     private final double[] svPh = new double[NV];
@@ -180,7 +197,8 @@ public final class ScratchEngine {
         }
         geqOn = on;
         geqPre = Math.pow(10, -(max * 0.7) / 20); // evita saturar al subir bandas
-        refreshFx();
+        refreshGeq();
+        updateFxActive();
     }
 
     /** Encola la siguiente pista: al acabar la actual entra sin hueco. */
@@ -233,18 +251,20 @@ public final class ScratchEngine {
         eqLow = Math.max(0, Math.min(1.6, low));
         eqMid = Math.max(0, Math.min(1.6, mid));
         eqHigh = Math.max(0, Math.min(1.6, high));
-        refreshFx();
+        updateFxActive();
     }
 
     /** -1 = paso bajo cerrado, 0 = sin filtro, +1 = paso alto cerrado. */
     public synchronized void setFilter(double f) {
         filter = Math.max(-1, Math.min(1, f));
-        refreshFx();
+        refreshSweep();
+        updateFxActive();
     }
 
     public synchronized void setEcho(double mix) {
         echo = Math.max(0, Math.min(1, mix));
-        refreshFx();
+        ensureDelay();
+        updateFxActive();
     }
 
     /** Duración del frenado al pausar (s). */
@@ -434,12 +454,12 @@ public final class ScratchEngine {
             flBufL = new float[n];
             flBufR = new float[n];
         }
-        refreshFx();
+        updateFxActive();
     }
 
     public synchronized void setPhaser(boolean on) {
         phaser = on;
-        refreshFx();
+        updateFxActive();
     }
 
     public synchronized boolean isFlanger() {
@@ -459,7 +479,7 @@ public final class ScratchEngine {
             delayPos = 0;
         }
         echoOutLeft = (int) (3.0 * outRate);
-        refreshFx();
+        updateFxActive();
     }
 
     /** Parada de vinilo: la próxima pausa frena en esta duración (se borra al volver a reproducir). */
@@ -531,8 +551,7 @@ public final class ScratchEngine {
                 case 0: { // bocina: acorde de ondas casi cuadradas
                     dur = 0.9;
                     double a = 0;
-                    double[] fr = {415.3, 523.3, 622.3};
-                    for (double f : fr) {
+                    for (double f : HORN_HZ) {
                         double ph = (t * f * (1 + 0.004 * Math.sin(t * 40))) % 1.0;
                         double saw = 2 * ph - 1;
                         a += Math.max(-1, Math.min(1, 3 * saw));
@@ -576,9 +595,14 @@ public final class ScratchEngine {
         return sum * 9500;
     }
 
-    private void refreshFx() {
+    /** Solo el interruptor general: no recalcula ningún filtro. */
+    private void updateFxActive() {
         boolean eq = eqLow != 1 || eqMid != 1 || eqHigh != 1;
         fxActive = eq || geqOn || filter != 0 || echo > 0 || flanger || phaser || echoOutLeft > 0;
+    }
+
+    /** Coeficientes del ecualizador gráfico (solo al cambiar una banda o la frecuencia de salida). */
+    private void refreshGeq() {
         double fs = outRate;
         for (int c = 0; c < 2; c++) {
             for (int b = 0; b < 5; b++) {
@@ -587,8 +611,13 @@ public final class ScratchEngine {
                 }
                 geq[b][c].peak(EQ_HZ[b], 1.1, geqDb[b], fs);
             }
-            lpEq[c].set(false, 250, 0.7071, fs);
-            hpEq[c].set(true, 2500, 0.7071, fs);
+        }
+    }
+
+    /** Coeficientes del filtro barrido (solo al mover el filtro o cambiar la frecuencia de salida). */
+    private void refreshSweep() {
+        double fs = outRate;
+        for (int c = 0; c < 2; c++) {
             if (filter < 0) {
                 sweep[c].set(false, 20000 * Math.pow(160.0 / 20000.0, -filter), 1.1, fs);
             } else if (filter > 0) {
@@ -597,12 +626,28 @@ public final class ScratchEngine {
                 sweep[c].bypass();
             }
         }
+    }
+
+    private void ensureDelay() {
         int need = (int) (0.36 * outRate) + 1;
         if ((echo > 0 || echoOutLeft > 0) && delayL.length != need) {
             delayL = new float[need];
             delayR = new float[need];
             delayPos = 0;
         }
+    }
+
+    /** Recalcula todo (al cambiar la frecuencia de salida o volver a neutro). */
+    private void refreshFx() {
+        updateFxActive();
+        double fs = outRate;
+        refreshGeq();
+        for (int c = 0; c < 2; c++) {
+            lpEq[c].set(false, 250, 0.7071, fs);
+            hpEq[c].set(true, 2500, 0.7071, fs);
+        }
+        refreshSweep();
+        ensureDelay();
     }
 
     /** Efectos sobre una muestra (l, r) a la frecuencia de salida. */
@@ -652,7 +697,9 @@ public final class ScratchEngine {
             }
             delayL[delayPos] = (float) (l * inG + dl * fb);
             delayR[delayPos] = (float) (r * inG + dr * fb);
-            delayPos = (delayPos + 1) % len;
+            if (++delayPos >= len) {
+                delayPos = 0;
+            }
             l = l * dry + dl * mix;
             r = r * dry + dr * mix;
         }
@@ -674,7 +721,9 @@ public final class ScratchEngine {
             double wr = flBufR[i0] + (flBufR[i1] - flBufR[i0]) * f;
             flBufL[flPos] = (float) (l + wl * 0.4);
             flBufR[flPos] = (float) (r + wr * 0.4);
-            flPos = (flPos + 1) % n;
+            if (++flPos >= n) {
+                flPos = 0;
+            }
             l = (l + wl) * 0.5;
             r = (r + wr) * 0.5;
         }
@@ -779,6 +828,7 @@ public final class ScratchEngine {
 
     public synchronized void setOutputRate(int hz) {
         outRate = Math.max(8000, hz);
+        makeHann();
         refreshFx();
     }
 
@@ -938,6 +988,8 @@ public final class ScratchEngine {
         double tau = 0.02 * sampleRate;
         final double aScale = 44100.0 / outRate;
         int last = Math.max(frames - 1, 0);
+        final double spinUpAlpha = 1.0 / (SPIN_UP * outRate);
+        final double cutAlpha = Math.min(1.0, 1.0 / (0.002 * outRate));
         for (int i = 0; i < n; i++) {
             double target;
             double alpha;
@@ -962,7 +1014,7 @@ public final class ScratchEngine {
             } else if (playing) {
                 // Arranque tipo motor de plato: ~0,35 s hasta la velocidad normal.
                 target = pitch;
-                alpha = 1.0 / (SPIN_UP * outRate);
+                alpha = spinUpAlpha;
             } else {
                 target = 0.0;
                 alpha = 0.0;
@@ -1108,7 +1160,7 @@ public final class ScratchEngine {
                 }
             }
             if (gt != cutGain) {
-                cutGain += (gt - cutGain) * Math.min(1.0, 1.0 / (0.002 * outRate));
+                cutGain += (gt - cutGain) * cutAlpha;
                 if (Math.abs(gt - cutGain) < 1e-4) {
                     cutGain = gt;
                 }
@@ -1144,7 +1196,10 @@ public final class ScratchEngine {
      * más rápido o más lento.
      */
     private double[] grains(double ratio, int last) {
-        int len = Math.max(64, (int) (0.05 * outRate));
+        if (grainLen == 0) {
+            makeHann();
+        }
+        int len = grainLen;
         int hop = len / 2;
         if (hopCnt <= 0) {
             if (Math.abs(rate) > 0.02) {
@@ -1173,7 +1228,11 @@ public final class ScratchEngine {
             if (!gOn[k]) {
                 continue;
             }
-            double w = 0.5 * (1 - Math.cos(2 * Math.PI * gAge[k] / len));
+            if (gAge[k] >= len) {
+                gOn[k] = false;
+                continue;
+            }
+            double w = hann[gAge[k]];
             double p = Math.max(0, Math.min(last, gPos[k]));
             int i0 = (int) p;
             int i1 = Math.min(i0 + 1, last);
