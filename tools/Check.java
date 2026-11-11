@@ -1011,6 +1011,63 @@ public class Check {
             ok(detSame && sums[0] > 0, "determinismo: mismas órdenes, mismo audio muestra a muestra (suma " + sums[0] + ")");
         }
         {
+            // Calidad del remuestreo: un tono de 10 kHz (44,1 → 48 kHz) sale limpio, y a 3× un tono de 12 kHz
+            // (que quedaría en 36 kHz) no se pliega sobre lo audible.
+            PcmData.Builder qb = new PcmData.Builder(44100 * 12);
+            PcmData.Builder ab = new PcmData.Builder(44100 * 30);
+            for (int i = 0; i < 44100 * 30; i++) {
+                short v10 = (short) Math.round(12000 * Math.sin(2 * Math.PI * 10000.0 * i / 44100));
+                short v12 = (short) Math.round(12000 * Math.sin(2 * Math.PI * 12000.0 * i / 44100));
+                if (i < 44100 * 12) {
+                    qb.append(v10, v10);
+                }
+                ab.append(v12, v12);
+            }
+            ScratchEngine qe = new ScratchEngine();
+            qe.setOutputRate(48000);
+            qe.load(qb.build(44100));
+            qe.setPlaying(true);
+            short[] qbuf = new short[512];
+            for (int k = 0; k < 4 * 48000 / 256; k++) {
+                qe.render(qbuf, 256);
+            }
+            double ss = 0, cc = 0, sc = 0, xs = 0, xc = 0, xx = 0;
+            for (int k = 0; k < 60; k++) {
+                qe.render(qbuf, 256);
+                for (int i = 0; i < 256; i++) {
+                    double ph = 2 * Math.PI * 10000.0 * (k * 256 + i) / 48000;
+                    double sn = Math.sin(ph), cs = Math.cos(ph), x = qbuf[2 * i];
+                    ss += sn * sn;
+                    cc += cs * cs;
+                    sc += sn * cs;
+                    xs += x * sn;
+                    xc += x * cs;
+                    xx += x * x;
+                }
+            }
+            double det = ss * cc - sc * sc;
+            double fa = (xs * cc - xc * sc) / det, fbb = (xc * ss - xs * sc) / det;
+            double sig = fa * fa * ss + fbb * fbb * cc + 2 * fa * fbb * sc;
+            double snr = 10 * Math.log10(sig / Math.max(xx - sig, 1e-9));
+            ok(snr > 60, "remuestreo: tono de 10 kHz con " + Math.round(snr) + " dB de señal/ruido");
+            qe.load(ab.build(44100));
+            qe.setSeekSpeed(3.0);
+            qe.setSeek(1);
+            qe.setSeekSpeed(3.0);
+            for (int k = 0; k < 2 * 48000 / 256; k++) {
+                qe.render(qbuf, 256);
+            }
+            double al = 0;
+            for (int k = 0; k < 60; k++) {
+                qe.render(qbuf, 256);
+                for (int i = 0; i < 256; i++) {
+                    al += (double) qbuf[2 * i] * qbuf[2 * i];
+                }
+            }
+            double aliasDb = 20 * Math.log10(Math.max(Math.sqrt(al / (60 * 256)), 1e-3) / (12000 / Math.sqrt(2)));
+            ok(aliasDb < -40, "antialiasing: 12 kHz a 3× se cuela a " + Math.round(aliasDb) + " dB");
+        }
+        {
             // Seguimiento del dedo: a velocidad constante la lectura va a esa velocidad, sin retraso ni escalones,
             // aunque los eventos táctiles (120 Hz) no coincidan con los bloques de audio.
             ScratchEngine fe = new ScratchEngine();
