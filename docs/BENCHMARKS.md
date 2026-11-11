@@ -155,3 +155,21 @@ adb logcat -s ScratchAudio
 ```
 
 Sale una línea al arrancar el audio (frecuencia, ráfaga, bloque, capacidad, ruta rápida o normal, búfer en frames y ms) y otra cada vez que el búfer crece por underruns.
+
+## T5 · Respuesta del dedo (v0.56)
+
+Herramienta nueva: `tools/BenchFeel.java` simula una pantalla táctil de 120 Hz con llegada irregular de los eventos (±1,5 ms), ruido de posición y bloques de 256 frames a 48 kHz. El retraso se mide en milisegundos de audio entre donde está el dedo y donde está la lectura.
+
+| Gesto | Medida | Antes (0.55) | Después (0.56) |
+|---|---|---:|---:|
+| Dedo constante a 0,25× | rizado de la velocidad | 17,1 % | 17,8 % |
+| Dedo constante a 1× | rizado de la velocidad | 12,6 % | 7,1 % |
+| Dedo constante a 3× | rizado de la velocidad | 12,3 % | 4,2 % |
+| Dedo constante a 0,25× / 1× / 3× | retraso respecto al dedo | 6,8 / 27,3 / 82,0 ms | −0,2 / 0,3 / 1,1 ms |
+| Arranque brusco 0 → 2× | tiempo hasta el 90 % | 60 ms | 17 ms |
+| Parada brusca 2× → 0 | tiempo hasta el silencio | 128 ms | 32 ms |
+| Parada brusca 2× → 0 | se pasa de la posición del dedo | 0 ms | 40 ms (se corrige en silencio) |
+| Baby scratch 4 Hz ±2,5× | error RMS de velocidad | 0,98× | 0,44× |
+| Coste de `render()` en scratch | media | 9,4 µs | 11,0 µs |
+
+Contrapartida: al predecir la posición del dedo entre eventos, en una parada perfectamente brusca la lectura se pasa un poco y vuelve al punto exacto en silencio. Con un dedo real, que frena en varios eventos, el exceso es mucho menor. A 0,25× el rizado no mejora: ahí manda el ruido de posición del táctil simulado.
