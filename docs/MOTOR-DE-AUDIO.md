@@ -50,6 +50,9 @@ Cadena por muestra: EQ de 3 bandas (biquads LP 250 Hz / HP 2,5 kHz) → filtro b
 - Cada orden recalcula solo sus coeficientes (`refreshGeq`, `refreshSweep`); el hilo de audio no crea objetos (hay un test que lo comprueba).
 - El corte/puerta usa una rampa de duración fija (2 ms) con forma de S y derivadas continuas: flancos rápidos para el transformer y sin clics.
 
+## Limitador suave
+Cuando hay efectos, sampler o fundido cruzado activos, la suma puede pasarse del máximo de 16 bits. En vez de recortar en seco, por encima de −2,7 dB la cresta se redondea con una curva `tanh`. Por debajo de ese umbral, y siempre en la reproducción normal, la señal no se toca.
+
 ## Gimmicks de transporte
 - **Hot cues, saltos:** simples reposicionamientos.
 - **Bucle:** si `pos ≥ loopEnd` salta a `loopStart + exceso` (y simétrico hacia atrás).

@@ -267,3 +267,20 @@ Con el ajuste apagado (por defecto) el audio es idéntico bit a bit al de la 0.6
 | Oscilación del tono | ±0,12 % a 0,556 Hz y ±0,03 % a 7,3 Hz |
 | Deriva de posición tras 10 s | < 1 ms |
 | Asignaciones en el hilo de audio | 0 |
+
+## T19 · Perfilado en el móvil
+
+No se mide en la JVM: la guía para capturar un trace con Perfetto y qué mirar está en [PERFILADO.md](PERFILADO.md).
+
+## T20 · Limitador suave de salida (v0.63)
+
+Tono de 440 Hz fuerte con los tres faders de EQ del modo DJ al máximo (×1,6, la suma se pasa del máximo de 16 bits):
+
+| Medida | Antes (recorte en seco) | Después (limitador suave) |
+|---|---:|---:|
+| Armónicos por encima de 5 kHz respecto a la señal | −44,2 dB | −53,5 dB |
+| Reproducción normal y scratch (huella CRC) | — | idénticas: sin efectos no actúa |
+
+## Estado de las tareas que no se han podido cerrar aquí
+
+Ver [AUDIO-PENDIENTE.md](AUDIO-PENDIENTE.md): T9–T13 y T16 necesitan compilar con el SDK de Android y probar en el móvil.
