@@ -236,3 +236,18 @@ Se reescribió la cadena de efectos para procesar el bloque entero etapa a etapa
 | Reproducción + modo DJ completo, p50 | 41,0 µs | 40,2 µs (−2 %) |
 
 No mejora (el JIT ya hacía ese trabajo) y además el flanger y el phaser comparten oscilador, así que procesarlos por etapas cambiaba el sonido del modo DJ. Como la cadena completa ya cuesta menos del 1 % del plazo, **se descarta** y el código queda como estaba. SIMD solo tendría sentido con un módulo nativo (T13), que tampoco se justifica por CPU.
+
+## T15 · Keylock con WSOLA (v0.60)
+
+Prueba objetiva en `tools/BenchQuality.java`: se reproduce un tono puro con keylock a 0,8× y 1,2× y se mide cuánto de la salida es ese mismo tono (señal/ruido) y cuánto tiembla el volumen. Con OLA simple los granos se sumaban desfasados y el tono salía desafinado (por eso el ajuste da valores negativos).
+
+| Prueba (0,8× y 1,2× dan lo mismo) | OLA (0.59) | WSOLA (0.60) |
+|---|---:|---:|
+| Tono de 220 Hz, señal/ruido | −50 dB | 48 dB |
+| Tono de 440 Hz, señal/ruido | −52 dB | 48 dB |
+| Tono de 1 kHz, señal/ruido | 65 dB (caso favorable: el salto entre granos coincide con el periodo) | 34 dB |
+| Tono de 440 Hz, temblor de volumen | 5,7 % | 0,8 % |
+| Nota con 6 armónicos, temblor de volumen | 1,0 % | 1,0 % |
+| Coste con keylock, media / p99 | 13 µs / 25 µs | 27 µs / 93 µs |
+
+El coste sube porque cada 25 ms se busca el mejor punto de enganche (búsqueda gruesa y ajuste fino); sigue por debajo del 2 % del plazo en el peor bloque. Sin keylock no cambia nada.

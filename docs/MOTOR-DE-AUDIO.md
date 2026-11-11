@@ -38,7 +38,7 @@ El motor distingue el **plato** (lo que mueve el motor) del **disco** (lo que se
 - **Pitch:** velocidad de reproducción 0,5×–1,5× (el panel limita a ±20 %).
 
 ## Mantener el tono (keylock)
-Síntesis **granular (OLA)** con ventana Hann de 50 ms (precalculada en una tabla al fijar la frecuencia de salida) y solape del 50 %, hasta 4 granos simultáneos. Cada grano suena a velocidad normal (hacia delante o atrás según la rueda), así el tono no cambia aunque la posición avance más rápido o más lento.
+Síntesis **granular (OLA)** con ventana Hann de 50 ms (precalculada en una tabla al fijar la frecuencia de salida) y solape del 50 %, hasta 4 granos simultáneos. Cada grano suena a velocidad normal (hacia delante o atrás según la rueda), así el tono no cambia aunque la posición avance más rápido o más lento. Desde la 0.60 es **WSOLA**: cada grano nuevo no empieza en un punto fijo, sino donde su onda mejor continúa la del grano anterior (correlación normalizada en ±6 ms), así los granos se suman en fase y desaparece el sonido «rugoso» y desafinado del OLA simple.
 
 ## Efectos (modo DJ)
 Cadena por muestra: EQ de 3 bandas (biquads LP 250 Hz / HP 2,5 kHz) → filtro barrido → eco / echo-out → flanger → phaser → corte/puerta → sampler → medidor de nivel.
