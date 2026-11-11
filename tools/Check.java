@@ -1033,12 +1033,12 @@ public class Check {
                 ok(!uiT.isAlive(), "sin cerrojo: rueda y consultas terminan aunque otro hilo retenga el motor");
             }
             short[] lb = new short[512];
-            double before = le.getPositionSeconds();
+            double posBefore = le.getPositionSeconds();
             for (int k = 0; k < 40; k++) {
                 le.render(lb, 256);
             }
-            ok(le.getPositionSeconds() > before + 0.2, "sin cerrojo: el giro acumulado se aplica en el siguiente bloque ("
-                    + (le.getPositionSeconds() - before) + " s)");
+            ok(le.getPositionSeconds() > posBefore + 0.2, "sin cerrojo: el giro acumulado se aplica en el siguiente bloque ("
+                    + (le.getPositionSeconds() - posBefore) + " s)");
             le.touchUp();
             le.rotate(1.0);
             ok(le.isIdle() || !le.isScratching(), "sin cerrojo: girar sin tocar no hace nada");
