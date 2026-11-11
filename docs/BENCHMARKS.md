@@ -313,3 +313,15 @@ Las canciones se guardan en un archivo temporal proyectado en memoria y el motor
 | Forma de onda en Big Picture | se recalculaba al abrir cada canción | se calcula una vez al decodificar y se guarda en caché por canción |
 
 Lo que la JVM no mide y hay que probar en el móvil: la primera lectura de una zona de la canción que Android haya sacado de memoria puede tardar algún milisegundo (lectura de almacenamiento flash) y dar un microcorte al saltar muy lejos tras mucho rato.
+
+## T16 · Latencia medida y posición mostrada (v0.66)
+
+El audio no cambia (mismas huellas CRC). Se prueba en `Check.java`:
+
+| Medida | Antes (0.65) | Después (0.66) |
+|---|---:|---:|
+| Desfase entre lo mostrado y lo que suena, con 50 ms de latencia de salida | 50 ms (la rueda, el tiempo y la letra iban por delante) | 0 ms |
+| Salto de lo mostrado al tocar el disco | — | ninguno: como mucho 7 ms por bloque durante la transición de 0,15 s |
+| Asignaciones en el hilo de audio | 0 | 0 |
+
+La latencia real del Nothing Phone (4a) se ve en Ajustes → SONIDO («Latencia medida») tras unos segundos de reproducción. La medida no incluye lo que añada un altavoz o unos auriculares Bluetooth por su cuenta: para eso está el ajuste fino.

@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.66: Audio T16: la app mide sola la latencia de salida y la rueda, el tiempo, los pulsos y la letra se muestran donde suena el audio de verdad. Ajustes → SONIDO: Compensar la latencia (NO / AUTO) y ajuste fino de ±40 ms.
 - 0.65: Audio T9, T10 y T11: las canciones ya no se cargan enteras en la RAM de la app: el audio decodificado va a un archivo temporal proyectado en memoria y el motor lo lee por ventanas (mismo sonido muestra a muestra). Se acaba el límite de 7,5 min (ahora unas 2,5 h), la precarga de las siguientes pistas no gasta memoria y la forma de onda se guarda en caché por canción.
 - 0.64: Audio T14: los efectos del modo DJ se procesan por bloque en vez de por muestra (mismo sonido bit a bit, algo menos de CPU).
 - 0.63: Audio T20: limitador suave de salida (con efectos, sampler o fundido las crestas se redondean en vez de recortarse en seco). Guía de perfilado en el móvil (docs/PERFILADO.md) y estado del plan de audio (docs/AUDIO-PENDIENTE.md).
