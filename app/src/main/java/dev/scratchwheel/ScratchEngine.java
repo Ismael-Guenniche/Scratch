@@ -16,8 +16,15 @@ public final class ScratchEngine {
     public static final double SECONDS_PER_REV = 1.8;
     private static final double MAX_RATE = 12.0;
     private static final double SEEK_RATE = 1.5;
-    /** Constante de tiempo del arranque y duración del frenado al dar a play/pausa, en segundos. */
-    private static final double SPIN_UP = 0.12;
+    /** Arranque del motor: el plato sube en rampa (par constante) hasta la velocidad normal en este tiempo (s). */
+    private static final double MOTOR_UP = 0.2;
+    /** Final suave de la rampa del motor (s). */
+    private static final double MOTOR_LAND = 0.02;
+    /** Slipmat: al soltar el disco, el rozamiento con el plato lo acelera 1× cada tantos segundos. */
+    private static final double SLIP_CATCH = 0.06;
+    /** Agarre del dedo: durante este tiempo tras tocar, el disco frena con la inercia de un vinilo (s). */
+    private static final double GRIP_TIME = 0.015;
+    private static final double GRIP_TAU = 0.004;
     private static final double SPIN_DOWN = 0.7;
 
     private short[] data = new short[0];
@@ -844,6 +851,9 @@ public final class ScratchEngine {
     /** Segundos desde el último evento táctil. */
     private double evAge = 1.0;
     private double lastMoveDir;
+    /** Velocidad del plato (el motor); el disco (rate) se acopla a él por el slipmat cuando no lo sujeta el dedo. */
+    private double platter;
+    private int gripLeft;
     /** Ganancia (suavizada) que silencia la pequeña corrección de posición tras parar el dedo. */
     private double settleGain = 1;
 
@@ -1130,10 +1140,18 @@ public final class ScratchEngine {
         prevEvNanos = Long.MIN_VALUE;
         evAge = 1.0;
         lastMoveDir = 0;
+        boolean grab = !scratching && rate != 0;
         freeSpin = false;
         slipBegin(false);
         scratching = true;
         scratchTarget = pos;
+        if (grab) {
+            // El disco no para en seco: frena en unos milisegundos y el punto de agarre es donde acabará parado.
+            gripLeft = (int) (GRIP_TIME * outRate);
+            scratchTarget = Math.max(0, Math.min(Math.max(frames - 1, 0), pos + rate * GRIP_TAU * sampleRate));
+        } else {
+            gripLeft = 0;
+        }
         publish();
     }
 
@@ -1199,12 +1217,30 @@ public final class ScratchEngine {
         final double velDecay = dtOut / 0.015;
         final double aScale = 44100.0 / outRate;
         int last = Math.max(frames - 1, 0);
-        final double spinUpAlpha = 1.0 / (SPIN_UP * outRate);
+        final double motorStep = dtOut / MOTOR_UP;
+        final double motorLand = dtOut / MOTOR_LAND;
+        final double slipStep = dtOut / SLIP_CATCH;
+        final double gripAlpha = dtOut / GRIP_TAU;
         final double cutAlpha = Math.min(1.0, 1.0 / (0.002 * outRate));
         for (int i = 0; i < n; i++) {
             double target;
             double alpha;
             boolean settling = false;
+            boolean slipmat = false;
+            if (playing) {
+                // Motor: par constante (rampa recta) con un final suave al llegar a la velocidad pedida.
+                double dp = pitch - platter;
+                double adp = dp < 0 ? -dp : dp;
+                if (adp < 1e-6) {
+                    platter = pitch;
+                } else {
+                    double st = adp * motorLand;
+                    if (st > motorStep) {
+                        st = motorStep;
+                    }
+                    platter += dp > 0 ? st : -st;
+                }
+            }
             if (scratching) {
                 // El objetivo se extrapola con la velocidad del dedo entre evento y evento (como mucho algo más
                 // de un periodo), así la lectura no va a escalones ni con retraso; si no llegan eventos, se queda.
@@ -1235,7 +1271,12 @@ public final class ScratchEngine {
                 } else if (target < -MAX_RATE) {
                     target = -MAX_RATE;
                 }
-                alpha = 0.08 * aScale;
+                if (gripLeft > 0) {
+                    gripLeft--;
+                    alpha = gripAlpha;
+                } else {
+                    alpha = 0.08 * aScale;
+                }
             } else if (backspinLeft > 0) {
                 target = -6.0 * backspinLeft / backspinTotal;
                 alpha = 0.01 * aScale;
@@ -1247,9 +1288,10 @@ public final class ScratchEngine {
                 target = seek;
                 alpha = 0.004 * aScale;
             } else if (playing) {
-                // Arranque tipo motor de plato: ~0,35 s hasta la velocidad normal.
-                target = pitch;
-                alpha = spinUpAlpha;
+                // El disco sigue al plato a través del slipmat (rozamiento constante): si van iguales, van juntos.
+                target = platter;
+                alpha = 0.0;
+                slipmat = true;
             } else {
                 target = 0.0;
                 alpha = 0.0;
@@ -1276,8 +1318,19 @@ public final class ScratchEngine {
                 } else {
                     rate -= Math.signum(rate) * step;
                 }
+            } else if (slipmat) {
+                double dr = platter - rate;
+                if (dr <= slipStep && dr >= -slipStep) {
+                    rate = platter;
+                } else {
+                    rate += dr > 0 ? slipStep : -slipStep;
+                }
             } else {
                 rate += (target - rate) * alpha;
+            }
+            if (!playing) {
+                // Motor apagado: el plato va con el disco (frenando o girando por inercia), o parado bajo el dedo.
+                platter = scratching ? 0 : rate;
             }
             if (!scratching && seek == 0 && !playing && backspinLeft == 0 && Math.abs(rate) < 1e-4) {
                 rate = 0;

@@ -1011,6 +1011,43 @@ public class Check {
             ok(detSame && sums[0] > 0, "determinismo: mismas órdenes, mismo audio muestra a muestra (suma " + sums[0] + ")");
         }
         {
+            // Plato: el motor arranca en rampa recta, el slipmat engancha el disco rápido al soltarlo y el dedo
+            // no lo para en seco.
+            ScratchEngine pe2 = new ScratchEngine();
+            pe2.setOutputRate(48000);
+            pe2.load(DemoTrack.generate());
+            pe2.setPlaying(true);
+            short[] pb2 = new short[64];
+            double r100 = 0, r300 = 0;
+            for (int k = 0; k < 900; k++) {
+                pe2.render(pb2, 16);
+                if (k == 299) {
+                    r100 = pe2.getRate();
+                }
+            }
+            r300 = pe2.getRate();
+            ok(Math.abs(r100 - 0.5) < 0.03 && Math.abs(r300 - 1.0) < 0.001,
+                    "motor: rampa recta (a 100 ms va a " + r100 + "×, a 300 ms a " + r300 + "×)");
+            pe2.touchDown();
+            double prevR = pe2.getRate(), jump = 0;
+            for (int k = 0; k < 90; k++) {
+                pe2.render(pb2, 16);
+                jump = Math.max(jump, Math.abs(pe2.getRate() - prevR));
+                prevR = pe2.getRate();
+            }
+            ok(jump < 0.15 && Math.abs(pe2.getRate()) < 0.02, "agarre: el disco frena sin salto brusco (máx " + jump
+                    + "× por paso) y queda parado");
+            for (int k = 0; k < 600; k++) {
+                pe2.render(pb2, 16);
+            }
+            pe2.touchUp();
+            for (int k = 0; k < 240; k++) {
+                pe2.render(pb2, 16);
+            }
+            ok(Math.abs(pe2.getRate() - 1.0) < 0.001, "slipmat: 80 ms después de soltar ya va a velocidad normal ("
+                    + pe2.getRate() + "×)");
+        }
+        {
             // Calidad del remuestreo: un tono de 10 kHz (44,1 → 48 kHz) sale limpio, y a 3× un tono de 12 kHz
             // (que quedaría en 36 kHz) no se pliega sobre lo audible.
             PcmData.Builder qb = new PcmData.Builder(44100 * 12);
