@@ -11,9 +11,9 @@ public final class BigLayout {
     public static final int COLS = 4;
 
     public static final String[] IDS = {"info", "cover", "wheel", "wave", "spectrum", "transport", "volume",
-        "pitch", "basic"};
+        "pitch", "basic", "lyrics"};
     public static final String[] NAMES = {"INFO", "PORTADA", "SCRATCH", "ONDA", "ESPECTRO", "CONTROLES",
-        "VOLUMEN", "PITCH", "AJUSTES RÁPIDOS"};
+        "VOLUMEN", "PITCH", "AJUSTES RÁPIDOS", "LETRA"};
 
     /** Tamaños {ancho, alto} en celdas que admite cada módulo (el primero es el predeterminado). */
     private static final int[][][] SIZES = {
@@ -26,11 +26,12 @@ public final class BigLayout {
         {{2, 1}, {4, 1}},
         {{2, 1}, {4, 1}},
         {{4, 1}, {4, 2}},
+        {{4, 2}, {4, 3}, {2, 2}, {4, 1}},
     };
     /** Activos de serie. */
-    private static final boolean[] ON = {true, true, true, true, false, true, true, true, false};
+    private static final boolean[] ON = {true, true, true, true, false, true, true, true, false, false};
     /** Tamaño de serie de cada módulo (índice dentro de SIZES). */
-    private static final int[] DEF_SIZE = {0, 0, 0, 0, 1, 0, 0, 0, 0};
+    private static final int[] DEF_SIZE = {0, 0, 0, 0, 1, 0, 0, 0, 0, 0};
 
     private BigLayout() {
     }

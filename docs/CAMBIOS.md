@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.43: letras: lee la letra incrustada (ID3 USLT/SYLT, FLAC, Ogg, M4A) y archivos .lrc; pantalla LETRAS en el menú ⋮ del scratch con línea activa resaltada y saltar tocando; importar .lrc; búsqueda opcional en lrclib.net; módulo LETRA en Big Picture
 - 0.42: modo BIG PICTURE (menú de 3 puntos del scratch): pantalla de módulos sueltos en una rejilla de 4 columnas (info, portada, scratch, onda, espectro, controles, volumen, pitch, ajustes rápidos); en Ajustes → BIG PICTURE se elige qué módulos salen, su tamaño y su orden; onda con búsqueda tocando y espectro de puntos; nueva rueda estilo GRABADORA (aro fino, disco gris oscuro, punto rojo y 3 marcas) en Ajustes → RUEDA
 - 0.41: botón de cola en la barra pequeña; en cada lista: botones de play y de aleatorio, menú ORDEN (título, artista, álbum, duración, ascendente/descendente, guardar el orden), barra lateral de scroll y número de posición a la derecha de cada canción; tocar el icono del pitch lo bloquea
 - 0.40: 7 aspectos de vinilo (clásico, puntos, rayas, espiral, color, cristal, neón) en Ajustes → RUEDA

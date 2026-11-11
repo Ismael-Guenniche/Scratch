@@ -151,6 +151,11 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".LyricsActivity"
+            android:exported="false"
+            android:screenOrientation="portrait" />
+
+        <activity
             android:name=".QueueActivity"
             android:exported="false"
             android:screenOrientation="portrait" />

@@ -6,7 +6,7 @@ import java.util.Arrays;
 /**
  * Pruebas de las listas (renombrar, mover, portada) y de los nombres editados. Solo Java puro:
  * compila con {@code javac -d /tmp/cl app/src/main/java/dev/scratchwheel/Playlists.java
- * app/src/main/java/dev/scratchwheel/TrackEdits.java app/src/main/java/dev/scratchwheel/BigLayout.java app/src/main/java/dev/scratchwheel/Waveform.java tools/CheckLists.java} y ejecuta
+ * app/src/main/java/dev/scratchwheel/TrackEdits.java app/src/main/java/dev/scratchwheel/BigLayout.java app/src/main/java/dev/scratchwheel/Waveform.java app/src/main/java/dev/scratchwheel/LyricsReader.java tools/CheckLists.java} y ejecuta
  * {@code java -cp /tmp/cl dev.scratchwheel.CheckLists}.
  */
 public final class CheckLists {
@@ -192,7 +192,95 @@ public final class CheckLists {
         e3.init(ef);
         ok(e3.get("u1") == null, "la eliminación persiste");
 
+        lyricsTests();
         System.out.println(fails == 0 ? "LISTAS OK" : fails + " FALLOS");
         System.exit(fails == 0 ? 0 : 1);
+    }
+
+    private static byte[] cat(byte[]... parts) {
+        java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream();
+        for (byte[] p : parts) {
+            o.write(p, 0, p.length);
+        }
+        return o.toByteArray();
+    }
+
+    private static byte[] b(String s) throws Exception {
+        return s.getBytes("ISO-8859-1");
+    }
+
+    private static byte[] be(int v) {
+        return new byte[] {(byte) (v >>> 24), (byte) (v >>> 16), (byte) (v >>> 8), (byte) v};
+    }
+
+    private static byte[] le(int v) {
+        return new byte[] {(byte) v, (byte) (v >>> 8), (byte) (v >>> 16), (byte) (v >>> 24)};
+    }
+
+    private static byte[] ss(int v) {
+        return new byte[] {(byte) ((v >> 21) & 0x7F), (byte) ((v >> 14) & 0x7F), (byte) ((v >> 7) & 0x7F),
+            (byte) (v & 0x7F)};
+    }
+
+    private static byte[] id3(int ver, byte[]... frames) throws Exception {
+        byte[] body = cat(frames);
+        return cat(b("ID3"), new byte[] {(byte) ver, 0, 0}, ss(body.length), body, new byte[64]);
+    }
+
+    private static byte[] frame(String id, byte[] data) throws Exception {
+        return cat(b(id), be(data.length), new byte[] {0, 0}, data);
+    }
+
+    private static void lyricsTests() throws Exception {
+        // USLT en UTF-8 con tildes
+        byte[] uslt = cat(new byte[] {3}, b("spa"), new byte[] {0}, "Hola mundo\nñandú".getBytes("UTF-8"));
+        LyricsReader.Result r = LyricsReader.read(LyricsReader.of(id3(3, frame("USLT", uslt))));
+        ok("Hola mundo\nñandú".equals(r.plain), "USLT utf-8: " + r.plain);
+        // USLT UTF-16 con BOM
+        byte[] u16 = cat(new byte[] {1}, b("eng"), new byte[] {(byte) 0xFF, (byte) 0xFE, 0, 0},
+                new byte[] {(byte) 0xFF, (byte) 0xFE}, "Hi\nyou".getBytes("UTF-16LE"));
+        r = LyricsReader.read(LyricsReader.of(id3(3, frame("USLT", u16))));
+        ok("Hi\nyou".equals(r.plain), "USLT utf-16: " + r.plain);
+        // SYLT en ms
+        byte[] sylt = cat(new byte[] {0}, b("eng"), new byte[] {2, 1}, new byte[] {0},
+                b("uno"), new byte[] {0}, be(1000), b("dos"), new byte[] {0}, be(2500));
+        r = LyricsReader.read(LyricsReader.of(id3(3, frame("SYLT", sylt))));
+        ok(r.synced.size() == 2 && r.synced.get(1).ms == 2500 && "dos".equals(r.synced.get(1).text), "SYLT");
+        // USLT con formato LRC dentro se detecta como sincronizada
+        byte[] lrc = cat(new byte[] {3}, b("eng"), new byte[] {0}, "[00:01.00]a\n[00:02.50]b\n[00:04.00]c".getBytes("UTF-8"));
+        r = LyricsReader.read(LyricsReader.of(id3(3, frame("USLT", lrc))));
+        ok(r.synced.size() == 3 && r.synced.get(2).ms == 4000 && "a\nb\nc".equals(r.plain), "LRC dentro de USLT");
+        // sin letra
+        r = LyricsReader.read(LyricsReader.of(id3(3, frame("TIT2", cat(new byte[] {0}, b("x"))))));
+        ok(r.isEmpty(), "sin letra");
+        // FLAC con Vorbis comment
+        byte[] kv1 = "ARTIST=Yo".getBytes("UTF-8");
+        byte[] kv2 = "LYRICS=Linea 1\nLinea ñ".getBytes("UTF-8");
+        byte[] vc = cat(le(4), b("test"), le(2), le(kv1.length), kv1, le(kv2.length), kv2);
+        byte[] flac = cat(b("fLaC"), new byte[] {(byte) 0x84, (byte) (vc.length >> 16), (byte) (vc.length >> 8),
+            (byte) vc.length}, vc, new byte[32]);
+        r = LyricsReader.read(LyricsReader.of(flac));
+        ok("Linea 1\nLinea ñ".equals(r.plain), "FLAC: " + r.plain);
+        // MP4 ©lyr
+        byte[] txt = "Verso\nCoro".getBytes("UTF-8");
+        byte[] data = cat(be(16 + txt.length), b("data"), be(1), be(0), txt);
+        byte[] lyr = cat(be(8 + data.length), new byte[] {(byte) 0xA9, 'l', 'y', 'r'}, data);
+        byte[] ilst = cat(be(8 + lyr.length), b("ilst"), lyr);
+        byte[] meta = cat(be(12 + ilst.length), b("meta"), be(0), ilst);
+        byte[] udta = cat(be(8 + meta.length), b("udta"), meta);
+        byte[] moov = cat(be(8 + udta.length), b("moov"), udta);
+        byte[] ftyp = cat(be(16), b("ftyp"), b("M4A "), be(0));
+        r = LyricsReader.read(LyricsReader.of(cat(ftyp, moov, new byte[16])));
+        ok("Verso\nCoro".equals(r.plain), "MP4: " + r.plain);
+        // LRC: varios tiempos, offset, palabras
+        java.util.List<LyricsReader.Line> l = LyricsReader.parseLrc(
+                "[ar:X]\n[offset:500]\n[00:10.00][00:20.00]coro <00:10.50>fuerte\n[00:15.5]medio\nbasura");
+        ok(l.size() == 3 && l.get(0).ms == 9500 && l.get(1).ms == 15000 && l.get(2).ms == 19500
+                && "coro fuerte".equals(l.get(0).text), "LRC: " + l.size());
+        ok(LyricsReader.lineAt(l, 9000) == -1 && LyricsReader.lineAt(l, 9500) == 0
+                && LyricsReader.lineAt(l, 16000) == 1 && LyricsReader.lineAt(l, 99999) == 2, "lineAt");
+        // basura no revienta
+        ok(LyricsReader.read(LyricsReader.of(new byte[] {1, 2, 3})).isEmpty(), "archivo diminuto");
+        ok(LyricsReader.read(LyricsReader.of(cat(b("ID3"), new byte[] {3, 0, 0}, ss(9999999)))).isEmpty(), "ID3 truncado");
     }
 }

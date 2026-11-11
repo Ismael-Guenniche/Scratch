@@ -230,6 +230,8 @@ public class BigPictureActivity extends Activity {
             return pitchPart(w);
         } else if ("basic".equals(id)) {
             return basicPart(h);
+        } else if ("lyrics".equals(id)) {
+            return lyricsPart(h);
         }
         return null;
     }
@@ -824,6 +826,97 @@ public class BigPictureActivity extends Activity {
             }
         };
         part.view = box;
+        return part;
+    }
+
+    // ------------------------------------------------------------------ letra
+
+    private Part lyricsPart(final int h) {
+        final int n = Math.max(1, h * 2 - (h > 1 ? 1 : 0));
+        final LinearLayout col = new LinearLayout(this);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER);
+        final TextView[] tv = new TextView[n];
+        for (int i = 0; i < n; i++) {
+            tv[i] = text("", 14, th.ink2, th.semi);
+            tv[i].setGravity(Gravity.CENTER);
+            tv[i].setMaxLines(2);
+            tv[i].setEllipsize(TextUtils.TruncateAt.END);
+            col.addView(tv[i], new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        }
+        col.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(BigPictureActivity.this, LyricsActivity.class));
+            }
+        });
+        Part part = new Part() {
+            String key = "";
+            LyricsReader.Result res;
+            int shown = -3;
+
+            @Override
+            void tick() {
+                android.net.Uri u = Player.I.currentUri();
+                String k = u == null ? "" : u.toString();
+                if (!k.equals(key)) {
+                    key = k;
+                    res = null;
+                    shown = -3;
+                    final android.net.Uri fu = u;
+                    final String fk = k;
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            final LyricsReader.Result r = LyricsStore.load(getApplicationContext(), fu);
+                            col.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (fk.equals(key)) {
+                                        res = r;
+                                        shown = -3;
+                                    }
+                                }
+                            });
+                        }
+                    }, "bplyrics").start();
+                }
+                if (res == null) {
+                    return;
+                }
+                List<LyricsReader.Line> ls = res.synced;
+                int a = ls.isEmpty() ? -1
+                        : LyricsReader.lineAt(ls, (long) (Player.I.engine.getPositionSeconds() * 1000));
+                if (a == shown) {
+                    return;
+                }
+                shown = a;
+                if (ls.isEmpty()) {
+                    for (int i = 0; i < n; i++) {
+                        tv[i].setText("");
+                    }
+                    tv[n / 2].setText(res.isEmpty() ? Tr.t("SIN LETRA") : Tr.t("LETRA SIN TIEMPOS · TOCA PARA VERLA"));
+                    tv[n / 2].setTextSize(12);
+                    tv[n / 2].setTextColor(th.ink2);
+                    tv[n / 2].setAlpha(0.8f);
+                    return;
+                }
+                int cur = n / 2;
+                for (int i = 0; i < n; i++) {
+                    int idx = a + (i - cur);
+                    String t = idx >= 0 && idx < ls.size() ? ls.get(idx).text : "";
+                    if (idx >= 0 && idx < ls.size() && t.length() == 0) {
+                        t = "\u266a";
+                    }
+                    boolean on = i == cur;
+                    tv[i].setText(t);
+                    tv[i].setTextSize(on ? 19 : 13);
+                    tv[i].setTextColor(on ? th.ink : th.ink2);
+                    tv[i].setAlpha(on ? 1f : 0.5f);
+                }
+            }
+        };
+        part.view = col;
         return part;
     }
 
