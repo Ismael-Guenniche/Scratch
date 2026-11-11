@@ -194,6 +194,25 @@ public final class ScratchEngine {
             b1 = b2 = a1 = a2 = 0;
         }
 
+        /** Filtra el bloque en el sitio, con coeficientes y estado en variables locales. */
+        void runBlock(double[] x, int n) {
+            runBlockTo(x, x, n);
+        }
+
+        void runBlockTo(double[] x, double[] out, int n) {
+            final double c0 = b0, c1 = b1, c2 = b2, d1 = a1, d2 = a2;
+            double s1 = z1, s2 = z2;
+            for (int i = 0; i < n; i++) {
+                double in = x[i];
+                double y = c0 * in + s1;
+                s1 = c1 * in - d1 * y + s2;
+                s2 = c2 * in - d2 * y;
+                out[i] = y;
+            }
+            z1 = s1;
+            z2 = s2;
+        }
+
         double run(double x) {
             double y = b0 * x + z1;
             z1 = b1 * x - a1 * y + z2;
@@ -700,111 +719,146 @@ public final class ScratchEngine {
         ensureDelay();
     }
 
-    /** Efectos sobre una muestra (l, r) a la frecuencia de salida. */
-    private void fx(double[] lr) {
-        double l = lr[0];
-        double r = lr[1];
+    private double[] blkL = new double[0];
+    private double[] blkR = new double[0];
+    private double[] tA = new double[0];
+    private double[] tB = new double[0];
+
+    private void eq3(double[] x, Biquad lp, Biquad hp, int n) {
+        final double[] lo = tA;
+        final double[] hi = tB;
+        lp.runBlockTo(x, lo, n);
+        hp.runBlockTo(x, hi, n);
+        final double gl = eqLow;
+        final double gm = eqMid;
+        final double gh = eqHigh;
+        for (int i = 0; i < n; i++) {
+            x[i] = lo[i] * gl + (x[i] - lo[i] - hi[i]) * gm + hi[i] * gh;
+        }
+    }
+
+    /**
+     * Efectos sobre el bloque entero (blkL/blkR), etapa a etapa: cada etapa neutra se salta una sola vez por
+     * bloque y los filtros trabajan con su estado en variables locales. El resultado es idéntico, muestra a
+     * muestra, a pasar cada muestra por toda la cadena (flanger y phaser van juntos porque comparten oscilador).
+     */
+    private void fxBlock(int n) {
+        final double[] L = blkL;
+        final double[] R = blkR;
         if (geqOn) {
             for (int b = 0; b < 5; b++) {
-                l = geq[b][0].run(l);
-                r = geq[b][1].run(r);
+                geq[b][0].runBlock(L, n);
+                geq[b][1].runBlock(R, n);
             }
-            l *= geqPre;
-            r *= geqPre;
+            final double pre = geqPre;
+            for (int i = 0; i < n; i++) {
+                L[i] *= pre;
+                R[i] *= pre;
+            }
         }
         if (eqLow != 1 || eqMid != 1 || eqHigh != 1) {
-            double lowL = lpEq[0].run(l);
-            double highL = hpEq[0].run(l);
-            double lowR = lpEq[1].run(r);
-            double highR = hpEq[1].run(r);
-            l = lowL * eqLow + (l - lowL - highL) * eqMid + highL * eqHigh;
-            r = lowR * eqLow + (r - lowR - highR) * eqMid + highR * eqHigh;
+            eq3(L, lpEq[0], hpEq[0], n);
+            eq3(R, lpEq[1], hpEq[1], n);
         }
         if (filter != 0) {
-            l = sweep[0].run(l);
-            r = sweep[1].run(r);
+            sweep[0].runBlock(L, n);
+            sweep[1].runBlock(R, n);
         }
-        boolean eo = echoOutLeft > 0;
-        if ((echo > 0 || eo) && delayL.length > 0) {
-            int len = delayL.length;
-            double dl = delayL[delayPos];
-            double dr = delayR[delayPos];
-            double fb = 0.5;
-            double inG = 1;
-            double dry = 1;
-            double mix = echo;
-            if (eo) {
-                double t = (3.0 * outRate - echoOutLeft) / outRate;
-                inG = t < 0.3 ? 1 - t / 0.3 : 0;
-                dry = t < 0.3 ? inG : (t < 2.4 ? 0 : (t < 3.0 ? (t - 2.4) / 0.6 : 1));
-                fb = 0.72;
-                mix = 1;
-                echoOutLeft--;
-                if (echoOutLeft == 0) {
-                    java.util.Arrays.fill(delayL, 0f);
-                    java.util.Arrays.fill(delayR, 0f);
+        if ((echo > 0 || echoOutLeft > 0) && delayL.length > 0) {
+            for (int i = 0; i < n; i++) {
+                double l = L[i];
+                double r = R[i];
+                boolean eo = echoOutLeft > 0;
+                if ((echo > 0 || eo) && delayL.length > 0) {
+                    int len = delayL.length;
+                    double dl = delayL[delayPos];
+                    double dr = delayR[delayPos];
+                    double fb = 0.5;
+                    double inG = 1;
+                    double dry = 1;
+                    double mix = echo;
+                    if (eo) {
+                        double t = (3.0 * outRate - echoOutLeft) / outRate;
+                        inG = t < 0.3 ? 1 - t / 0.3 : 0;
+                        dry = t < 0.3 ? inG : (t < 2.4 ? 0 : (t < 3.0 ? (t - 2.4) / 0.6 : 1));
+                        fb = 0.72;
+                        mix = 1;
+                        echoOutLeft--;
+                        if (echoOutLeft == 0) {
+                            java.util.Arrays.fill(delayL, 0f);
+                            java.util.Arrays.fill(delayR, 0f);
+                        }
+                    }
+                    delayL[delayPos] = (float) (l * inG + dl * fb);
+                    delayR[delayPos] = (float) (r * inG + dr * fb);
+                    if (++delayPos >= len) {
+                        delayPos = 0;
+                    }
+                    l = l * dry + dl * mix;
+                    r = r * dry + dr * mix;
                 }
+                L[i] = l;
+                R[i] = r;
             }
-            delayL[delayPos] = (float) (l * inG + dl * fb);
-            delayR[delayPos] = (float) (r * inG + dr * fb);
-            if (++delayPos >= len) {
-                delayPos = 0;
-            }
-            l = l * dry + dl * mix;
-            r = r * dry + dr * mix;
         }
-        if (flanger && flBufL.length > 0) {
-            int n = flBufL.length;
-            lfoPh += 0.28 / outRate;
-            if (lfoPh >= 1) {
-                lfoPh -= 1;
-            }
-            double d = (0.0006 + 0.0034 * (0.5 + 0.5 * Math.sin(2 * Math.PI * lfoPh))) * outRate;
-            double rp = flPos - d;
-            while (rp < 0) {
-                rp += n;
-            }
-            int i0 = (int) rp;
-            int i1 = (i0 + 1) % n;
-            double f = rp - i0;
-            double wl = flBufL[i0] + (flBufL[i1] - flBufL[i0]) * f;
-            double wr = flBufR[i0] + (flBufR[i1] - flBufR[i0]) * f;
-            flBufL[flPos] = (float) (l + wl * 0.4);
-            flBufR[flPos] = (float) (r + wr * 0.4);
-            if (++flPos >= n) {
-                flPos = 0;
-            }
-            l = (l + wl) * 0.5;
-            r = (r + wr) * 0.5;
-        }
-        if (phaser) {
-            if (phCnt-- <= 0) {
-                phCnt = 31;
-                lfoPh += 32.0 * 0.35 / outRate;
-                if (lfoPh >= 1) {
-                    lfoPh -= 1;
+        if ((flanger && flBufL.length > 0) || phaser) {
+            for (int i = 0; i < n; i++) {
+                double l = L[i];
+                double r = R[i];
+                if (flanger && flBufL.length > 0) {
+                    int fn = flBufL.length;
+                    lfoPh += 0.28 / outRate;
+                    if (lfoPh >= 1) {
+                        lfoPh -= 1;
+                    }
+                    double d = (0.0006 + 0.0034 * (0.5 + 0.5 * Math.sin(2 * Math.PI * lfoPh))) * outRate;
+                    double rp = flPos - d;
+                    while (rp < 0) {
+                        rp += fn;
+                    }
+                    int i0 = (int) rp;
+                    int i1 = (i0 + 1) % fn;
+                    double f = rp - i0;
+                    double wl = flBufL[i0] + (flBufL[i1] - flBufL[i0]) * f;
+                    double wr = flBufR[i0] + (flBufR[i1] - flBufR[i0]) * f;
+                    flBufL[flPos] = (float) (l + wl * 0.4);
+                    flBufR[flPos] = (float) (r + wr * 0.4);
+                    if (++flPos >= fn) {
+                        flPos = 0;
+                    }
+                    l = (l + wl) * 0.5;
+                    r = (r + wr) * 0.5;
                 }
-                double fc = 350 * Math.pow(8.0, 0.5 + 0.5 * Math.sin(2 * Math.PI * lfoPh));
-                double tn = Math.tan(Math.PI * Math.min(fc, outRate * 0.45) / outRate);
-                apCoef = (tn - 1) / (tn + 1);
+                if (phaser) {
+                    if (phCnt-- <= 0) {
+                        phCnt = 31;
+                        lfoPh += 32.0 * 0.35 / outRate;
+                        if (lfoPh >= 1) {
+                            lfoPh -= 1;
+                        }
+                        double fc = 350 * Math.pow(8.0, 0.5 + 0.5 * Math.sin(2 * Math.PI * lfoPh));
+                        double tn = Math.tan(Math.PI * Math.min(fc, outRate * 0.45) / outRate);
+                        apCoef = (tn - 1) / (tn + 1);
+                    }
+                    double xl = l + phFbL * 0.5;
+                    double xr = r + phFbR * 0.5;
+                    for (int k = 0; k < 4; k++) {
+                        double yl = apCoef * xl + apL[k];
+                        apL[k] = xl - apCoef * yl;
+                        xl = yl;
+                        double yr = apCoef * xr + apR[k];
+                        apR[k] = xr - apCoef * yr;
+                        xr = yr;
+                    }
+                    phFbL = xl;
+                    phFbR = xr;
+                    l = (l + xl) * 0.5;
+                    r = (r + xr) * 0.5;
+                }
+                L[i] = l;
+                R[i] = r;
             }
-            double xl = l + phFbL * 0.5;
-            double xr = r + phFbR * 0.5;
-            for (int k = 0; k < 4; k++) {
-                double yl = apCoef * xl + apL[k];
-                apL[k] = xl - apCoef * yl;
-                xl = yl;
-                double yr = apCoef * xr + apR[k];
-                apR[k] = xr - apCoef * yr;
-                xr = yr;
-            }
-            phFbL = xl;
-            phFbR = xr;
-            l = (l + xl) * 0.5;
-            r = (r + xr) * 0.5;
         }
-        lr[0] = l;
-        lr[1] = r;
     }
 
     private final double[] tmp = new double[2];
@@ -1228,6 +1282,14 @@ public final class ScratchEngine {
     /** Rellena out con n frames estéreo intercalados a la frecuencia de salida. */
     public synchronized void render(short[] out, int n) {
         applyRotation();
+        if (blkL.length < n) {
+            blkL = new double[n];
+            blkR = new double[n];
+            tA = new double[n];
+            tB = new double[n];
+        }
+        final double[] bl = blkL;
+        final double[] br = blkR;
         double ratio = (double) sampleRate / outRate;
         final double dtOut = 1.0 / outRate;
         // Hasta cuándo se extrapola sin eventos nuevos: un periodo táctil más lo que tarda un bloque en verlos.
@@ -1493,13 +1555,15 @@ public final class ScratchEngine {
                 xActive = false;
                 xFor = null;
             }
-            if (fxActive) {
-                tmp[0] = vl;
-                tmp[1] = vr;
-                fx(tmp);
-                vl = tmp[0];
-                vr = tmp[1];
-            }
+            bl[i] = vl;
+            br[i] = vr;
+        }
+        if (fxActive) {
+            fxBlock(n);
+        }
+        for (int i = 0; i < n; i++) {
+            double vl = bl[i];
+            double vr = br[i];
             // limitador suave solo cuando algo se suma a la pista; la reproducción normal queda intacta
             boolean soft = fxActive || xActive || svOn[0] || svOn[1] || svOn[2] || svOn[3];
             // corte (transformer) y trans/gate: ganancia suavizada para que no haya clics
