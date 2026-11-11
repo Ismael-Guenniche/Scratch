@@ -13,6 +13,7 @@ import android.media.MediaMetadata;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.net.Uri;
+import java.io.File;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -1468,6 +1469,121 @@ final class Player {
         }
     }
 
+    // ------------------------------------------------------------- grabación
+
+    private volatile WavRecorder recorder;
+
+    boolean isRecording() {
+        return recorder != null;
+    }
+
+    /** Empieza a grabar lo que suena (rueda, efectos y todo) a un WAV temporal. Devuelve false si no se pudo. */
+    boolean startRecording() {
+        if (recorder != null) {
+            return true;
+        }
+        try {
+            File dir = new File(app.getCacheDir(), "rec");
+            dir.mkdirs();
+            String stamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US)
+                    .format(new java.util.Date());
+            WavRecorder r = new WavRecorder(new File(dir, "Scratch_" + stamp + ".wav"), outRate);
+            r.start();
+            recorder = r;
+            return true;
+        } catch (java.io.IOException e) {
+            return false;
+        }
+    }
+
+    interface RecDone {
+        void onDone(String where);
+    }
+
+    /** Para la grabación y la guarda en Música/Scratch. onDone recibe el sitio o null si falló. */
+    void stopRecording(final RecDone cb) {
+        final WavRecorder r = recorder;
+        recorder = null;
+        if (r == null) {
+            return;
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String where = null;
+                try {
+                    long n = r.stop();
+                    if (n > 0) {
+                        where = saveRecording(r.file());
+                    }
+                } catch (java.io.IOException ignored) {
+                }
+                r.file().delete();
+                final String w = where;
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (cb != null) {
+                            cb.onDone(w);
+                        }
+                    }
+                });
+            }
+        }, "rec-save").start();
+    }
+
+    private String saveRecording(File src) throws java.io.IOException {
+        if (android.os.Build.VERSION.SDK_INT >= 29) {
+            android.content.ContentValues v = new android.content.ContentValues();
+            v.put(android.provider.MediaStore.Audio.Media.DISPLAY_NAME, src.getName());
+            v.put(android.provider.MediaStore.Audio.Media.MIME_TYPE, "audio/wav");
+            v.put(android.provider.MediaStore.Audio.Media.RELATIVE_PATH, "Music/Scratch");
+            v.put(android.provider.MediaStore.Audio.Media.IS_PENDING, 1);
+            android.content.ContentResolver cr = app.getContentResolver();
+            Uri u = cr.insert(android.provider.MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, v);
+            if (u == null) {
+                return null;
+            }
+            java.io.OutputStream o = cr.openOutputStream(u);
+            java.io.FileInputStream in = new java.io.FileInputStream(src);
+            try {
+                byte[] b = new byte[65536];
+                int k;
+                while ((k = in.read(b)) > 0) {
+                    o.write(b, 0, k);
+                }
+            } finally {
+                in.close();
+                if (o != null) {
+                    o.close();
+                }
+            }
+            v.clear();
+            v.put(android.provider.MediaStore.Audio.Media.IS_PENDING, 0);
+            cr.update(u, v, null, null);
+            return "Music/Scratch/" + src.getName();
+        }
+        File dir = app.getExternalFilesDir(android.os.Environment.DIRECTORY_MUSIC);
+        if (dir == null) {
+            return null;
+        }
+        dir.mkdirs();
+        File dst = new File(dir, src.getName());
+        java.io.FileInputStream in = new java.io.FileInputStream(src);
+        java.io.FileOutputStream o = new java.io.FileOutputStream(dst);
+        try {
+            byte[] b = new byte[65536];
+            int k;
+            while ((k = in.read(b)) > 0) {
+                o.write(b, 0, k);
+            }
+        } finally {
+            in.close();
+            o.close();
+        }
+        return dst.getPath();
+    }
+
     private void audioLoop(AudioTrack t) {
         Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO);
         short[] buf = new short[BLOCK * 2];
@@ -1476,6 +1592,10 @@ final class Player {
         try {
             while (true) {
                 engine.render(buf, BLOCK);
+                WavRecorder wr = recorder;
+                if (wr != null) {
+                    wr.feed(buf, buf.length);
+                }
                 if (t.write(buf, 0, buf.length) < 0) {
                     if (++errors > 20) {
                         break;

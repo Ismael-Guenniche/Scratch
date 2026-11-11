@@ -402,6 +402,15 @@ final class TrEn {
         M.put("Esta canción no tiene letra en sus etiquetas.\n\nPuedes buscarla en lrclib.net o importar un archivo .lrc desde el menú ⋮.", "This song has no lyrics in its tags.\n\nYou can search lrclib.net or import a .lrc file from the ⋮ menu.");
         M.put("SINCRONIZADA · TOCA UNA LÍNEA PARA SALTAR", "SYNCED · TAP A LINE TO JUMP");
         M.put("SIN TIEMPOS", "UNSYNCED");
+        M.put("PARAR GRABACIÓN", "STOP RECORDING");
+        M.put("GRABAR SESIÓN", "RECORD SESSION");
+        M.put("No se pudo guardar la grabación", "Could not save the recording");
+        M.put("Grabación guardada en ", "Recording saved to ");
+        M.put("Grabando todo lo que suena. Vuelve a este menú para parar.", "Recording everything that plays. Come back to this menu to stop.");
+        M.put("No se pudo empezar a grabar", "Could not start recording");
+        M.put("EXPORTAR COMO M3U…", "EXPORT AS M3U…");
+        M.put("Lista exportada: ", "Playlist exported: ");
+        M.put("No se pudo exportar la lista", "Could not export the playlist");
         M.put("PRECARGA", "PRELOAD");
         M.put("Canciones listas en memoria", "Songs ready in memory");
         M.put("Las próximas canciones se cargan de una en una para que al cambiar no haya espera. Cada una ocupa unos 40 MB de memoria; si la app va justa, baja el número. Con 0 solo se prepara la siguiente.", "The upcoming songs are loaded one at a time so there is no wait when you change track. Each one takes about 40 MB of memory; if the app runs short, lower the number. With 0 only the next one is prepared.");

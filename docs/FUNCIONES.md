@@ -27,6 +27,7 @@ Primera pantalla (`HomeView`).
 - Menú ⋮: abrir archivo suelto, rescanear, importar lista (CSV), importar de Spotify, ver faltantes, estadísticas, ajustes y **DIAGNÓSTICO** (informa de por qué una biblioteca sale vacía).
 - **Big Picture** (`BigPictureActivity`, menú ⋮ del scratch): módulos en una rejilla de 4 columnas (`BigLayout`), configurables en Ajustes → BIG PICTURE (activar, tamaño, orden). Rueda con estilo PUNTOS o GRABADORA.
 - **Letras** (`LyricsReader`, `LyricsStore`, `LyricsActivity`): lee la letra de las etiquetas del archivo (MP3 USLT/SYLT, FLAC/Ogg LYRICS, M4A ©lyr) y formato LRC; menú ⋮ → LETRAS; buscar en lrclib.net o importar un .lrc (se guarda en la app, no toca el archivo); módulo LETRA en Big Picture.
+- **Grabación y M3U:** menú ⋮ del scratch → GRABAR SESIÓN / PARAR GRABACIÓN (WAV 16 bits en Música/Scratch); menú de cada lista → EXPORTAR COMO M3U (la importación de M3U ya existía en importar listas).
 - Acciones por canción: reproducir a continuación, añadir a la cola, añadir a favoritas, añadir a lista, quitar de lista, estadísticas de la canción.
 - Barra flotante con la canción actual; tocarla abre la rueda.
 - **Shuffle** sin repeticiones (Fisher-Yates): no repite hasta agotar la lista.

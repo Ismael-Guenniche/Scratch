@@ -1393,7 +1393,8 @@ public class ScratchActivity extends Activity {
     private void showMenu(final View anchor) {
         int left = Player.I.sleepMinutes();
         DotMenu.show(this, th, anchor, new String[] {Tr.t("COLA"),
-            left > 0 ? Tr.t("TEMPORIZADOR · ") + left + " MIN" : Tr.t("TEMPORIZADOR"), Tr.t("ABRIR ARCHIVO"), Tr.t("AJUSTES"), Tr.t("BIG PICTURE"), Tr.t("LETRAS")},
+            left > 0 ? Tr.t("TEMPORIZADOR · ") + left + " MIN" : Tr.t("TEMPORIZADOR"), Tr.t("ABRIR ARCHIVO"), Tr.t("AJUSTES"), Tr.t("BIG PICTURE"), Tr.t("LETRAS"),
+            Player.I.isRecording() ? Tr.t("PARAR GRABACIÓN") : Tr.t("GRABAR SESIÓN")},
                 new DotMenu.Picked() {
                     @Override
                     public void onPick(int id) {
@@ -1415,11 +1416,31 @@ public class ScratchActivity extends Activity {
                             startActivity(new Intent(ScratchActivity.this, SettingsActivity.class));
                         } else if (id == 4) {
                             startActivity(new Intent(ScratchActivity.this, BigPictureActivity.class));
-                        } else {
+                        } else if (id == 5) {
                             startActivity(new Intent(ScratchActivity.this, LyricsActivity.class));
+                        } else {
+                            toggleRecording();
                         }
                     }
                 });
+    }
+
+    private void toggleRecording() {
+        if (Player.I.isRecording()) {
+            Player.I.stopRecording(new Player.RecDone() {
+                @Override
+                public void onDone(String where) {
+                    Toast.makeText(getApplicationContext(), where == null
+                            ? Tr.t("No se pudo guardar la grabación") : Tr.t("Grabación guardada en ") + where,
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+        } else if (Player.I.startRecording()) {
+            Toast.makeText(this, Tr.t("Grabando todo lo que suena. Vuelve a este menú para parar."),
+                    Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, Tr.t("No se pudo empezar a grabar"), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void showSleepMenu(View anchor) {

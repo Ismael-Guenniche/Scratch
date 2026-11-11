@@ -1469,6 +1469,9 @@ public class MainActivity extends Activity {
     private static final int L_REFRESH = 4;
     private static final int L_UNLINK = 5;
     private static final int L_DELETE = 6;
+    private static final int L_EXPORT = 7;
+    private static final int REQ_EXPORT = 8;
+    private String exportTarget = "";
 
     /** Pregunta si la lista nueva debe enlazarse a su propia carpeta de canciones. */
     private void askListFolder(final String name) {
@@ -1488,6 +1491,30 @@ public class MainActivity extends Activity {
         Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
         i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         startActivityForResult(i, REQ_LISTFOLDER);
+    }
+
+    private void writeM3u(String list, Uri dest) {
+        ArrayList<M3u.Entry> es = new ArrayList<M3u.Entry>();
+        for (String u : Playlists.I.uris(list)) {
+            Player.Track found = null;
+            for (Player.Track t : Player.I.tracks) {
+                if (t.uri.toString().equals(u)) {
+                    found = t;
+                    break;
+                }
+            }
+            if (found != null) {
+                es.add(new M3u.Entry(found.name, found.artist, found.display(), (int) (found.durMs / 1000)));
+            }
+        }
+        try {
+            java.io.OutputStream o = getContentResolver().openOutputStream(dest, "wt");
+            o.write(M3u.write(list, es).getBytes("UTF-8"));
+            o.close();
+            Toast.makeText(this, Tr.t("Lista exportada: ") + es.size(), Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, Tr.t("No se pudo exportar la lista"), Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void showListMenu(View anchor, final String name) {
@@ -1511,6 +1538,8 @@ public class MainActivity extends Activity {
             codes.add(L_UNLINK);
             labels.add(Tr.t("DESENLAZAR CARPETA"));
         }
+        codes.add(L_EXPORT);
+        labels.add(Tr.t("EXPORTAR COMO M3U…"));
         codes.add(L_DELETE);
         labels.add(Tr.t("BORRAR LISTA"));
         DotMenu.show(this, th, anchor, labels.toArray(new String[0]), new DotMenu.Picked() {
@@ -1545,6 +1574,13 @@ public class MainActivity extends Activity {
                 } else if (code == L_UNLINK) {
                     Playlists.I.setFolder(name, null);
                     refilter();
+                } else if (code == L_EXPORT) {
+                    exportTarget = name;
+                    Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("audio/x-mpegurl");
+                    i.putExtra(Intent.EXTRA_TITLE, name + ".m3u8");
+                    startActivityForResult(i, REQ_EXPORT);
                 } else {
                     Playlists.I.delete(name);
                 }
@@ -1591,6 +1627,13 @@ public class MainActivity extends Activity {
                     }
                 }).start();
             }
+            return;
+        }
+        if (req == REQ_EXPORT) {
+            if (res == RESULT_OK && data != null && data.getData() != null && exportTarget.length() > 0) {
+                writeM3u(exportTarget, data.getData());
+            }
+            exportTarget = "";
             return;
         }
         if (req == REQ_WEB) {

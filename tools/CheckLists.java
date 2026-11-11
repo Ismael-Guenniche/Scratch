@@ -6,7 +6,7 @@ import java.util.Arrays;
 /**
  * Pruebas de las listas (renombrar, mover, portada) y de los nombres editados. Solo Java puro:
  * compila con {@code javac -d /tmp/cl app/src/main/java/dev/scratchwheel/Playlists.java
- * app/src/main/java/dev/scratchwheel/TrackEdits.java app/src/main/java/dev/scratchwheel/BigLayout.java app/src/main/java/dev/scratchwheel/Waveform.java app/src/main/java/dev/scratchwheel/LyricsReader.java tools/CheckLists.java} y ejecuta
+ * app/src/main/java/dev/scratchwheel/TrackEdits.java app/src/main/java/dev/scratchwheel/BigLayout.java app/src/main/java/dev/scratchwheel/Waveform.java app/src/main/java/dev/scratchwheel/LyricsReader.java app/src/main/java/dev/scratchwheel/M3u.java app/src/main/java/dev/scratchwheel/WavRecorder.java tools/CheckLists.java} y ejecuta
  * {@code java -cp /tmp/cl dev.scratchwheel.CheckLists}.
  */
 public final class CheckLists {
@@ -193,6 +193,7 @@ public final class CheckLists {
         ok(e3.get("u1") == null, "la eliminación persiste");
 
         lyricsTests();
+        extraTests();
         System.out.println(fails == 0 ? "LISTAS OK" : fails + " FALLOS");
         System.exit(fails == 0 ? 0 : 1);
     }
@@ -282,5 +283,34 @@ public final class CheckLists {
         // basura no revienta
         ok(LyricsReader.read(LyricsReader.of(new byte[] {1, 2, 3})).isEmpty(), "archivo diminuto");
         ok(LyricsReader.read(LyricsReader.of(cat(b("ID3"), new byte[] {3, 0, 0}, ss(9999999)))).isEmpty(), "ID3 truncado");
+    }
+
+    private static void extraTests() throws Exception {
+        java.util.List<M3u.Entry> es = new java.util.ArrayList<M3u.Entry>();
+        es.add(new M3u.Entry("content://x/1", "Artista", "Tema\nuno", 200));
+        es.add(new M3u.Entry("content://x/2", "", "Sin artista", 0));
+        String m = M3u.write("Mi lista", es);
+        ok(m.startsWith("#EXTM3U\n#PLAYLIST:Mi lista\n#EXTINF:200,Artista - Tema uno\ncontent://x/1\n"), "m3u: " + m);
+        ok(m.contains("#EXTINF:-1,Sin artista\ncontent://x/2\n"), "m3u sin duración");
+        File w = File.createTempFile("rec", ".wav");
+        WavRecorder rec = new WavRecorder(w, 44100);
+        rec.start();
+        short[] blk = new short[2048];
+        for (int i = 0; i < blk.length; i++) {
+            blk[i] = (short) (i * 7 - 3000);
+        }
+        for (int k = 0; k < 50; k++) {
+            rec.feed(blk, blk.length);
+        }
+        long n = rec.stop();
+        ok(n == 50L * 2048 * 2, "bytes grabados " + n);
+        byte[] raw = java.nio.file.Files.readAllBytes(w.toPath());
+        ok(raw.length == 44 + n, "tamaño del archivo");
+        ok(raw[0] == 'R' && raw[8] == 'W' && raw[36] == 'd', "cabecera");
+        long riff = (raw[4] & 0xFF) | (raw[5] & 0xFF) << 8 | (raw[6] & 0xFF) << 16 | (long) (raw[7] & 0xFF) << 24;
+        ok(riff == 36 + n, "RIFF size");
+        ok((raw[44] & 0xFF) == (blk[0] & 0xFF) && raw[45] == (byte) (blk[0] >> 8), "primera muestra");
+        ok(!rec.hadDrops(), "sin pérdidas");
+        w.delete();
     }
 }
