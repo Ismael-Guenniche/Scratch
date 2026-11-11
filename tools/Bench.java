@@ -396,6 +396,81 @@ public class Bench {
         return 0;
     }
 
+    /** Carga de referencia fija (filtro sobre 256 muestras) para expresar los costes en «unidades de máquina». */
+    static double calib() {
+        double[] x = new double[BLOCK];
+        long[] ns = new long[4000];
+        double z1 = 0, z2 = 0, sink = 0;
+        for (int rep = 0; rep < 12000; rep++) {
+            long t0 = System.nanoTime();
+            for (int pass = 0; pass < 8; pass++) {
+                for (int i = 0; i < BLOCK; i++) {
+                    double in = x[i] + 1e-3 * (i & 7);
+                    double y = 0.2 * in + z1;
+                    z1 = 0.3 * in - 0.1 * y + z2;
+                    z2 = 0.2 * in - 0.05 * y;
+                    x[i] = y * 0.5;
+                }
+            }
+            long t1 = System.nanoTime();
+            if (rep >= 8000) {
+                ns[rep - 8000] = t1 - t0;
+            }
+            sink += x[rep & 255];
+        }
+        Arrays.sort(ns);
+        return ns[ns.length / 2] / 1000.0 + sink * 0;
+    }
+
+    /**
+     * Regresión de rendimiento: coste p50 de cada escenario dividido por la carga de referencia (así no depende
+     * de lo rápida que sea la máquina). {@code baseline} guarda los valores; {@code regress} los compara y falla
+     * si alguno sube más del porcentaje dado.
+     */
+    static int regress(String file, boolean write, double pct) throws Exception {
+        blocks = 8000;
+        double[] best = new double[NAMES.length];
+        Arrays.fill(best, 1e300);
+        // tres rondas completas, quedándose con la mejor de cada escenario: quita el ruido de la máquina
+        for (int round = 0; round < 3; round++) {
+            double ref = calib();
+            for (int i = 0; i < NAMES.length; i++) {
+                best[i] = Math.min(best[i], time(i).p50 / ref);
+            }
+        }
+        java.io.File fl = new java.io.File(file);
+        if (write) {
+            StringBuilder sb = new StringBuilder("# Coste p50 por bloque / carga de referencia (tools/Bench.java baseline)\n");
+            for (int i = 0; i < NAMES.length; i++) {
+                sb.append(i).append('=').append(String.format(Locale.US, "%.4f", best[i])).append("  # ").append(NAMES[i]).append('\n');
+            }
+            java.nio.file.Files.write(fl.toPath(), sb.toString().getBytes("UTF-8"));
+            System.out.println("Línea base guardada en " + file);
+            return 0;
+        }
+        double[] base = new double[NAMES.length];
+        for (String ln : java.nio.file.Files.readAllLines(fl.toPath(), java.nio.charset.StandardCharsets.UTF_8)) {
+            int eq = ln.indexOf('=');
+            if (ln.startsWith("#") || eq < 0) {
+                continue;
+            }
+            base[Integer.parseInt(ln.substring(0, eq).trim())] = Double.parseDouble(ln.substring(eq + 1).split("#")[0].trim());
+        }
+        int bad = 0;
+        System.out.println("| Escenario | Base | Ahora | Cambio |");
+        System.out.println("|---|---:|---:|---:|");
+        for (int i = 0; i < NAMES.length; i++) {
+            double ch = base[i] > 0 ? 100 * (best[i] / base[i] - 1) : 0;
+            // los escenarios casi gratis (parado) no cuentan si la diferencia absoluta es mínima
+            boolean fail = ch > pct && best[i] - base[i] > 0.1;
+            bad += fail ? 1 : 0;
+            System.out.println("| " + NAMES[i] + " | " + f(base[i]) + " | " + f(best[i]) + " | "
+                    + String.format(Locale.US, "%+.0f %%", ch) + (fail ? " **FALLA**" : "") + " |");
+        }
+        System.out.println(bad == 0 ? "RENDIMIENTO OK (límite +" + (int) pct + " %)" : bad + " ESCENARIOS MÁS LENTOS QUE EL LÍMITE");
+        return bad == 0 ? 0 : 1;
+    }
+
     static String f(double v) {
         return String.format(Locale.US, v < 10 ? "%.2f" : "%.1f", v);
     }
@@ -404,6 +479,9 @@ public class Bench {
         System.setOut(new java.io.PrintStream(new java.io.FileOutputStream(java.io.FileDescriptor.out), true, "UTF-8"));
         track = makeTrack();
         boolean allocMode = a.length > 0 && a[0].equals("alloc");
+        if (a.length > 1 && (a[0].equals("baseline") || a[0].equals("regress"))) {
+            System.exit(regress(a[1], a[0].equals("baseline"), a.length > 2 ? Double.parseDouble(a[2]) : 30));
+        }
         if (allocMode) {
             System.out.println("| Escenario | Bytes/bloque | Bytes/s |");
             System.out.println("|---|---:|---:|");

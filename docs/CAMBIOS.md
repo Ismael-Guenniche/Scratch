@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.61: Audio T18 (sin cambios en la app): script único tools/run-all.sh que ejecuta todos los tests del motor sin Android SDK y una regresión de rendimiento que falla si un escenario cuesta más de un 30 % más que la línea base.
 - 0.60: Audio T15: mantener el tono (keylock) pasa de OLA a WSOLA: los granos se enganchan en fase y el sonido deja de ser rugoso y desafinado (de −50 dB a 48 dB de señal/ruido con un tono de 440 Hz).
 - 0.59: Audio T8: el corte (cut / transformer / gate) abre y cierra en 2 ms con una rampa en S: cinco veces más rápido que antes y con menos clic. Además desaparece el clic que sonaba en cada cambio de sentido del baby scratch.
 - 0.58: Audio T7: física del plato más real: el motor arranca en rampa recta, al soltar el disco con la música sonando el slipmat lo engancha en unos 60 ms (antes tardaba casi medio segundo) y al tocarlo frena con la inercia de un vinilo en vez de parar en seco.
