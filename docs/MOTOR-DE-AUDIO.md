@@ -45,5 +45,8 @@ Cuatro voces polifónicas sintetizadas en `sampler()`: bocina (3 sierras recorta
 ## Nivel
 `getLevel()` devuelve el pico del último bloque con caída suave; lo lee la interfaz para el vúmetro y el modo disco.
 
+## Rendimiento
+`tools/Bench.java` mide en la JVM el coste de `render()` por bloque, las asignaciones del hilo de audio, el tiempo que la interfaz retiene el cerrojo y la contención, y calcula una huella (CRC) del audio de cada escenario para detectar cambios de sonido. Los resultados y la latencia/memoria teóricas están en [BENCHMARKS.md](BENCHMARKS.md). Línea base (v0.51): `render()` usa menos del 1 % del plazo de 5,33 ms incluso con todo el modo DJ; los cuellos reales son el búfer del `AudioTrack`, la τ fija del scratch, el cerrojo compartido con la interfaz, la basura del sampler y la pista entera en RAM.
+
 ## Tests
-`tools/Check.java` cubre: WAV ida y vuelta, reproducción y arranque, scratch adelante/atrás, tono con y sin keylock, inercia, EQ/filtro/eco/backspin, hot cues, saltos, bucle, roll+slip, reverse, cut, gate, flanger/phaser/echo-out, sampler, vinyl stop, estadísticas y velocidad de avance.
+`tools/Check.java` cubre: WAV ida y vuelta, reproducción y arranque, scratch adelante/atrás, tono con y sin keylock, inercia, EQ/filtro/eco/backspin, hot cues, saltos, bucle, roll+slip, reverse, cut, gate, flanger/phaser/echo-out, sampler, vinyl stop, estadísticas, velocidad de avance y determinismo (mismas órdenes, mismo audio muestra a muestra).

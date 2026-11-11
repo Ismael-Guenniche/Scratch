@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.52: Audio T1 (sin cambios en la app): auditoría del motor y benchmark base reproducible en la JVM (`tools/Bench.java`, resultados en docs/BENCHMARKS.md: coste por bloque, asignaciones, cerrojo, latencia teórica y memoria); nuevo test de determinismo en `tools/Check.java`.
 - 0.51: Cola: al volver atrás con anterior y pulsar siguiente se reproduce la canción de la que venías (A → B → atrás → A → siguiente → B), en vez de saltar a otra distinta.
 - 0.50: Scratch: sin scroll en modo DJ (la rueda se encoge para que todo quepa). Listas: botones de reproducir, aleatorio, orden y editar en una fila de cuatro celdas iguales bajo la portada y el nombre.
 - 0.49: Pantalla principal: botón de cola siempre visible en la cabecera, junto a la búsqueda.

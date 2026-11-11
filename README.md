@@ -4,7 +4,7 @@ Reproductor de música **local** para Android (MP3, WAV y los formatos que decod
 
 Sin cuentas, sin streaming, sin anuncios. Tu música, tu carpeta, tu rueda.
 
-> **Versión actual: 0.51 (beta).** La lógica del motor de audio se prueba con tests sin Android (`tools/Check.java`); la interfaz se ha ido probando en un Nothing Phone (4a).
+> **Versión actual: 0.52 (beta).** La lógica del motor de audio se prueba con tests sin Android (`tools/Check.java`); la interfaz se ha ido probando en un Nothing Phone (4a).
 
 ## Lo esencial
 
@@ -50,7 +50,7 @@ app/src/main/res/                      iconos adaptables, colores de iconos
 app/src/main/assets/fonts/             Geist, Geist Mono, Space Mono
 docs/                                  documentación
 icons/                                 las 8 variantes del icono (vista previa)
-tools/                                 Check.java (tests), make_icons.py
+tools/                                 Check.java (tests), Bench.java (benchmark del motor), make_icons.py
 build-sin-sdk/                         compilación a APK sin Android SDK
 ```
 

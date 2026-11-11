@@ -25,7 +25,7 @@ javac -cp /tmp/cls -d /tmp/chk tools/Check.java
 java  -cp /tmp/chk:/tmp/cls Check /tmp/out /tmp/mp3
 ```
 
-Debe terminar con **`TODO OK`**. Cubre el motor de audio (scratch, tono, inercia, efectos, gimmicks DJ), el lector de WAV, las estadísticas y la velocidad de avance. No prueba la interfaz.
+Debe terminar con **`TODO OK`**. El benchmark del motor (`tools/Bench.java`) se ejecuta igual; ver [BENCHMARKS.md](BENCHMARKS.md). Cubre el motor de audio (scratch, tono, inercia, efectos, gimmicks DJ), el lector de WAV, las estadísticas y la velocidad de avance. No prueba la interfaz.
 
 ## APK sin Android SDK
 `build-sin-sdk/build.sh` y `make_res.py` generan un APK instalable solo con `javac`, `dx` y utilidades de zip/firma, escribiendo a mano el manifiesto binario y los recursos. Es un camino de emergencia usado durante el desarrollo; las rutas dentro del script son las del equipo donde se creó y hay que adaptarlas.
