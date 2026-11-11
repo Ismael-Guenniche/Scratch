@@ -33,6 +33,7 @@ Primera pantalla (`HomeView`).
 - Botones rápidos de cola y letras en la pantalla del scratch
 - Botón de cola en la cabecera de la pantalla principal
 - Scratch sin scroll; cabecera de listas reorganizada
+- Anterior/siguiente coherentes con la cola
 - Acciones por canción: reproducir a continuación, añadir a la cola, añadir a favoritas, añadir a lista, quitar de lista, estadísticas de la canción.
 - Barra flotante con la canción actual; tocarla abre la rueda.
 - **Shuffle** sin repeticiones (Fisher-Yates): no repite hasta agotar la lista.

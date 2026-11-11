@@ -1224,6 +1224,10 @@ final class Player {
             if (i >= n) {
                 i = (index - 1 + n) % n;
             }
+            // La canción de la que se vuelve atrás pasa a ser la siguiente: A → B → (atrás) A → (siguiente) B.
+            if (index >= 0 && index < n && index != i) {
+                queue.add(0, tracks.get(index));
+            }
             if (shuffle) {
                 ensureOrder();
                 for (int k = 0; k < order.length; k++) {

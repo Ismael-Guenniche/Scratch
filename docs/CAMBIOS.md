@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.51: Cola: al volver atrás con anterior y pulsar siguiente se reproduce la canción de la que venías (A → B → atrás → A → siguiente → B), en vez de saltar a otra distinta.
 - 0.50: Scratch: sin scroll en modo DJ (la rueda se encoge para que todo quepa). Listas: botones de reproducir, aleatorio, orden y editar en una fila de cuatro celdas iguales bajo la portada y el nombre.
 - 0.49: Pantalla principal: botón de cola siempre visible en la cabecera, junto a la búsqueda.
 - 0.48: Scratch: la flecha de bajar (sin sentido, ya se cierra con atrás) pasa a ser el botón de cola y se añade un botón de letras junto al menú. Ajustes: la rueda de prueba ya no aparece y desaparece ni queda pegada abajo; va dentro de la tarjeta RUEDA y se desplaza con ella.
