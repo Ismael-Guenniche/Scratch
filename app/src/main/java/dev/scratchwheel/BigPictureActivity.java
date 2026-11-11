@@ -160,7 +160,7 @@ public class BigPictureActivity extends Activity {
                             @Override
                             public void onPick(int id) {
                                 if (id == 0) {
-                                    startActivity(new Intent(BigPictureActivity.this, SettingsActivity.class));
+                                    startActivity(new Intent(BigPictureActivity.this, BigEditorActivity.class));
                                 } else {
                                     finish();
                                 }

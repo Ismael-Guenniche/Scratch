@@ -45,6 +45,8 @@ public class SettingsActivity extends Activity {
     }
 
     private ScrollView scroll;
+    private LinearLayout wheelCard;
+    private LinearLayout previewBox;
     private static int savedScroll = -1;
 
     /** Recrea la pantalla (para aplicar el tema) sin perder la posición del scroll ni parpadear. */
@@ -166,6 +168,7 @@ public class SettingsActivity extends Activity {
 
         // RUEDA
         c = card(list, Tr.t("RUEDA"));
+        wheelCard = c;
         c.addView(switchRow(Tr.t("Carátula del disco"),
                 Tr.t("Muestra la imagen incrustada del archivo en vez del plato de puntos."),
                 prefs.getBoolean("cover", false), true, new Toggle() {
@@ -372,51 +375,17 @@ public class SettingsActivity extends Activity {
 
         // BIG PICTURE
         c = card(list, Tr.t("BIG PICTURE"));
-        c.addView(muted(Tr.t("Elige qué módulos salen, su tamaño en la rejilla y su orden.")));
-        final java.util.List<BigLayout.Item> bp = BigLayout.parse(prefs.getString("bp_cfg", null));
-        for (int i = 0; i < bp.size(); i++) {
-            final int at = i;
-            final BigLayout.Item it = bp.get(i);
-            c.addView(switchRow(Tr.t(BigLayout.NAMES[BigLayout.index(it.id)]),
-                    BigLayout.sizeLabel(it.id, it.size), it.on, true, new Toggle() {
-                        @Override
-                        public void on(boolean v) {
-                            it.on = v;
-                            prefs.edit().putString("bp_cfg", BigLayout.serialize(bp)).apply();
-                            redo();
-                        }
-                    }));
-            if (it.on) {
-                String[] sz = new String[BigLayout.sizeCount(it.id)];
-                for (int k = 0; k < sz.length; k++) {
-                    sz[k] = BigLayout.sizeLabel(it.id, k);
-                }
-                c.addView(segmented(sz, it.size, new Pick() {
-                    @Override
-                    public void on(int v) {
-                        it.size = v;
-                        prefs.edit().putString("bp_cfg", BigLayout.serialize(bp)).apply();
-                        redo();
-                    }
-                }));
-                if (at > 0) {
-                    c.addView(actionRow(Tr.t("Orden"), Tr.t("SUBIR"), new Runnable() {
-                        @Override
-                        public void run() {
-                            java.util.Collections.swap(bp, at, at - 1);
-                            prefs.edit().putString("bp_cfg", BigLayout.serialize(bp)).apply();
-                            redo();
-                        }
-                    }));
-                }
-            }
-            c.addView(dots());
-        }
-        c.addView(actionRow(Tr.t("Valores por defecto"), Tr.t("RESTABLECER"), new Runnable() {
+        c.addView(muted(Tr.t("Pantalla de módulos en una rejilla: abre el editor para añadir, quitar, mover y cambiar el tamaño de cada módulo.")));
+        c.addView(actionRow(Tr.t("Editor de módulos"), Tr.t("PERSONALIZAR"), new Runnable() {
             @Override
             public void run() {
-                prefs.edit().remove("bp_cfg").apply();
-                redo();
+                startActivity(new Intent(SettingsActivity.this, BigEditorActivity.class));
+            }
+        }));
+        c.addView(actionRow(Tr.t("Abrir Big Picture"), Tr.t("ABRIR"), new Runnable() {
+            @Override
+            public void run() {
+                startActivity(new Intent(SettingsActivity.this, BigPictureActivity.class));
             }
         }));
 
@@ -639,6 +608,21 @@ public class SettingsActivity extends Activity {
         }
         root.addView(sv, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
+        previewBox = buildWheelPreview();
+        root.addView(previewBox, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(210)));
+        sv.setOnScrollChangeListener(new View.OnScrollChangeListener() {
+            @Override
+            public void onScrollChange(View v, int x, int y, int ox, int oy) {
+                updatePreviewVisibility();
+            }
+        });
+        sv.post(new Runnable() {
+            @Override
+            public void run() {
+                updatePreviewVisibility();
+            }
+        });
         return root;
     }
 
@@ -698,6 +682,109 @@ public class SettingsActivity extends Activity {
         t.setTypeface(th.regular);
         t.setLineSpacing(0, 1.2f);
         return t;
+    }
+
+    /** La rueda de prueba solo se muestra mientras se ve la tarjeta RUEDA. */
+    private void updatePreviewVisibility() {
+        if (wheelCard == null || previewBox == null || scroll == null) {
+            return;
+        }
+        int top = wheelCard.getTop() - scroll.getScrollY();
+        int bottom = wheelCard.getBottom() - scroll.getScrollY();
+        boolean show = bottom > dp(40) && top < scroll.getHeight() - dp(40);
+        previewBox.setVisibility(show ? View.VISIBLE : View.GONE);
+    }
+
+    private float previewAngle;
+    private boolean previewTouching;
+    private boolean previewPlaying = true;
+    private JogWheelView previewWheel;
+    private final Runnable previewSpin = new Runnable() {
+        @Override
+        public void run() {
+            if (previewWheel == null) {
+                return;
+            }
+            if (!previewTouching && previewPlaying) {
+                previewAngle += 0.012f;
+            }
+            previewWheel.setAngle(previewAngle);
+            previewWheel.postOnAnimation(this);
+        }
+    };
+
+    private LinearLayout buildWheelPreview() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER);
+        box.setBackground(th.card(Lucent.R_L));
+        box.setPadding(dp(8), dp(6), dp(8), dp(6));
+        box.setVisibility(View.GONE);
+        previewWheel = new JogWheelView(this, th);
+        previewWheel.setHaptic(prefs.getBoolean("haptic", true));
+        previewWheel.setLocked(prefs.getBoolean("wlock", false));
+        previewWheel.setCoverOn(prefs.getBoolean("cover", false));
+        previewWheel.setVinylSkin(prefs.getInt("vskin", 0));
+        previewWheel.setWheelStyle(prefs.getInt("wstyle", 0));
+        previewWheel.setPlayingState(true);
+        previewWheel.setCover(Covers.placeholder());
+        final android.net.Uri cu = Player.I.currentUri();
+        if (cu != null && prefs.getBoolean("cover", false)) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    final android.graphics.Bitmap b = Covers.embedded(getApplicationContext(), cu);
+                    if (b != null && previewWheel != null) {
+                        previewWheel.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                previewWheel.setCover(b);
+                            }
+                        });
+                    }
+                }
+            }, "prevcover").start();
+        }
+        previewWheel.setListener(new JogWheelView.Listener() {
+            @Override
+            public void onTouchDown() {
+                previewTouching = true;
+            }
+
+            @Override
+            public void onRotate(double radians) {
+                previewAngle += (float) radians;
+            }
+
+            @Override
+            public void onTouchUp() {
+                previewTouching = false;
+            }
+
+            @Override
+            public void onHubTap() {
+                previewPlaying = !previewPlaying;
+                previewWheel.setPlayingState(previewPlaying);
+            }
+        });
+        box.addView(previewWheel, new LinearLayout.LayoutParams(dp(190), dp(190)));
+        return box;
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (previewWheel != null) {
+            previewWheel.postOnAnimation(previewSpin);
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (previewWheel != null) {
+            previewWheel.removeCallbacks(previewSpin);
+        }
     }
 
     private LinearLayout card(LinearLayout parent, String label) {

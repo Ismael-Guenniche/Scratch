@@ -32,6 +32,7 @@ Primera pantalla (`HomeView`).
 - **Android Auto (rama android-auto):** Artistas y Álbumes en el explorador, búsqueda por voz (`onPlayFromSearch`/`onSearch`), cola, salto de posición y botones de aleatorio/repetir. Ver [ANDROID-AUTO.md](ANDROID-AUTO.md).
 - Vista previa de Android Auto: prueba la biblioteca, la búsqueda y los controles sin coche
 - Vista previa de Android Auto: búsqueda local
+- **Editor de Big Picture** (`BigEditorActivity`): rejilla de 4 columnas con posición y tamaño libres por módulo (arrastrar, ancho/alto, añadir, quitar); se abre desde Ajustes → BIG PICTURE o desde el menú ⋮ de Big Picture. **Vista previa de la rueda** abajo en Ajustes → RUEDA: gira y se toca con el aspecto elegido.
 - Acciones por canción: reproducir a continuación, añadir a la cola, añadir a favoritas, añadir a lista, quitar de lista, estadísticas de la canción.
 - Barra flotante con la canción actual; tocarla abre la rueda.
 - **Shuffle** sin repeticiones (Fisher-Yates): no repite hasta agotar la lista.

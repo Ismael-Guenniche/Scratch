@@ -40,6 +40,12 @@ public final class BigLayout {
         public final String id;
         public int size;
         public boolean on;
+        /** Posición fija en la rejilla (-1 = automática: primer hueco libre). */
+        public int col = -1;
+        public int row = -1;
+        /** Tamaño libre en celdas (0 = el de la lista de tamaños). */
+        public int cw;
+        public int ch;
 
         public Item(String id, int size, boolean on) {
             this.id = id;
@@ -48,11 +54,15 @@ public final class BigLayout {
         }
 
         public int w() {
-            return SIZES[index(id)][size][0];
+            return cw > 0 ? cw : SIZES[index(id)][size][0];
         }
 
         public int h() {
-            return SIZES[index(id)][size][1];
+            return ch > 0 ? ch : SIZES[index(id)][size][1];
+        }
+
+        public boolean fixed() {
+            return col >= 0 && row >= 0;
         }
     }
 
@@ -104,7 +114,9 @@ public final class BigLayout {
             if (sb.length() > 0) {
                 sb.append(';');
             }
-            sb.append(it.id).append(':').append(it.size).append(':').append(it.on ? 1 : 0);
+            sb.append(it.id).append(':').append(it.size).append(':').append(it.on ? 1 : 0).append(':')
+                    .append(it.col).append(':').append(it.row).append(':').append(it.cw).append(':')
+                    .append(it.ch);
         }
         return sb.toString();
     }
@@ -133,7 +145,21 @@ public final class BigLayout {
                     size = DEF_SIZE[ix];
                 }
                 seen[ix] = true;
-                out.add(new Item(IDS[ix], size, "1".equals(f[2])));
+                Item it = new Item(IDS[ix], size, "1".equals(f[2]));
+                if (f.length >= 7) {
+                    it.col = num(f[3], -1, -1, COLS - 1);
+                    it.row = num(f[4], -1, -1, MAX_ROWS);
+                    it.cw = num(f[5], 0, 0, COLS);
+                    it.ch = num(f[6], 0, 0, MAX_H);
+                    if (it.col >= 0 && it.cw > 0 && it.col + it.cw > COLS) {
+                        it.col = COLS - it.cw;
+                    }
+                    if (it.col < 0 || it.row < 0) {
+                        it.col = -1;
+                        it.row = -1;
+                    }
+                }
+                out.add(it);
             }
         }
         for (int i = 0; i < IDS.length; i++) {
@@ -144,14 +170,38 @@ public final class BigLayout {
         return out;
     }
 
+    public static final int MAX_ROWS = 60;
+    public static final int MAX_H = 10;
+
+    private static int num(String t, int def, int lo, int hi) {
+        try {
+            int v = Integer.parseInt(t);
+            return v < lo || v > hi ? def : v;
+        } catch (NumberFormatException e) {
+            return def;
+        }
+    }
+
     /** Coloca los módulos activos, en orden, en el primer hueco donde quepan. */
     public static List<Placed> pack(List<Item> items, int cols) {
         ArrayList<Placed> out = new ArrayList<Placed>();
         ArrayList<boolean[]> grid = new ArrayList<boolean[]>();
+        ArrayList<Item> auto = new ArrayList<Item>();
+        // primero los que tienen posición fija (si caben y no se pisan); el resto, en el primer hueco
         for (Item it : items) {
             if (!it.on) {
                 continue;
             }
+            int w = Math.min(it.w(), cols);
+            int h = it.h();
+            if (it.fixed() && it.col + w <= cols && fits(grid, it.row, it.col, w, h)) {
+                mark(grid, it.row, it.col, w, h, cols);
+                out.add(new Placed(it, it.col, it.row, w, h));
+            } else {
+                auto.add(it);
+            }
+        }
+        for (Item it : auto) {
             int w = Math.min(it.w(), cols);
             int h = it.h();
             boolean done = false;
@@ -166,6 +216,46 @@ public final class BigLayout {
             }
         }
         return out;
+    }
+
+    /** Fija la posición actual de todos los módulos activos (el editor trabaja siempre con posiciones). */
+    public static void freeze(List<Item> items, int cols) {
+        for (Placed p : pack(items, cols)) {
+            p.item.col = p.col;
+            p.item.row = p.row;
+            p.item.cw = p.w;
+            p.item.ch = p.h;
+        }
+    }
+
+    /** true si el módulo cabe en (col,row) con tamaño w×h sin pisar a los demás activos ni salirse. */
+    public static boolean canPlace(List<Item> items, Item self, int col, int row, int w, int h, int cols) {
+        if (col < 0 || row < 0 || col + w > cols || w < 1 || h < 1 || row + h > MAX_ROWS) {
+            return false;
+        }
+        for (Item o : items) {
+            if (o == self || !o.on || !o.fixed()) {
+                continue;
+            }
+            int ow = Math.min(o.w(), cols);
+            int oh = o.h();
+            if (col < o.col + ow && o.col < col + w && row < o.row + oh && o.row < row + h) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Primer hueco libre para un módulo de w×h entre los demás (que deben estar fijados); {col,row}. */
+    public static int[] firstFree(List<Item> items, Item self, int w, int h, int cols) {
+        for (int r = 0; r < MAX_ROWS; r++) {
+            for (int c = 0; c + w <= cols; c++) {
+                if (canPlace(items, self, c, r, w, h, cols)) {
+                    return new int[] {c, r};
+                }
+            }
+        }
+        return new int[] {0, 0};
     }
 
     public static int rows(List<Placed> placed) {
