@@ -9,7 +9,7 @@ package dev.scratchwheel;
  * se oye al revés si giras hacia atrás y se calla si paras el dedo.
  *
  * La salida se genera a la frecuencia nativa del dispositivo (outRate) y la
- * pista se remuestrea con interpolación cúbica, para usar la ruta de baja latencia.
+ * pista se remuestrea con un filtro sinc enventanado, para usar la ruta de baja latencia.
  */
 public final class ScratchEngine {
     /** Una vuelta completa de la rueda = 1,8 s de audio (33 1/3 rpm). */
@@ -1341,15 +1341,11 @@ public final class ScratchEngine {
                     double[] s = grains(ratio, last);
                     vl = s[0] * g;
                     vr = s[1] * g;
-                } else {
-                    int i0 = (int) pos;
-                    double f = pos - i0;
-                    int im = Math.max(i0 - 1, 0);
-                    int ip = Math.min(i0 + 1, last);
-                    int ip2 = Math.min(i0 + 2, last);
-                    vl = cubic(data[2 * im], data[2 * i0], data[2 * ip], data[2 * ip2], f) * g;
-                    vr = cubic(data[2 * im + 1], data[2 * i0 + 1], data[2 * ip + 1],
-                            data[2 * ip2 + 1], f) * g;
+                } else if (g != 0) {
+                    double sp = rate * ratio;
+                    sinc(pos, sp < 0 ? -sp : sp, last);
+                    vl = sOut[0] * g;
+                    vr = sOut[1] * g;
                 }
             }
             if (xfadeSecs > 0 && nextPcm != null && playing && !scratching && !reverse && !partial && !loopOn
@@ -1494,11 +1490,134 @@ public final class ScratchEngine {
         return gOut;
     }
 
-    private static double cubic(double y0, double y1, double y2, double y3, double f) {
-        double a = -0.5 * y0 + 1.5 * y1 - 1.5 * y2 + 0.5 * y3;
-        double b = y0 - 2.5 * y1 + 2.0 * y2 - 0.5 * y3;
-        double c = -0.5 * y0 + 0.5 * y2;
-        return ((a * f + b) * f + c) * f + y1;
+    // ----- remuestreo con sinc enventanado (Kaiser) y corte variable
+    /** Cruces por cero a cada lado a velocidad normal (2 × SINC_Z muestras por punto). */
+    private static final int SINC_Z = 6;
+    /** Con la lectura rápida se usa un núcleo más corto: importa menos la finura y cuesta la mitad. */
+    private static final int FAST_Z = 3;
+    private static final double FAST_FROM = 1.25;
+    /** Puntos de tabla por cruce por cero (se interpola linealmente entre ellos). */
+    private static final int SINC_L = 256;
+    /** A partir de esta velocidad el filtro ya no se estrecha más (limita el coste por muestra). */
+    private static final double SINC_MAX_STRETCH = 4.0;
+    // Kaiser β = 9 y corte al 92 % de Nyquist: >84 dB de señal/ruido hasta 10 kHz con 12 muestras por punto.
+    private static final float[] SINC = makeSinc(SINC_Z, 9.0, 0.92);
+    private static final float[] SINC_FAST = makeSinc(FAST_Z, 6.0, 0.85);
+    /** Velocidad normal o menor: coeficientes ya calculados por fase (POLY_PH fases × POLY_N muestras, cada fila suma 1). */
+    private static final int POLY_PH = 256;
+    private static final int POLY_N = 2 * SINC_Z;
+    private static final float[] POLY = makePoly();
+
+    private static float[] makeSinc(int z, double beta, double cut) {
+        int n = z * SINC_L;
+        float[] t = new float[n + 2];
+        double i0b = bessel0(beta);
+        for (int k = 0; k <= n; k++) {
+            double x = k / (double) SINC_L;
+            double w = x / z;
+            double win = bessel0(beta * Math.sqrt(Math.max(0, 1 - w * w))) / i0b;
+            double a = Math.PI * x * cut;
+            t[k] = (float) ((k == 0 ? 1.0 : Math.sin(a) / a) * win);
+        }
+        t[n] = 0;
+        t[n + 1] = 0;
+        return t;
+    }
+
+    private static float[] makePoly() {
+        float[] t = new float[(POLY_PH + 1) * POLY_N];
+        double[] row = new double[POLY_N];
+        for (int ph = 0; ph <= POLY_PH; ph++) {
+            double f = ph / (double) POLY_PH;
+            double sum = 0;
+            for (int k = 0; k < POLY_N; k++) {
+                double x = Math.abs(k - (SINC_Z - 1) - f) * SINC_L;
+                int ti = (int) x;
+                row[k] = ti >= SINC_Z * SINC_L ? 0 : SINC[ti] + (SINC[ti + 1] - SINC[ti]) * (x - ti);
+                sum += row[k];
+            }
+            for (int k = 0; k < POLY_N; k++) {
+                t[ph * POLY_N + k] = (float) (row[k] / sum);
+            }
+        }
+        return t;
+    }
+
+    private static double bessel0(double x) {
+        double sum = 1;
+        double term = 1;
+        for (int k = 1; k < 40; k++) {
+            term *= (x / (2 * k)) * (x / (2 * k));
+            sum += term;
+        }
+        return sum;
+    }
+
+    private final double[] sOut = new double[2];
+
+    /**
+     * Lee la pista en {@code p} con un filtro sinc. {@code speed} es la velocidad de lectura en muestras de pista
+     * por muestra de salida: por encima de 1 el filtro se ensancha (corte más bajo) para que lo que quedaría por
+     * encima de lo audible no se pliegue como aliasing.
+     */
+    private void sinc(double p, double speed, int last) {
+        final short[] d = data;
+        double l = 0;
+        double r = 0;
+        if (speed <= 1) {
+            // Camino habitual (reproducción normal): 12 coeficientes ya normalizados, interpolados entre dos fases.
+            int i0 = (int) p;
+            double fp = (p - i0) * POLY_PH;
+            int pi = (int) fp;
+            float fr = (float) (fp - pi);
+            int ra = pi * POLY_N;
+            int rb = ra + POLY_N;
+            final float[] c = POLY;
+            int base = i0 - (SINC_Z - 1);
+            if (base >= 0 && base + POLY_N - 1 <= last) {
+                int q = 2 * base;
+                for (int k = 0; k < POLY_N; k++) {
+                    float w = c[ra + k] + (c[rb + k] - c[ra + k]) * fr;
+                    l += w * d[q];
+                    r += w * d[q + 1];
+                    q += 2;
+                }
+            } else {
+                for (int k = 0; k < POLY_N; k++) {
+                    float w = c[ra + k] + (c[rb + k] - c[ra + k]) * fr;
+                    int j = base + k;
+                    int q = 2 * (j < 0 ? 0 : (j > last ? last : j));
+                    l += w * d[q];
+                    r += w * d[q + 1];
+                }
+            }
+            sOut[0] = l;
+            sOut[1] = r;
+            return;
+        }
+        double s = speed < SINC_MAX_STRETCH ? speed : SINC_MAX_STRETCH;
+        final float[] tab = s <= FAST_FROM ? SINC : SINC_FAST;
+        double half = (s <= FAST_FROM ? SINC_Z : FAST_Z) * s;
+        // +64 para que el redondeo sea siempre hacia abajo aunque p - half sea negativo
+        int j0 = (int) (p - half + 64) - 63;
+        int j1 = (int) (p + half + 64) - 64;
+        double step = SINC_L / s;
+        double ws = 0;
+        boolean inside = j0 >= 0 && j1 <= last;
+        for (int j = j0; j <= j1; j++) {
+            double t = (j - p) * step;
+            if (t < 0) {
+                t = -t;
+            }
+            int ti = (int) t;
+            double w = tab[ti] + (tab[ti + 1] - tab[ti]) * (t - ti);
+            int q = inside ? 2 * j : 2 * (j < 0 ? 0 : (j > last ? last : j));
+            l += w * d[q];
+            r += w * d[q + 1];
+            ws += w;
+        }
+        sOut[0] = l / ws;
+        sOut[1] = r / ws;
     }
 
     private static short clip(double v) {
