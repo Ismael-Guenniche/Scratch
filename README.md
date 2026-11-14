@@ -32,15 +32,9 @@ Sin cuentas, sin streaming, sin anuncios. Tu música, tu carpeta, tu rueda.
 | [docs/COMPILAR.md](docs/COMPILAR.md) | Compilar con Android Studio, sin SDK y ejecutar los tests |
 | [docs/IMPORTAR-SPOTIFY.md](docs/IMPORTAR-SPOTIFY.md) | Importar listas de Spotify |
 | [docs/ANDROID-AUTO.md](docs/ANDROID-AUTO.md) | Activar Android Auto |
-| [docs/PUBLICAR-PLAY-STORE.md](docs/PUBLICAR-PLAY-STORE.md) | Tutorial para publicar en Google Play |
 | [docs/PRIVACIDAD.md](docs/PRIVACIDAD.md) | Política de privacidad |
 | [docs/CAMBIOS.md](docs/CAMBIOS.md) | Historial de versiones |
 
-## Compilar en 30 segundos
-
-1. Abre la carpeta en **Android Studio** (JDK 17+, AGP 8.10, SDK 35).
-2. Conecta el móvil (minSdk 24) y pulsa *Run*.
-3. Opcional: `javac` + `tools/Check.java` para los tests del motor (ver [COMPILAR](docs/COMPILAR.md)).
 
 ## Estructura
 
@@ -53,13 +47,3 @@ icons/                                 las 8 variantes del icono (vista previa)
 tools/                                 Check.java (tests), Bench.java (benchmark del motor), make_icons.py
 build-sin-sdk/                         compilación a APK sin Android SDK
 ```
-
-## Principios
-
-- **Local primero:** no descarga audio de ningún servicio. Las canciones que faltan en una lista importada se consiguen por vías legales (ver [IMPORTAR-SPOTIFY](docs/IMPORTAR-SPOTIFY.md)).
-- **Sin dependencias:** solo la API de Android; el motor de audio, los parsers y las estadísticas son Java puro y testeable.
-- **El DJ es un juguete:** el producto es el reproductor con la rueda. El modo DJ es un extra para divertirse, sin BPM ni sincronía.
-
-## Licencias
-
-Las fuentes **Geist** (Vercel) se distribuyen con su licencia en `app/src/main/assets/fonts/LICENSE-Geist.txt`. Space Mono y Geist Mono se incluyen para el estilo mono/matriz.
