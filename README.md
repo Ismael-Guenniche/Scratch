@@ -19,6 +19,10 @@ Sin cuentas, sin streaming, sin anuncios. Tu música, tu carpeta, tu rueda.
 | **Personalización** | Tema claro/oscuro/sistema, 8 colores de acento, colores del fondo de pantalla, 3 tipografías, estilo Lucent, rejilla de puntos, 8 iconos de app. |
 | **Giro automático** | La pantalla del reproductor sigue la rotación del sistema (vertical y horizontal). |
 
+## También en Windows
+
+La misma app funciona en PC: biblioteca a la izquierda, rueda a la derecha, modo DJ a dos columnas, instalador `.exe` con Java dentro. Ver [docs/WINDOWS.md](docs/WINDOWS.md).
+
 ## Documentación
 
 | Documento | Contenido |
@@ -29,6 +33,7 @@ Sin cuentas, sin streaming, sin anuncios. Tu música, tu carpeta, tu rueda.
 | [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md) | Clases, hilos, ficheros de datos y flujo de la música |
 | [docs/AJUSTES.md](docs/AJUSTES.md) | Todas las opciones y sus claves de preferencias |
 | [docs/ESTILO.md](docs/ESTILO.md) | Lenguaje visual: puntos, cristal, acento, componentes |
+| [docs/WINDOWS.md](docs/WINDOWS.md) | Versión de escritorio: instalar, atajos, formatos, cómo está hecha |
 | [docs/COMPILAR.md](docs/COMPILAR.md) | Compilar con Android Studio, sin SDK y ejecutar los tests |
 | [docs/IMPORTAR-SPOTIFY.md](docs/IMPORTAR-SPOTIFY.md) | Importar listas de Spotify |
 | [docs/ANDROID-AUTO.md](docs/ANDROID-AUTO.md) | Activar Android Auto |
@@ -46,4 +51,5 @@ docs/                                  documentación
 icons/                                 las 8 variantes del icono (vista previa)
 tools/                                 Check.java (tests), Bench.java (benchmark del motor), make_icons.py
 build-sin-sdk/                         compilación a APK sin Android SDK
+desktop/                               versión de Windows: capa de compatibilidad, decodificadores e instalador
 ```
