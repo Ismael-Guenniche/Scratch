@@ -28,6 +28,7 @@ public class AudioTrack {
     public static final int WRITE_NON_BLOCKING = 1;
 
     private static volatile float master = 1f;
+    private static volatile boolean warned;
 
     /** Volumen de la app, 0..1 (curva cuadrática para que el control se sienta natural). */
     public static void setMasterVolume(float v) {
@@ -107,6 +108,12 @@ public class AudioTrack {
             // Sin tarjeta de sonido: se "reproduce" en silencio a velocidad real para que la app siga funcionando.
             desk.Rt.log("sin salida de audio: " + e);
             l0 = null;
+            if (!warned) {
+                warned = true;
+                android.widget.Toast.makeText(desk.Shell.application(),
+                        "Sin dispositivo de audio: no se oir\u00e1 nada / No audio device",
+                        android.widget.Toast.LENGTH_LONG).show();
+            }
         }
         line = l0;
         nullStart = System.nanoTime();
