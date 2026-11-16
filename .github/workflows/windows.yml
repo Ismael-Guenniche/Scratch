@@ -50,6 +50,33 @@ jobs:
             desktop/build/captura.png
           if-no-files-found: error
 
+      # Descarga directa de la última compilación, sin entrar en Actions.
+      - name: Publicar como prelanzamiento «windows-beta»
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: windows-beta
+          name: Scratch para Windows (beta, última compilación)
+          prerelease: true
+          body: |
+            Compilación automática de la rama `${{ github.ref_name }}` (commit ${{ github.sha }}).
+            - `Scratch-*.exe`: instalador (acceso directo en el escritorio y en el menú Inicio).
+            - `Scratch-*-windows-portable.zip`: sin instalar, descomprimir y abrir `Scratch.exe`.
+            Instrucciones y atajos: docs/WINDOWS.md
+          files: |
+            desktop/build/dist/*.exe
+            desktop/build/dist/*.zip
+
+      # La captura de la prueba de humo queda en la rama ci/capturas para poder verla sin descargar nada.
+      - name: Guardar la captura
+        shell: bash
+        run: |
+          mkdir cap && cp desktop/build/captura.png desktop/build/captura.png.txt cap/ && cd cap
+          git init -q && git checkout -q -b ci/capturas
+          git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
+          git add . && git commit -q -m "Captura de la prueba de humo en Windows (${GITHUB_SHA::7})"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci/capturas
+
       - name: Adjuntar a la Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2

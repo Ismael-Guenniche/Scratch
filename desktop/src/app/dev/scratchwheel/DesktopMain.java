@@ -85,6 +85,26 @@ public final class DesktopMain {
                         c.paint(g);
                         g.dispose();
                         javax.imageio.ImageIO.write(img, "png", new java.io.File(png));
+                        // Datos del equipo junto a la captura, para diagnosticar sin tener la máquina delante.
+                        StringBuilder info = new StringBuilder();
+                        info.append("Scratch ").append(desk.Rt.versionName).append('\n');
+                        info.append("os: ").append(System.getProperty("os.name")).append(' ')
+                                .append(System.getProperty("os.version")).append('\n');
+                        info.append("java: ").append(System.getProperty("java.version")).append('\n');
+                        java.awt.GraphicsConfiguration gc = Shell.get().frame().getGraphicsConfiguration();
+                        info.append("pantalla: ").append(gc.getBounds().width).append('x')
+                                .append(gc.getBounds().height).append(" escala ")
+                                .append(gc.getDefaultTransform().getScaleX()).append('\n');
+                        info.append("ventana: ").append(c.getWidth()).append('x').append(c.getHeight()).append('\n');
+                        info.append("tema oscuro: ").append(desk.Sys.isDark()).append(", acento: ")
+                                .append(desk.Sys.accent() == null ? "-" : Integer.toHexString(desk.Sys.accent()))
+                                .append('\n');
+                        for (javax.sound.sampled.Mixer.Info mi : javax.sound.sampled.AudioSystem.getMixerInfo()) {
+                            info.append("audio: ").append(mi.getName()).append('\n');
+                        }
+                        info.append("ffmpeg: ").append(desk.Ffmpeg.find()).append('\n');
+                        java.nio.file.Files.write(new java.io.File(png + ".txt").toPath(),
+                                info.toString().getBytes("UTF-8"));
                         ok[0] = Shell.get().pane(Shell.RIGHT).topActivity() != null
                                 && (Shell.get().pane(Shell.LEFT).topActivity() != null
                                 || Shell.get().pane(Shell.FULL).topActivity() != null);
