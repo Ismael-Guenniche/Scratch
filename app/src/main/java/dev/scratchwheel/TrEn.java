@@ -165,7 +165,6 @@ final class TrEn {
         M.put("No se pudo abrir:", "Could not open:");
         M.put("Otra app está usando el audio", "Another app is using the audio");
         M.put("No se pudo iniciar el audio", "Could not start the audio");
-        M.put("La cola está llena (500)", "The queue is full (500)");
         M.put("Suena a continuación", "Plays next");
         M.put("Añadida a la cola (", "Added to the queue (");
         M.put("Esta pista no se puede guardar en favoritas", "This track cannot be saved to favorites");

@@ -460,6 +460,8 @@ final class Player {
     private int orderPos;
     private final ArrayList<Integer> history = new ArrayList<Integer>();
     private final HashSet<String> favs = new HashSet<String>();
+    /** Máximo de canciones en la cola; al añadir con la cola llena se descarta la última. */
+    static final int QUEUE_MAX = 1000;
     final List<Track> queue = new ArrayList<Track>();
     private int sleepIdx;
     private long sleepEnd;
@@ -1280,7 +1282,7 @@ final class Player {
             java.util.Collections.shuffle(rest, rnd);
         }
         queue.clear();
-        for (int k = 0; k < rest.size() && k < 1000; k++) {
+        for (int k = 0; k < rest.size() && k < QUEUE_MAX; k++) {
             int r = rest.get(k);
             if (r >= 0 && r < tracks.size()) {
                 queue.add(tracks.get(r));
@@ -1873,9 +1875,9 @@ final class Player {
         if (libIdx < 0 || libIdx >= tracks.size()) {
             return;
         }
-        if (queue.size() >= 500) {
-            toast(Tr.t("La cola está llena (500)"));
-            return;
+        // Cola llena (p. ej. tras reproducir una lista larga): en vez de rechazar, se cae la última para hacer sitio.
+        while (queue.size() >= QUEUE_MAX) {
+            queue.remove(queue.size() - 1);
         }
         Track t = tracks.get(libIdx);
         if (atFront) {
