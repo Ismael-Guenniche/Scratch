@@ -1331,11 +1331,50 @@ public class Check {
                 pe2.render(pb2, 16);
             }
             pe2.touchUp();
-            for (int k = 0; k < 240; k++) {
+            // slipmat: vuelve a la velocidad normal de forma exponencial (sin rampa recta ni frenazo final)
+            double[] sr = new double[1500];
+            for (int k = 0; k < 1500; k++) {
                 pe2.render(pb2, 16);
+                sr[k] = pe2.getRate();
             }
-            ok(Math.abs(pe2.getRate() - 1.0) < 0.001, "slipmat: 80 ms después de soltar ya va a velocidad normal ("
-                    + pe2.getRate() + "×)");
+            boolean smooth = true;
+            for (int k = 2; k < 1500; k++) {
+                double a1 = sr[k - 1] - sr[k - 2];
+                double a2 = sr[k] - sr[k - 1];
+                if (a2 > a1 + 1e-9) {
+                    smooth = false; // la aceleración nunca crece: cada vez más suave
+                }
+            }
+            double r120 = sr[359];
+            ok(smooth && Math.abs(r120 - (1 - Math.exp(-1))) < 0.03 && sr[1499] > 0.98 && sr[1499] <= 1.0,
+                    "slipmat: vuelve suave (a 120 ms va a " + r120 + "×, a 500 ms a " + sr[1499] + "×)");
+            {
+                // lanzado hacia delante a 4× con la música sonando: frena hacia 1× sin pasarse ni cortes
+                ScratchEngine th = new ScratchEngine();
+                th.setOutputRate(48000);
+                th.load(DemoTrack.generate());
+                th.setPlaying(true);
+                for (int k = 0; k < 900; k++) {
+                    th.render(pb2, 16);
+                }
+                th.touchDown();
+                long t0 = System.nanoTime();
+                for (int k = 0; k < 120; k++) {
+                    th.rotateAt(0.08, t0 + k * 2_000_000L);
+                    th.render(pb2, 16);
+                }
+                th.touchUp();
+                double prev = th.getRate(), minR = prev, maxJump = 0;
+                for (int k = 0; k < 4500; k++) {
+                    th.render(pb2, 16);
+                    double thr = th.getRate();
+                    maxJump = Math.max(maxJump, Math.abs(thr - prev));
+                    minR = Math.min(minR, thr);
+                    prev = thr;
+                }
+                ok(minR > 0.99 && maxJump < 0.05 && Math.abs(prev - 1.0) < 0.01,
+                        "lanzar el disco hacia delante: frena suave hasta 1× (mín " + minR + ", salto máx " + maxJump + ")");
+            }
         }
         {
             // Calidad del remuestreo: un tono de 10 kHz (44,1 → 48 kHz) sale limpio, y a 3× un tono de 12 kHz

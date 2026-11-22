@@ -36,7 +36,7 @@ Como un vinilo: el motor lee la pista a **velocidad variable** con un **filtro s
 ## Plato
 El motor distingue el **plato** (lo que mueve el motor) del **disco** (lo que se oye), unidos por el slipmat.
 - **Arranque:** el plato sube en **rampa recta** (par constante, como un motor de tracción directa) hasta la velocidad pedida en 0,2 s, con un final suave de 20 ms. Los cambios de pitch siguen la misma rampa.
-- **Slipmat:** cuando sueltas el disco con la música sonando, el plato ha seguido girando debajo y el rozamiento engancha el disco a razón de 1× cada 60 ms (desde parado, 60 ms; desde −2×, unos 180 ms).
+- **Slipmat:** cuando sueltas el disco con la música sonando (parado, lanzado hacia delante o hacia atrás), vuelve a la velocidad del plato de forma **exponencial** (τ = 0,12 s): rápido al principio y cada vez más suave, sin frenazo al final (63 % a los 120 ms, 98 % a los 500 ms). Una vez enganchado sigue la rampa del motor tal cual.
 - **Agarre del dedo:** al tocar un disco que gira no para en seco: frena con una constante de 4 ms durante los primeros 15 ms.
 - **Frenado:** baja de forma lineal hasta parar (0,7 s por defecto), con caída de tono como un plato real.
 - **Inercia:** si sueltas la rueda lanzada con la música parada, sigue girando con fricción exponencial (τ = 0,6 / 1,5 / 3 s según Alta/Media/Baja) más un rozamiento seco para que pare del todo.

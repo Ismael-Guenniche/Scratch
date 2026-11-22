@@ -20,8 +20,14 @@ public final class ScratchEngine {
     private static final double MOTOR_UP = 0.2;
     /** Final suave de la rampa del motor (s). */
     private static final double MOTOR_LAND = 0.02;
-    /** Slipmat: al soltar el disco, el rozamiento con el plato lo acelera 1× cada tantos segundos. */
-    private static final double SLIP_CATCH = 0.06;
+    /**
+     * Slipmat: al soltar el disco (lanzado hacia delante o hacia atrás) vuelve a la velocidad del plato de forma
+     * exponencial con esta constante de tiempo (s): rápido al principio y cada vez más suave, sin frenazo final.
+     * Es la respuesta de antes de la 0.58, que sonaba más natural que la rampa recta.
+     */
+    private static final double SLIP_TAU = 0.12;
+    /** El disco va enganchado al plato (sigue la rampa del motor tal cual); se suelta al tocarlo, avanzar, etc. */
+    private boolean discLocked;
     /** Agarre del dedo: durante este tiempo tras tocar, el disco frena con la inercia de un vinilo (s). */
     private static final double GRIP_TIME = 0.015;
     private static final double GRIP_TAU = 0.004;
@@ -1362,7 +1368,9 @@ public final class ScratchEngine {
         int last = Math.max(frames - 1, 0);
         final double motorStep = dtOut / MOTOR_UP;
         final double motorLand = dtOut / MOTOR_LAND;
-        final double slipStep = dtOut / SLIP_CATCH;
+        final double slipAlpha = dtOut / SLIP_TAU;
+        // diferencia por debajo de la cual el disco se engancha al plato (algo más que un paso del motor)
+        final double lockTol = Math.max(1e-4, 1.5 * motorStep);
         final double gripAlpha = dtOut / GRIP_TAU;
         final double cutStep = dtOut / CUT_TIME;
         final double wowW = 2 * Math.PI * (1.0 / SECONDS_PER_REV) * dtOut;
@@ -1469,13 +1477,17 @@ public final class ScratchEngine {
                 }
             } else if (slipmat) {
                 double dr = platter - rate;
-                if (dr <= slipStep && dr >= -slipStep) {
+                if (discLocked || (dr <= lockTol && dr >= -lockTol)) {
                     rate = platter;
+                    discLocked = true;
                 } else {
-                    rate += dr > 0 ? slipStep : -slipStep;
+                    rate += dr * slipAlpha;
                 }
             } else {
                 rate += (target - rate) * alpha;
+            }
+            if (!slipmat) {
+                discLocked = false;
             }
             if (!playing) {
                 // Motor apagado: el plato va con el disco (frenando o girando por inercia), o parado bajo el dedo.
