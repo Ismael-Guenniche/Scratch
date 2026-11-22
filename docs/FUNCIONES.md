@@ -25,7 +25,7 @@ Primera pantalla (`HomeView`).
 - **Precarga (Ajustes → PRECARGA):** las próximas N canciones (5 por defecto; 0 = solo la siguiente) se mantienen decodificadas en memoria. Al abrir una pista suena en cuanto se decodifican los primeros segundos y el resto se completa detrás; hasta entonces el scratch solo llega a ese tramo.
 - Búsqueda por título o carpeta.
 - Menú ⋮: abrir archivo suelto, rescanear, importar lista (CSV), importar de Spotify, ver faltantes, estadísticas, ajustes y **DIAGNÓSTICO** (informa de por qué una biblioteca sale vacía).
-- **Big Picture** (`BigPictureActivity`, menú ⋮ del scratch): módulos en una rejilla de 4 columnas (`BigLayout`), configurables en Ajustes → BIG PICTURE (activar, tamaño, orden). Rueda con estilo PUNTOS o GRABADORA.
+- **Big Picture** (`BigPictureActivity`, menú ⋮ del scratch): módulos en una rejilla de 4 columnas en vertical y 8 en horizontal (`BigLayout`; gira con el móvil), configurables en Ajustes → BIG PICTURE (activar, tamaño, orden). Rueda con estilo PUNTOS o GRABADORA.
 - **Letras** (`LyricsReader`, `LyricsStore`, `LyricsActivity`): lee la letra de las etiquetas del archivo (MP3 USLT/SYLT, FLAC/Ogg LYRICS, M4A ©lyr) y formato LRC; menú ⋮ → LETRAS; buscar en lrclib.net o importar un .lrc (se guarda en la app, no toca el archivo); módulo LETRA en Big Picture.
 - **Grabación y M3U:** menú ⋮ del scratch → GRABAR SESIÓN / PARAR GRABACIÓN (WAV 16 bits en Música/Scratch); menú de cada lista → EXPORTAR COMO M3U (la importación de M3U ya existía en importar listas).
 - **Sonido:** Ajustes → SONIDO: nivelar volumen con ReplayGain (solo baja, nunca sube) y fundido cruzado de 0 a 10 s (potencia constante; con la precarga activada y sin saltar a mano).

@@ -147,8 +147,9 @@
 
         <activity
             android:name=".BigPictureActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden"
             android:exported="false"
-            android:screenOrientation="portrait" />
+            android:screenOrientation="fullUser" />
 
         <activity
             android:name=".LyricsActivity"

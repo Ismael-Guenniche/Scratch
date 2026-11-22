@@ -86,8 +86,34 @@ public class BigPictureActivity extends Activity {
         th.apply(this);
         Player.I.init(this);
         audio = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+        // La pantalla no se apaga mientras Big Picture está abierto.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        hideBars();
         setContentView(buildUi());
+    }
+
+    /** Pantalla completa: sin barra de notificaciones ni de navegación (se ven un momento deslizando desde el borde). */
+    @SuppressWarnings("deprecation")
+    private void hideBars() {
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            android.view.WindowInsetsController c = getWindow().getInsetsController();
+            if (c != null) {
+                c.hide(android.view.WindowInsets.Type.statusBars() | android.view.WindowInsets.Type.navigationBars());
+                c.setSystemBarsBehavior(android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                    | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean has) {
+        super.onWindowFocusChanged(has);
+        if (has) {
+            hideBars();
+        }
     }
 
     @Override
@@ -98,8 +124,24 @@ public class BigPictureActivity extends Activity {
             return;
         }
         // por si cambió la configuración en Ajustes
+        hideBars();
         setContentView(buildUi());
         Player.I.addListener(listener);
+        for (Part p : parts) {
+            p.changed();
+        }
+        ui.post(ticker);
+    }
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration cfg) {
+        super.onConfigurationChanged(cfg);
+        // Giro: se vuelve a montar la rejilla con 4 columnas (vertical) u 8 (horizontal).
+        ui.removeCallbacks(ticker);
+        if (anim != null) {
+            anim.removeCallbacks(ticker);
+        }
+        setContentView(buildUi());
         for (Part p : parts) {
             p.changed();
         }
@@ -172,10 +214,16 @@ public class BigPictureActivity extends Activity {
         root.addView(header);
 
         List<BigLayout.Item> items = BigLayout.parse(Lucent.prefs(this).getString("bp_cfg", null));
-        List<BigLayout.Placed> placed = BigLayout.pack(items, BigLayout.COLS);
+        // En horizontal la rejilla es el doble de ancha: los mismos módulos, en el mismo orden, en 8 columnas.
+        boolean land = getResources().getConfiguration().orientation
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+        final int cols = land ? BigLayout.COLS_WIDE : BigLayout.COLS;
+        List<BigLayout.Placed> placed = land ? BigLayout.packWide(items, cols) : BigLayout.pack(items, cols);
         int rows = BigLayout.rows(placed);
         android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
-        int cell = Math.min((dm.widthPixels - dp(20)) / BigLayout.COLS, (dm.heightPixels - dp(120)) / 5);
+        int cell = land
+                ? Math.min((dm.widthPixels - dp(20)) / cols, (dm.heightPixels - dp(76)) / 3)
+                : Math.min((dm.widthPixels - dp(20)) / cols, (dm.heightPixels - dp(120)) / 5);
         cell = Math.max(cell, dp(60));
         FrameLayout grid = new FrameLayout(this);
         for (BigLayout.Placed p : placed) {
@@ -203,7 +251,7 @@ public class BigPictureActivity extends Activity {
         sv.setOverScrollMode(View.OVER_SCROLL_NEVER);
         LinearLayout holder = new LinearLayout(this);
         holder.setGravity(Gravity.CENTER_HORIZONTAL);
-        holder.addView(grid, new LinearLayout.LayoutParams(BigLayout.COLS * cell, Math.max(rows, 1) * cell));
+        holder.addView(grid, new LinearLayout.LayoutParams(cols * cell, Math.max(rows, 1) * cell));
         sv.addView(holder, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT));
         root.addView(sv, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -223,7 +271,7 @@ public class BigPictureActivity extends Activity {
         } else if ("spectrum".equals(id)) {
             return spectrumPart(w);
         } else if ("transport".equals(id)) {
-            return transportPart(w);
+            return transportPart(w, h, cell);
         } else if ("volume".equals(id)) {
             return volumePart();
         } else if ("pitch".equals(id)) {
@@ -601,7 +649,8 @@ public class BigPictureActivity extends Activity {
 
     // ------------------------------------------------------------------ controles
 
-    private Part transportPart(int w) {
+    /** Controles: los botones crecen con el módulo (el de play el que más). */
+    private Part transportPart(int w, int h, int cell) {
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER);
@@ -643,14 +692,20 @@ public class BigPictureActivity extends Activity {
             }
         });
         boolean wide = w >= 4;
+        // alto disponible del módulo (menos el relleno) y anchura de cada hueco
+        int room = Math.max(dp(48), h * cell - dp(16));
+        int slot = (w * cell - dp(12)) / (wide ? 5 : 3);
+        int big = Math.max(dp(64), Math.min(room, (int) (slot * 1.25f)));
+        int mid = Math.max(dp(56), Math.min(room, (int) (slot * 0.95f)));
+        int small = Math.max(dp(48), Math.min(room, (int) (slot * 0.7f)));
         if (wide) {
-            row.addView(shuffle, new LinearLayout.LayoutParams(0, dp(48), 1f));
+            row.addView(shuffle, new LinearLayout.LayoutParams(0, small, 1f));
         }
-        row.addView(prev, new LinearLayout.LayoutParams(0, dp(48), 1f));
-        row.addView(play, new LinearLayout.LayoutParams(0, dp(56), 1.2f));
-        row.addView(next, new LinearLayout.LayoutParams(0, dp(48), 1f));
+        row.addView(prev, new LinearLayout.LayoutParams(0, mid, 1f));
+        row.addView(play, new LinearLayout.LayoutParams(0, big, 1.25f));
+        row.addView(next, new LinearLayout.LayoutParams(0, mid, 1f));
         if (wide) {
-            row.addView(repeat, new LinearLayout.LayoutParams(0, dp(48), 1f));
+            row.addView(repeat, new LinearLayout.LayoutParams(0, small, 1f));
         }
         Part part = new Part() {
             @Override

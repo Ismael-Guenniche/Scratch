@@ -126,6 +126,29 @@ public final class CheckLists {
                 }
             }
             ok(!overlap, "big: sin solapes");
+            {
+                // en horizontal: los mismos módulos, sin solapes, dentro de 8 columnas y más bajo que en vertical
+                java.util.List<BigLayout.Placed> wp = BigLayout.packWide(d, BigLayout.COLS_WIDE);
+                boolean[][] wo = new boolean[40][BigLayout.COLS_WIDE];
+                boolean wOver = false;
+                boolean wIn = true;
+                for (BigLayout.Placed x : wp) {
+                    if (x.col < 0 || x.col + x.w > BigLayout.COLS_WIDE) {
+                        wIn = false;
+                        continue;
+                    }
+                    for (int yy = x.row; yy < x.row + x.h; yy++) {
+                        for (int xx = x.col; xx < x.col + x.w; xx++) {
+                            wOver |= wo[yy][xx];
+                            wo[yy][xx] = true;
+                        }
+                    }
+                }
+                ok(wp.size() == pl.size(), "big horizontal: están todos los módulos (" + wp.size() + ")");
+                ok(!wOver && wIn, "big horizontal: sin solapes y dentro de 8 columnas");
+                ok(BigLayout.rows(wp) < BigLayout.rows(pl), "big horizontal: ocupa menos filas ("
+                        + BigLayout.rows(wp) + " frente a " + BigLayout.rows(pl) + ")");
+            }
             ok(inside, "big: dentro de las columnas");
             ok(pl.get(0).item.id.equals("info") && pl.get(0).row == 0 && pl.get(0).col == 0, "big: el primero arriba a la izquierda");
             ok(pl.get(1).item.id.equals("cover") && pl.get(1).row == 1 && pl.get(1).col == 0, "big: portada bajo la info");

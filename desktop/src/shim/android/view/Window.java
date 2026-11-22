@@ -158,6 +158,12 @@ public class Window {
     public void setBackgroundBlurRadius(int r) {
     }
 
+    private final WindowInsetsController insets = new WindowInsetsController();
+
+    public WindowInsetsController getInsetsController() {
+        return insets;
+    }
+
     public void setStatusBarColor(int c) {
     }
 

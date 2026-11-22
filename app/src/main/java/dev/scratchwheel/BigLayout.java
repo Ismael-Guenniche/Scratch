@@ -22,7 +22,7 @@ public final class BigLayout {
         {{2, 2}, {3, 3}, {4, 4}},
         {{4, 1}, {4, 2}, {2, 1}},
         {{4, 1}, {2, 1}, {2, 2}, {4, 2}},
-        {{4, 1}, {2, 1}},
+        {{4, 1}, {2, 1}, {4, 2}},
         {{2, 1}, {4, 1}},
         {{2, 1}, {4, 1}},
         {{4, 1}, {4, 2}},
@@ -216,6 +216,32 @@ public final class BigLayout {
             }
         }
         return out;
+    }
+
+    /** Columnas de la rejilla en horizontal (el doble que en vertical). */
+    public static final int COLS_WIDE = 8;
+
+    /**
+     * Rejilla ancha para el móvil en horizontal: los módulos activos, en el orden en que se ven en vertical
+     * (de arriba abajo y de izquierda a derecha) y con el mismo tamaño, se recolocan en {@code cols} columnas.
+     * No cambia la configuración guardada.
+     */
+    public static List<Placed> packWide(List<Item> items, int cols) {
+        List<Placed> tall = pack(items, COLS);
+        java.util.Collections.sort(tall, new java.util.Comparator<Placed>() {
+            @Override
+            public int compare(Placed a, Placed b) {
+                return a.row != b.row ? a.row - b.row : a.col - b.col;
+            }
+        });
+        ArrayList<Item> flow = new ArrayList<Item>();
+        for (Placed p : tall) {
+            Item c = new Item(p.item.id, p.item.size, true);
+            c.cw = p.w;
+            c.ch = p.h;
+            flow.add(c);
+        }
+        return pack(flow, cols);
     }
 
     /** Fija la posición actual de todos los módulos activos (el editor trabaja siempre con posiciones). */
