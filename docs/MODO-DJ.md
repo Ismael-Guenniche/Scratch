@@ -49,7 +49,7 @@ El EQ divide en tres bandas (corte a 250 Hz y 2,5 kHz). El filtro es un biquad d
 - **Modo disco** (apagado por defecto): el aro y los puntos de la rueda y el vúmetro cambian de color y pulsan con el volumen.
 
 ## Barra de scroll
-El panel DJ es largo: en modo DJ la página entera se desplaza (la rueda mantiene su tamaño) y aparece una **barra lateral siempre visible** (con el acento). En modo estándar la pantalla es fija.
+El panel DJ es largo: en modo DJ la página entera se desplaza (la rueda mantiene su tamaño), sin barra lateral. En modo estándar la pantalla es fija.
 
 ## Tempo y pitch
 Solo existen en el modo DJ (en el modo estándar no hay control de velocidad y, al salir del modo DJ, vuelve a la original).

@@ -711,28 +711,11 @@ public class ScratchActivity extends Activity {
 
     private android.widget.ScrollView mainScroll;
 
-    /** En modo DJ la pantalla es larga: barra lateral siempre visible, gruesa y con el acento. */
+    /** Sin barra lateral de scroll en ningún modo (en el modo DJ la página se desplaza igual). */
     private void applyScrollBar() {
         android.widget.ScrollView sv = mainScroll;
-        if (sv == null) {
-            return;
-        }
-        sv.setVerticalScrollBarEnabled(djMode);
-        if (djMode) {
-            sv.setScrollbarFadingEnabled(false);
-            sv.setScrollBarStyle(View.SCROLLBARS_OUTSIDE_OVERLAY);
-            if (android.os.Build.VERSION.SDK_INT >= 29) {
-                android.graphics.drawable.GradientDrawable thumb = new android.graphics.drawable.GradientDrawable();
-                thumb.setColor(Lucent.withAlpha(th.accent, 0.9f));
-                thumb.setCornerRadius(dp(3));
-                thumb.setSize(dp(5), dp(48));
-                android.graphics.drawable.GradientDrawable track = new android.graphics.drawable.GradientDrawable();
-                track.setColor(Lucent.withAlpha(th.ink, 0.12f));
-                track.setCornerRadius(dp(3));
-                track.setSize(dp(5), dp(48));
-                sv.setVerticalScrollbarThumbDrawable(thumb);
-                sv.setVerticalScrollbarTrackDrawable(track);
-            }
+        if (sv != null) {
+            sv.setVerticalScrollBarEnabled(false);
         }
     }
 

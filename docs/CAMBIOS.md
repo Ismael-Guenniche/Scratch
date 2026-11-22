@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.71: Scratch: se quita la barra lateral de scroll de color del modo DJ (la página se sigue desplazando).
 - 0.70: Todo junto en `main`: la versión de Windows (antes en la rama feat/windows-escritorio) y lo de la rama android-auto que nunca había llegado: Android Auto con Artistas y Álbumes, búsqueda y voz, cola, salto en la barra y aleatorio/repetir, y la vista previa sin coche (Ajustes → ANDROID AUTO → ABRIR).
 - 0.69: Modo DJ: el fader PITCH pasa a llamarse TEMPO y cambia solo la velocidad (el tono se mantiene); nuevo fader PITCH que cambia el tono de verdad en semitonos (−12..+12) sin cambiar la velocidad. El control de pitch del modo estándar desaparece (al salir del modo DJ la velocidad vuelve a la original). Se elimina el sampler (bocina, sirena, láser y riser) y su ajuste.
 - 0.68: Scratch (vertical): con el modo DJ activado la página entera se desplaza y la rueda mantiene su tamaño; en modo estándar la pantalla sigue fija, sin scroll.
