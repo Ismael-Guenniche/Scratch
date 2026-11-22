@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.68: Scratch (vertical): con el modo DJ activado la página entera se desplaza y la rueda mantiene su tamaño; en modo estándar la pantalla sigue fija, sin scroll.
 - 0.67: Cola: «añadir a la cola» y «reproducir a continuación» ya no fallan con «La cola está llena» (pasaba al reproducir una lista de más de 500 canciones): si la cola está al máximo (1000) se descarta la última canción para hacer sitio.
 - 0.66: Audio T16: la app mide sola la latencia de salida y la rueda, el tiempo, los pulsos y la letra se muestran donde suena el audio de verdad. Ajustes → SONIDO: Compensar la latencia (NO / AUTO) y ajuste fino de ±40 ms.
 - 0.65: Audio T9, T10 y T11: las canciones ya no se cargan enteras en la RAM de la app: el audio decodificado va a un archivo temporal proyectado en memoria y el motor lo lee por ventanas (mismo sonido muestra a muestra). Se acaba el límite de 7,5 min (ahora unas 2,5 h), la precarga de las siguientes pistas no gasta memoria y la forma de onda se guarda en caché por canción.

@@ -198,6 +198,8 @@ public class ScratchActivity extends Activity {
     }
 
     private View buildUi() {
+        mainScroll = null;
+        pageScroll = null;
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         Lucent.insets(root, dp(14), dp(8), dp(14), dp(10));
@@ -381,6 +383,8 @@ public class ScratchActivity extends Activity {
             wlp.bottomMargin = 0;
         }
         leftCol.addView(wheelCard, wlp);
+        this.wheelCard = wheelCard;
+        this.wheelLp = wlp;
 
         LinearLayout controls = card();
         controls.setPadding(dp(10), dp(10), dp(10), dp(12));
@@ -422,12 +426,66 @@ public class ScratchActivity extends Activity {
         rightCol.addView(controls);
         rightCol.addView(buildOptions());
         rightCol.addView(buildDj());
-        refreshMode();
         if (land) {
+            refreshMode();
             return root;
         }
-        // Sin scroll: en modo DJ la rueda se encoge para que todo quepa en pantalla.
-        return root;
+        // En vertical: la página entera va dentro de un ScrollView que solo se mueve en modo DJ.
+        // En modo estándar queda fija (la rueda llena el hueco libre, como antes).
+        PageScroll ps = new PageScroll(this);
+        ps.setFillViewport(true);
+        ps.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        ps.setVerticalScrollBarEnabled(false);
+        ps.addView(root, new android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.WRAP_CONTENT));
+        pageScroll = ps;
+        mainScroll = ps;
+        refreshMode();
+        return ps;
+    }
+
+    /** ScrollView de la pantalla en vertical: con {@code enabled} a false no se desplaza ni roba toques. */
+    static final class PageScroll extends android.widget.ScrollView {
+        boolean enabled;
+
+        PageScroll(android.content.Context c) {
+            super(c);
+        }
+
+        @Override
+        public boolean onInterceptTouchEvent(MotionEvent e) {
+            return enabled && super.onInterceptTouchEvent(e);
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent e) {
+            return enabled && super.onTouchEvent(e);
+        }
+    }
+
+    private PageScroll pageScroll;
+    private LinearLayout wheelCard;
+    private LinearLayout.LayoutParams wheelLp;
+
+    /** Vertical: en modo DJ la rueda tiene alto fijo y la página se desplaza; en estándar, todo fijo. */
+    private void applyPageScroll() {
+        PageScroll ps = pageScroll;
+        if (ps == null || wheelCard == null || wheelLp == null) {
+            return;
+        }
+        ps.enabled = djMode;
+        if (djMode) {
+            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+            int side = Math.min(dm.widthPixels - dp(28), (int) (dm.heightPixels * 0.55f));
+            wheelLp.height = Math.max(dp(120), side);
+            wheelLp.weight = 0f;
+        } else {
+            wheelLp.height = 0;
+            wheelLp.weight = 1f;
+            ps.scrollTo(0, 0);
+        }
+        wheelCard.setLayoutParams(wheelLp);
     }
 
     /** Opción pequeña: icono de puntos con su etiqueta debajo. */
@@ -676,6 +734,7 @@ public class ScratchActivity extends Activity {
     }
 
     private void refreshMode() {
+        applyPageScroll();
         applyScrollBar();
         lockBtn.set(locked ? DotIcons.LOCK : DotIcons.DISC, locked ? th.ink : th.accent);
         lockLabel.setText(locked ? Tr.t("BLOQUEADA") : "SCRATCH");
