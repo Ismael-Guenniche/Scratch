@@ -1,0 +1,86 @@
+# Compila Scratch para Windows: prueba de humo, carpeta portable (.zip) e instalador (.exe con Java dentro).
+# Los resultados quedan como artefactos de cada ejecución; con una etiqueta vX.Y se adjuntan a la Release.
+name: Windows
+
+on:
+  push:
+    branches: [main, 'feat/windows**']
+    tags: ['v*']
+    paths:
+      - 'desktop/**'
+      - 'app/src/main/**'
+      - 'app/build.gradle'
+      - '.github/workflows/windows.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Compilar el .jar
+        shell: bash
+        run: desktop/build.sh
+
+      - name: Prueba de humo (abre la ventana y guarda una captura)
+        shell: bash
+        run: |
+          java -jar desktop/build/Scratch.jar --selftest desktop/build/captura.png
+          ls -la desktop/build/captura.png
+
+      - name: Empaquetar (jlink + jpackage)
+        shell: pwsh
+        run: desktop/packaging/empaquetar.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Scratch-Windows
+          path: |
+            desktop/build/dist/*.exe
+            desktop/build/dist/*.zip
+            desktop/build/captura.png
+          if-no-files-found: error
+
+      # Descarga directa de la última compilación, sin entrar en Actions.
+      - name: Publicar como prelanzamiento «windows-beta»
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: windows-beta
+          name: Scratch para Windows (beta, última compilación)
+          prerelease: true
+          body: |
+            Compilación automática de la rama `${{ github.ref_name }}` (commit ${{ github.sha }}).
+            - `Scratch-*.exe`: instalador (acceso directo en el escritorio y en el menú Inicio).
+            - `Scratch-*-windows-portable.zip`: sin instalar, descomprimir y abrir `Scratch.exe`.
+            Instrucciones y atajos: docs/WINDOWS.md
+          files: |
+            desktop/build/dist/*.exe
+            desktop/build/dist/*.zip
+
+      # La captura de la prueba de humo queda en la rama ci/capturas para poder verla sin descargar nada.
+      - name: Guardar la captura
+        shell: bash
+        run: |
+          mkdir cap && cp desktop/build/captura.png desktop/build/captura.png.txt cap/ && cd cap
+          git init -q && git checkout -q -b ci/capturas
+          git config user.name "github-actions" && git config user.email "actions@users.noreply.github.com"
+          git add . && git commit -q -m "Captura de la prueba de humo en Windows (${GITHUB_SHA::7})"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci/capturas
+
+      - name: Adjuntar a la Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            desktop/build/dist/*.exe
+            desktop/build/dist/*.zip
