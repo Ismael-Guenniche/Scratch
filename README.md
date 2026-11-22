@@ -4,7 +4,7 @@ Reproductor de música **local** para Android (MP3, WAV y los formatos que decod
 
 Sin cuentas, sin streaming, sin anuncios. Tu música, tu carpeta, tu rueda.
 
-> **Versión actual: 0.67 (beta).** La lógica del motor de audio se prueba con tests sin Android (`tools/Check.java`); la interfaz se ha ido probando en un Nothing Phone (4a).
+> **Versión actual: 0.69 (beta).** La lógica del motor de audio se prueba con tests sin Android (`tools/Check.java`); la interfaz se ha ido probando en un Nothing Phone (4a).
 
 ## Lo esencial
 
@@ -15,7 +15,7 @@ Sin cuentas, sin streaming, sin anuncios. Tu música, tu carpeta, tu rueda.
 | **Listas propias e importación** | Crea listas, importa listas de Spotify (CSV de Exportify, API propia o sesión web) y empareja con tus archivos; ve y copia las canciones que faltan. |
 | **Estadísticas y Wrapped** | Tiempo escuchado, rankings de canciones/artistas/álbumes, horas del día y un resumen tipo *Wrapped* a pantalla completa. |
 | **Android Auto** | Aparece como fuente de audio con explorador y controles. |
-| **Modo DJ (extra)** | Gimmicks de mesa: filtro, EQ de 3 bandas, eco, pitch, hot cues, bucles y roll, slip, efectos, sampler, vúmetro y modo disco. Todo se puede apagar en Ajustes. |
+| **Modo DJ (extra)** | Gimmicks de mesa: filtro, EQ de 3 bandas, eco, tempo (sin cambiar el tono) y pitch de verdad (semitonos), hot cues, bucles y roll, slip, efectos, vúmetro y modo disco. Todo se puede apagar en Ajustes. |
 | **Personalización** | Tema claro/oscuro/sistema, 8 colores de acento, colores del fondo de pantalla, 3 tipografías, estilo Lucent, rejilla de puntos, 8 iconos de app. |
 | **Giro automático** | La pantalla del reproductor sigue la rotación del sistema (vertical y horizontal). |
 

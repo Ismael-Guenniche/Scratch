@@ -6,7 +6,6 @@
 4=0.9857  # Scratch + keylock
 5=1.9805  # Reproducción + EQ 5 bandas
 6=3.3978  # Reproducción + modo DJ completo
-7=2.9704  # Reproducción + sampler (bocina)
-8=1.6837  # Reproducción + sonido de vinilo
-9=1.2169  # Reproducción (pista en disco)
-10=3.2333  # Scratch (pista en disco)
+7=1.6837  # Reproducción + sonido de vinilo
+8=1.2169  # Reproducción (pista en disco)
+9=3.2333  # Scratch (pista en disco)

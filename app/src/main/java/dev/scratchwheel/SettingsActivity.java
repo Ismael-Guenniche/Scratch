@@ -344,15 +344,6 @@ public class SettingsActivity extends Activity {
                     }
                 }));
         c.addView(dots());
-        c.addView(switchRow("Sampler",
-                Tr.t("Pads con sonidos sintetizados: bocina, sirena, láser y riser."),
-                prefs.getBoolean("dj_sampler", true), true, new Toggle() {
-                    @Override
-                    public void on(boolean v) {
-                        prefs.edit().putBoolean("dj_sampler", v).apply();
-                    }
-                }));
-        c.addView(dots());
         c.addView(switchRow(Tr.t("Cut y reverse"),
                 Tr.t("Mantén CUT para silenciar a golpes y REVERSE para oír la canción hacia atrás."),
                 prefs.getBoolean("dj_cut", true), true, new Toggle() {
@@ -610,7 +601,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.67");
+        about.setText("SCRATCH 0.69");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);

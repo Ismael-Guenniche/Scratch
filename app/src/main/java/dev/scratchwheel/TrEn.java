@@ -208,9 +208,6 @@ final class TrEn {
         M.put("BUCLE", "LOOP");
         M.put("SALTO", "JUMP");
         M.put("EFECTOS", "EFFECTS");
-        M.put("BOCINA", "HORN");
-        M.put("SIRENA", "SIREN");
-        M.put("LÁSER", "LASER");
         M.put("MANTÉN PULSADO", "HOLD");
         M.put("SALIR", "EXIT");
         M.put("TEMPORIZADOR ·", "TIMER ·");
@@ -267,7 +264,6 @@ final class TrEn {
         M.put("Botones para saltar ±4 y ±16 segundos.", "Buttons to jump ±4 and ±16 seconds.");
         M.put("Efectos", "Effects");
         M.put("Flanger, phaser, trans (gate), echo out y vinyl stop.", "Flanger, phaser, trans (gate), echo out and vinyl stop.");
-        M.put("Pads con sonidos sintetizados: bocina, sirena, láser y riser.", "Pads with synthesized sounds: horn, siren, laser and riser.");
         M.put("Cut y reverse", "Cut and reverse");
         M.put("Mantén CUT para silenciar a golpes y REVERSE para oír la canción hacia atrás.", "Hold CUT to chop the sound and REVERSE to hear the song backwards.");
         M.put("Vúmetro de puntos", "Dot level meter");

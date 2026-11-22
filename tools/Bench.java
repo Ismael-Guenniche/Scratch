@@ -83,7 +83,6 @@ public class Bench {
         "Scratch + keylock",
         "Reproducción + EQ 5 bandas",
         "Reproducción + modo DJ completo",
-        "Reproducción + sampler (bocina)",
         "Reproducción + sonido de vinilo",
         "Reproducción (pista en disco)",
         "Scratch (pista en disco)",
@@ -160,14 +159,14 @@ public class Bench {
                         e.setPlaying(true);
                     }
                 };
-            case 9:
+            case 8:
                 return new Base() {
                     public void init(ScratchEngine e) {
                         e.load(diskTrack());
                         e.setPlaying(true);
                     }
                 };
-            case 10:
+            case 9:
                 return new Scratch() {
                     public void init(ScratchEngine e) {
                         e.load(diskTrack());
@@ -175,7 +174,7 @@ public class Bench {
                         e.touchDown();
                     }
                 };
-            case 8:
+            case 7:
                 return new Base() {
                     public void init(ScratchEngine e) {
                         e.setVinyl(1.0);
@@ -183,18 +182,7 @@ public class Bench {
                     }
                 };
             default:
-                return new Base() {
-                    public void init(ScratchEngine e) {
-                        e.setPlaying(true);
-                    }
-
-                    public void tick(ScratchEngine e, int block) {
-                        super.tick(e, block);
-                        if (block % 170 == 0) {
-                            e.triggerSample(0);
-                        }
-                    }
-                };
+                throw new IllegalArgumentException("escenario " + i);
         }
     }
 

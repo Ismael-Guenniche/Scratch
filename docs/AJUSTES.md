@@ -37,7 +37,6 @@ Interruptor por grupo de funciones; apagado = el grupo no aparece en el panel.
 | Slip | `dj_slip` | sí |
 | Saltos | `dj_jump` | sí |
 | Efectos (flanger, phaser, trans, echo out, vinyl stop) | `dj_fx` | sí |
-| Sampler | `dj_sampler` | sí |
 | Cut y reverse | `dj_cut` | sí |
 | Vúmetro de puntos | `dj_meter` | sí |
 | Modo disco | `dj_disco` | **no** |

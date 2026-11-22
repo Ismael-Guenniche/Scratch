@@ -105,9 +105,6 @@ final class TrJa {
         M.put("LOOP", "るーぷ");
         M.put("JUMP", "じゃんぷ");
         M.put("EFFECTS", "えふぇくと");
-        M.put("HORN", "ほーん");
-        M.put("SIREN", "さいれん");
-        M.put("LASER", "れーざー");
         M.put("HOLD", "おしつづける");
         M.put("EXIT", "でる");
         M.put("TIMER", "たいまー");

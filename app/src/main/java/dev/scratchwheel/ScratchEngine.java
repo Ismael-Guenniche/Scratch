@@ -87,6 +87,12 @@ public final class ScratchEngine {
     private double xPos;
     private PcmData xFor;
     private double pitch = 1.0;
+    /** Transposición real (modo DJ): factor de tono de los granos, 1,0 = original. */
+    private double shift = 1.0;
+    /** Modo DJ: el control de velocidad no cambia el tono (se reproduce en granos). */
+    private boolean tempoKeep;
+    /** El bloque anterior sonó en granos (para empezar limpio al pasar de un modo a otro). */
+    private boolean wasGrains;
     private boolean scratching;
     private boolean playing;
     private boolean ended;
@@ -140,14 +146,6 @@ public final class ScratchEngine {
     private boolean stopFlag;
     private double level;
     private double levelAcc;
-    private static final int NV = 4;
-    /** Notas de la bocina del sampler (constante: no se crea nada en el hilo de audio). */
-    private static final double[] HORN_HZ = {415.3, 523.3, 622.3};
-    private final int[] svType = new int[NV];
-    private final double[] svT = new double[NV];
-    private final double[] svPh = new double[NV];
-    private final boolean[] svOn = new boolean[NV];
-    private long rnd = 12345;
     private float[] flBufL = new float[0];
     private float[] flBufR = new float[0];
     private int flPos;
@@ -342,6 +340,8 @@ public final class ScratchEngine {
         echo = 0;
         spinDown = SPIN_DOWN;
         backspinLeft = 0;
+        shift = 1.0;
+        tempoKeep = false;
         resetGimmicks();
         refreshFx();
         publish();
@@ -568,33 +568,6 @@ public final class ScratchEngine {
         publish();
     }
 
-    /** Dispara un sonido del sampler: 0 bocina, 1 sirena, 2 láser, 3 riser. */
-    public synchronized void triggerSample(int id) {
-        for (int v = 0; v < NV; v++) {
-            if (!svOn[v]) {
-                svOn[v] = true;
-                svType[v] = id;
-                svT[v] = 0;
-                svPh[v] = 0;
-                publish();
-                return;
-            }
-        }
-        svType[0] = id;
-        svT[0] = 0;
-        svPh[0] = 0;
-        publish();
-    }
-
-    private boolean samplerActive() {
-        for (int v = 0; v < NV; v++) {
-            if (svOn[v]) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /** Nivel de salida 0..1 (para el vúmetro). */
     public double getLevel() {
         return pubLevel;
@@ -618,64 +591,6 @@ public final class ScratchEngine {
         stopFlag = false;
         slip = false;
         publish();
-    }
-
-    /** Un paso del sampler: suma las voces activas (frecuencia de salida). */
-    private double sampler() {
-        double sum = 0;
-        for (int v = 0; v < NV; v++) {
-            if (!svOn[v]) {
-                continue;
-            }
-            double t = svT[v];
-            double dur;
-            double s;
-            switch (svType[v]) {
-                case 0: { // bocina: acorde de ondas casi cuadradas
-                    dur = 0.9;
-                    double a = 0;
-                    for (double f : HORN_HZ) {
-                        double ph = (t * f * (1 + 0.004 * Math.sin(t * 40))) % 1.0;
-                        double saw = 2 * ph - 1;
-                        a += Math.max(-1, Math.min(1, 3 * saw));
-                    }
-                    s = a / 3 * Math.min(1, t / 0.02) * Math.min(1, (dur - t) / 0.15);
-                    break;
-                }
-                case 1: { // sirena
-                    dur = 1.8;
-                    double f = 760 + 360 * Math.sin(2 * Math.PI * 1.4 * t);
-                    svPh[v] += f / outRate;
-                    s = (Math.sin(2 * Math.PI * svPh[v]) + 0.3 * Math.sin(4 * Math.PI * svPh[v]))
-                            * 0.75 * Math.min(1, t / 0.03) * Math.min(1, (dur - t) / 0.3);
-                    break;
-                }
-                case 2: { // láser
-                    dur = 0.35;
-                    double f = 3200 * Math.exp(-t * 9) + 120;
-                    svPh[v] += f / outRate;
-                    double ph = svPh[v] % 1.0;
-                    s = (2 * ph - 1) * (1 - t / dur);
-                    break;
-                }
-                default: { // riser: tono y ruido que suben y se cortan
-                    dur = 2.0;
-                    double f = 150 * Math.exp(t * 1.8);
-                    svPh[v] += f / outRate;
-                    rnd = rnd * 6364136223846793005L + 1442695040888963407L;
-                    double noise = ((rnd >>> 40) / (double) (1L << 24)) * 2 - 1;
-                    double env = t / dur;
-                    s = (0.7 * Math.sin(2 * Math.PI * svPh[v]) + 0.3 * noise) * env;
-                    break;
-                }
-            }
-            sum += s;
-            svT[v] += 1.0 / outRate;
-            if (svT[v] >= dur) {
-                svOn[v] = false;
-            }
-        }
-        return sum * 9500;
     }
 
     /** Solo el interruptor general: no recalcula ningún filtro. */
@@ -942,7 +857,7 @@ public final class ScratchEngine {
         pubHave = have;
         pubPeaks = peaksNow;
         pubData = data;
-        pubIdle = !playing && !scratching && seek == 0 && rate == 0 && echoOutLeft == 0 && !samplerActive();
+        pubIdle = !playing && !scratching && seek == 0 && rate == 0 && echoOutLeft == 0;
     }
 
     // ----- seguimiento del dedo: velocidad estimada de los eventos táctiles, con suavizado adaptativo
@@ -1198,6 +1113,38 @@ public final class ScratchEngine {
     public synchronized void setPitch(double p) {
         pitch = Math.max(0.5, Math.min(1.5, p));
         publish();
+    }
+
+    /** Pitch de verdad: sube o baja el tono en semitonos (−12..+12) sin cambiar la velocidad. */
+    public synchronized void setPitchShift(double semitones) {
+        double st = Math.max(-12, Math.min(12, semitones));
+        shift = Math.abs(st) < 1e-6 ? 1.0 : Math.pow(2, st / 12.0);
+        publish();
+    }
+
+    public synchronized double getPitchShiftSemitones() {
+        return 12 * Math.log(shift) / Math.log(2);
+    }
+
+    /** Con esto activo, {@link #setPitch} cambia solo la velocidad y el tono se mantiene. */
+    public synchronized void setTempoKeepsTone(boolean on) {
+        tempoKeep = on;
+        publish();
+    }
+
+    /**
+     * Si el bloque se reproduce en granos: con el keylock siempre; en modo DJ, al reproducir normal con el tono
+     * transpuesto o con la velocidad cambiada manteniendo el tono. Al hacer scratch, avanzar rápido o frenar
+     * suena como un disco (sin granos).
+     */
+    private boolean useGrains() {
+        if (keyLock) {
+            return true;
+        }
+        if (scratching || seek != 0 || backspinLeft > 0) {
+            return false;
+        }
+        return shift != 1.0 || (tempoKeep && pitch != 1.0);
     }
 
     public synchronized void setPlaying(boolean p) {
@@ -1618,7 +1565,15 @@ public final class ScratchEngine {
                     velGain = 0;
                 }
                 double g = velGain * volume * trackGain * settleGain;
-                if (keyLock) {
+                boolean gr = useGrains();
+                if (gr && !wasGrains) {
+                    for (int k = 0; k < MAXG; k++) {
+                        gOn[k] = false;
+                    }
+                    hopCnt = 0;
+                }
+                wasGrains = gr;
+                if (gr) {
                     double[] s = grains(ratio, last);
                     vl = s[0] * g;
                     vr = s[1] * g;
@@ -1689,7 +1644,7 @@ public final class ScratchEngine {
             double vl = bl[i];
             double vr = br[i];
             // limitador suave solo cuando algo se suma a la pista; la reproducción normal queda intacta
-            boolean soft = fxActive || xActive || svOn[0] || svOn[1] || svOn[2] || svOn[3];
+            boolean soft = fxActive || xActive;
             // corte (transformer) y trans/gate: ganancia suavizada para que no haya clics
             double gt = cut ? 0 : 1;
             if (gateHz > 0) {
@@ -1720,17 +1675,12 @@ public final class ScratchEngine {
             }
             vl *= cutGain;
             vr *= cutGain;
-            if (samplerActiveFlag()) {
-                double sm = sampler();
-                vl += sm;
-                vr += sm;
-            }
             double pk = Math.max(Math.abs(vl), Math.abs(vr));
             if (pk > levelAcc) {
                 levelAcc = pk;
             }
             if (soft) {
-                // Con efectos, sampler o fundido la suma puede pasarse del máximo: en vez de recortar en seco
+                // Con efectos o fundido la suma puede pasarse del máximo: en vez de recortar en seco
                 // (muy áspero) se redondea la cresta. Por debajo del umbral no toca nada.
                 if (vl > SOFT_KNEE || vl < -SOFT_KNEE) {
                     vl = softClip(vl);
@@ -1758,10 +1708,6 @@ public final class ScratchEngine {
         level = Math.max(lv, level * 0.8);
         levelAcc = 0;
         publish();
-    }
-
-    private boolean samplerActiveFlag() {
-        return svOn[0] || svOn[1] || svOn[2] || svOn[3];
     }
 
     private final double[] gOut = new double[2];
@@ -1839,7 +1785,7 @@ public final class ScratchEngine {
                 }
             }
             if (slot >= 0) {
-                double half = len * ratio / 2.0;
+                double half = len * ratio * shift / 2.0;
                 double start = pos - lastDir * half;
                 int pv = lastGrain;
                 if (pv >= 0 && gOn[pv] && gDir[pv] == lastDir) {
@@ -1874,7 +1820,7 @@ public final class ScratchEngine {
             i1 -= base;
             l += w * (data[2 * i0] + (data[2 * i1] - data[2 * i0]) * f);
             r += w * (data[2 * i0 + 1] + (data[2 * i1 + 1] - data[2 * i0 + 1]) * f);
-            gPos[k] += gDir[k] * ratio;
+            gPos[k] += gDir[k] * ratio * shift;
             if (++gAge[k] >= len) {
                 gOn[k] = false;
             }

@@ -1465,11 +1465,6 @@ final class Player {
         engine.touchUp();
     }
 
-    void sample(int id) {
-        engine.triggerSample(id);
-        ensureAudio();
-    }
-
     void vinylStop(double secs) {
         if (engine.isPlaying()) {
             engine.armVinylStop(secs);

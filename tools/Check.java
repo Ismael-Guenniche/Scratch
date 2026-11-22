@@ -581,6 +581,53 @@ public class Check {
             }
             ok(hz[0] > 600 && hz[0] < 720, "sin keylock a 1.5x el tono sube (" + hz[0] + " Hz)");
             ok(hz[1] > 410 && hz[1] < 470, "con keylock a 1.5x el tono se mantiene (" + hz[1] + " Hz)");
+
+            // Modo DJ: PITCH cambia el tono sin cambiar la velocidad; TEMPO cambia la velocidad sin cambiar el tono.
+            // {semitonos, velocidad, tempo con tono fijo (1/0), Hz esperados, avance esperado}
+            double[][] cs = {{12, 1.0, 0, 880, 1.0}, {-5, 1.0, 0, 440 * Math.pow(2, -5 / 12.0), 1.0},
+                    {0, 1.2, 1, 440, 1.2}, {3, 0.9, 1, 440 * Math.pow(2, 3 / 12.0), 0.9}};
+            for (double[] c : cs) {
+                ScratchEngine se = new ScratchEngine();
+                se.setOutputRate(44100);
+                se.load(sp);
+                se.setTempoKeepsTone(c[2] == 1);
+                se.setPitch(c[1]);
+                se.setPitchShift(c[0]);
+                se.setPlaying(true);
+                short[] b = new short[512];
+                for (int i = 0; i < 60; i++) {
+                    se.render(b, 256);
+                }
+                double t0 = se.getPositionSeconds();
+                int cross = 0;
+                int frames = 0;
+                short prev = 0;
+                for (int i = 0; i < 300; i++) {
+                    se.render(b, 256);
+                    for (int j = 0; j < 256; j++) {
+                        short v = b[2 * j];
+                        if (prev < 0 && v >= 0) {
+                            cross++;
+                        }
+                        prev = v;
+                    }
+                    frames += 256;
+                }
+                double got = cross / (frames / 44100.0);
+                double adv = (se.getPositionSeconds() - t0) / (frames / 44100.0);
+                String n = "pitch " + (int) c[0] + " st, tempo " + c[1];
+                ok(Math.abs(got - c[3]) < c[3] * 0.05, n + ": tono " + Math.round(got) + " Hz (esperado " + Math.round(c[3]) + ")");
+                ok(Math.abs(adv - c[4]) < 0.03, n + ": avanza a " + String.format(java.util.Locale.US, "%.3f", adv) + "x");
+            }
+            {
+                // al hacer scratch con el pitch movido suena como un disco (sin granos) y resetFx lo devuelve a neutro
+                ScratchEngine se = new ScratchEngine();
+                se.setOutputRate(44100);
+                se.load(sp);
+                se.setPitchShift(7);
+                se.resetFx();
+                ok(Math.abs(se.getPitchShiftSemitones()) < 1e-9, "resetFx deja el pitch real a 0");
+            }
         }
 
         // ---- Inercia: soltar la rueda lanzada con la música parada
@@ -783,29 +830,6 @@ public class Check {
             }
             ok(endE > 2000, "echo out: el sonido vuelve (" + endE + ")");
 
-            // sampler suena aunque no haya pista reproduciendo y mantiene el motor activo
-            ScratchEngine sm = new ScratchEngine();
-            sm.setOutputRate(44100);
-            sm.load(p);
-            for (int id = 0; id < 4; id++) {
-                sm.triggerSample(id);
-                double pk = 0;
-                for (int i = 0; i < 120; i++) {
-                    sm.render(b, 256);
-                    for (int k = 0; k < 512; k++) {
-                        pk = Math.max(pk, Math.abs(b[k]));
-                    }
-                }
-                ok(pk > 1500, "sampler " + id + " suena (" + pk + ")");
-                ok(sm.getLevel() >= 0, "nivel ok");
-            }
-            sm.triggerSample(0);
-            ok(!sm.isIdle(), "sampler activo: el motor no se duerme");
-            for (int i = 0; i < 400; i++) {
-                sm.render(b, 256);
-            }
-            ok(sm.isIdle(), "sampler terminado: el motor puede dormir");
-
             // vinyl stop dura lo pedido
             ScratchEngine vs = new ScratchEngine();
             vs.setOutputRate(44100);
@@ -999,7 +1023,6 @@ public class Check {
                     }
                     if (k == 400) {
                         x.setKeyLock(true);
-                        x.triggerSample(0);
                     }
                     x.render(outs[m], 256);
                     for (int dq = 0; dq < 512; dq++) {
@@ -1484,7 +1507,7 @@ public class Check {
             ok(le.isIdle() || !le.isScratching(), "sin cerrojo: girar sin tocar no hace nada");
         }
         {
-            // El hilo de audio no debe crear objetos: ni con keylock, ni con efectos, ni con el sampler.
+            // El hilo de audio no debe crear objetos: ni con keylock, ni con efectos.
             com.sun.management.ThreadMXBean mx = (com.sun.management.ThreadMXBean)
                     java.lang.management.ManagementFactory.getThreadMXBean();
             ScratchEngine ae = new ScratchEngine();
@@ -1503,9 +1526,6 @@ public class Check {
             long id = Thread.currentThread().getId();
             long a0 = mx.getThreadAllocatedBytes(id);
             for (int k = 0; k < 300; k++) {
-                if (k % 100 == 0) {
-                    ae.triggerSample(k / 100);
-                }
                 ae.render(ab, 256);
             }
             long perBlock = (mx.getThreadAllocatedBytes(id) - a0) / 300;

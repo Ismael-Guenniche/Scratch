@@ -12,7 +12,8 @@ Seis barras verticales con **escala numerada a la izquierda** y **valor en vivo 
 | FILTRO | paso bajo ↔ OFF ↔ paso alto | LP · OFF · HP, lectura en % |
 | GRAVES / MEDIOS / AGUDOS | −∞ … +4 dB (ganancia 0–1,6) | +4 · 0 · −6 · −12 · −∞, lectura en dB |
 | ECO | 0–100 % | 100 · 50 · 0 |
-| PITCH | −20 % … +20 % | +20 · +10 · 0 · −10 · −20 |
+| TEMPO | −20 % … +20 % (solo velocidad, el tono se mantiene) | +20 · +10 · 0 · −10 · −20 |
+| PITCH | −12 … +12 semitonos (solo tono, la velocidad no cambia) | +12 · +6 · 0 · −6 · −12 |
 
 El EQ divide en tres bandas (corte a 250 Hz y 2,5 kHz). El filtro es un biquad de 2.º orden con resonancia; el eco es un delay de 0,36 s con realimentación.
 
@@ -39,9 +40,6 @@ El EQ divide en tres bandas (corte a 250 Hz y 2,5 kHz). El filtro es un biquad d
 - **TRANS xHZ:** puerta rítmica; toque activa/desactiva, *pulsación larga* cambia 2 → 4 → 8 → 16 Hz.
 - **ECHO OUT:** la música se va en ecos durante ~2,4 s y vuelve a los 3 s.
 
-## Sampler
-Cuatro sonidos **sintetizados al vuelo** (no son archivos): BOCINA (acorde de ondas casi cuadradas), SIRENA, LÁSER (barrido descendente) y RISER (tono + ruido ascendente). Se mezclan sobre la música, incluso con la pista parada.
-
 ## Mantener pulsado
 - **CUT:** silencia mientras lo mantienes (transformer); la ganancia se suaviza 2 ms para evitar clics.
 - **REVERSE:** la pista suena hacia atrás mientras lo mantienes; al soltar vuelve (con SLIP, a donde estaría).
@@ -51,7 +49,13 @@ Cuatro sonidos **sintetizados al vuelo** (no son archivos): BOCINA (acorde de on
 - **Modo disco** (apagado por defecto): el aro y los puntos de la rueda y el vúmetro cambian de color y pulsan con el volumen.
 
 ## Barra de scroll
-El panel DJ es largo: en modo DJ aparece una **barra lateral siempre visible** (con el acento) para desplazarte por la pantalla.
+El panel DJ es largo: en modo DJ la página entera se desplaza (la rueda mantiene su tamaño) y aparece una **barra lateral siempre visible** (con el acento). En modo estándar la pantalla es fija.
+
+## Tempo y pitch
+Solo existen en el modo DJ (en el modo estándar no hay control de velocidad y, al salir del modo DJ, vuelve a la original).
+- **TEMPO:** cambia la velocidad sin cambiar el tono (la reproducción pasa a granos WSOLA).
+- **PITCH:** cambia el tono en semitonos sin cambiar la velocidad (los granos se leen más rápido o más lento).
+- Al hacer scratch, avanzar rápido o frenar suena como un disco normal; al soltar vuelve el tempo/pitch.
 
 ## Rotación
 En horizontal, la rueda ocupa la columna izquierda y los controles (incluido el panel DJ) van en una columna con scroll a la derecha.

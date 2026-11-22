@@ -41,7 +41,8 @@ El motor distingue el **plato** (lo que mueve el motor) del **disco** (lo que se
 - **Frenado:** baja de forma lineal hasta parar (0,7 s por defecto), con caída de tono como un plato real.
 - **Inercia:** si sueltas la rueda lanzada con la música parada, sigue girando con fricción exponencial (τ = 0,6 / 1,5 / 3 s según Alta/Media/Baja) más un rozamiento seco para que pare del todo.
 - **Avance/retroceso rápido:** 1,5× con audio; velocidad ajustable.
-- **Pitch:** velocidad de reproducción 0,5×–1,5× (el panel limita a ±20 %).
+- **Tempo:** velocidad de reproducción 0,5×–1,5× (el panel DJ limita a ±20 %). En modo DJ el tono se mantiene: se reproduce en granos (`setTempoKeepsTone`).
+- **Pitch real:** `setPitchShift(semitonos)`, −12..+12. Los granos (Hann 50 ms, WSOLA) se leen a `2^(st/12)` × la velocidad normal y se recolocan siguiendo la posición, así que cambia el tono y no la velocidad. Al hacer scratch, avanzar rápido o con el backspin se usa la lectura normal (sinc).
 
 ## Sonido de vinilo (opcional)
 Ajustes → RUEDA → «Sonido de vinilo» (apagado por defecto). Añade la excentricidad del disco (el tono oscila ±0,12 % una vez por vuelta, a 33⅓ rpm), un flutter de ±0,03 % a 7,3 Hz, un siseo de surco muy bajo y chasquidos sueltos. Los osciladores van por rotación (sin senos por muestra) y el ruido sigue la velocidad del disco: al frenar baja y con el disco parado no suena.
@@ -50,23 +51,20 @@ Ajustes → RUEDA → «Sonido de vinilo» (apagado por defecto). Añade la exce
 Síntesis **granular (OLA)** con ventana Hann de 50 ms (precalculada en una tabla al fijar la frecuencia de salida) y solape del 50 %, hasta 4 granos simultáneos. Cada grano suena a velocidad normal (hacia delante o atrás según la rueda), así el tono no cambia aunque la posición avance más rápido o más lento. Desde la 0.60 es **WSOLA**: cada grano nuevo no empieza en un punto fijo, sino donde su onda mejor continúa la del grano anterior (correlación normalizada en ±6 ms), así los granos se suman en fase y desaparece el sonido «rugoso» y desafinado del OLA simple.
 
 ## Efectos (modo DJ)
-Cadena por muestra: EQ de 3 bandas (biquads LP 250 Hz / HP 2,5 kHz) → filtro barrido → eco / echo-out → flanger → phaser → corte/puerta → sampler → medidor de nivel.
+Cadena por muestra: EQ de 3 bandas (biquads LP 250 Hz / HP 2,5 kHz) → filtro barrido → eco / echo-out → flanger → phaser → corte/puerta → medidor de nivel.
 - Todos los biquads son RBJ de 2.º orden.
 - Con todo en neutro no se procesa nada (`fxActive`).
 - Cada orden recalcula solo sus coeficientes (`refreshGeq`, `refreshSweep`); el hilo de audio no crea objetos (hay un test que lo comprueba).
 - El corte/puerta usa una rampa de duración fija (2 ms) con forma de S y derivadas continuas: flancos rápidos para el transformer y sin clics.
 
 ## Limitador suave
-Cuando hay efectos, sampler o fundido cruzado activos, la suma puede pasarse del máximo de 16 bits. En vez de recortar en seco, por encima de −2,7 dB la cresta se redondea con una curva `tanh`. Por debajo de ese umbral, y siempre en la reproducción normal, la señal no se toca.
+Cuando hay efectos o fundido cruzado activos, la suma puede pasarse del máximo de 16 bits. En vez de recortar en seco, por encima de −2,7 dB la cresta se redondea con una curva `tanh`. Por debajo de ese umbral, y siempre en la reproducción normal, la señal no se toca.
 
 ## Gimmicks de transporte
 - **Hot cues, saltos:** simples reposicionamientos.
 - **Bucle:** si `pos ≥ loopEnd` salta a `loopStart + exceso` (y simétrico hacia atrás).
 - **Slip:** posición «sombra» (`slipPos`) que avanza a velocidad normal mientras dura scratch, bucle, roll o reverse; al terminar, `pos = slipPos`.
 - **Vinyl stop:** una duración de frenado armada que solo se usa en la siguiente pausa.
-
-## Sampler
-Cuatro voces polifónicas sintetizadas en `sampler()`: bocina (3 sierras recortadas con vibrato), sirena (seno con barrido LFO), láser (sierra con frecuencia exponencial descendente) y riser (seno exponencial ascendente + ruido). Amplitud base ≈ 9500 sobre 32767.
 
 ## Nivel
 `getLevel()` devuelve el pico del último bloque con caída suave; lo lee la interfaz para el vúmetro y el modo disco.
@@ -75,4 +73,4 @@ Cuatro voces polifónicas sintetizadas en `sampler()`: bocina (3 sierras recorta
 `tools/Bench.java` mide en la JVM el coste de `render()` por bloque, las asignaciones del hilo de audio, el tiempo que la interfaz retiene el cerrojo y la contención, y calcula una huella (CRC) del audio de cada escenario para detectar cambios de sonido. Los resultados y la latencia/memoria teóricas están en [BENCHMARKS.md](BENCHMARKS.md). Línea base (v0.51): `render()` usa menos del 1 % del plazo de 5,33 ms incluso con todo el modo DJ; los cuellos reales son el búfer del `AudioTrack`, la τ fija del scratch, el cerrojo compartido con la interfaz, la basura del sampler y la pista entera en RAM.
 
 ## Tests
-`tools/Check.java` cubre: WAV ida y vuelta, reproducción y arranque, scratch adelante/atrás, tono con y sin keylock, inercia, EQ/filtro/eco/backspin, hot cues, saltos, bucle, roll+slip, reverse, cut, gate, flanger/phaser/echo-out, sampler, vinyl stop, estadísticas, velocidad de avance y determinismo (mismas órdenes, mismo audio muestra a muestra).
+`tools/Check.java` cubre: WAV ida y vuelta, reproducción y arranque, scratch adelante/atrás, tono con y sin keylock, inercia, EQ/filtro/eco/backspin, hot cues, saltos, bucle, roll+slip, reverse, cut, gate, flanger/phaser/echo-out, vinyl stop, pitch real y tempo con tono fijo, estadísticas, velocidad de avance y determinismo (mismas órdenes, mismo audio muestra a muestra).

@@ -577,6 +577,9 @@ public class ScratchActivity extends Activity {
             }
         });
         djMode = Lucent.prefs(this).getBoolean("djmode", false);
+        if (!djMode && Math.abs(Player.I.pitch() - 1.0) > 1e-6) {
+            Player.I.setPitch(1.0);
+        }
         modeBtn = icon(DotIcons.DISC, th.ink);
         modeLabel = tag(Tr.t("ESTÁNDAR"));
         LinearLayout modeChip = chip(modeBtn, modeLabel);
@@ -747,7 +750,8 @@ public class ScratchActivity extends Activity {
         }
         if (volRow != null) {
             volRow.setVisibility(djMode ? View.GONE : View.VISIBLE);
-            pitchRow.setVisibility(djMode ? View.GONE : View.VISIBLE);
+            // El pitch ya no está en el modo estándar: velocidad y tono son faders del modo DJ.
+            pitchRow.setVisibility(View.GONE);
         }
     }
 
@@ -756,6 +760,9 @@ public class ScratchActivity extends Activity {
         Lucent.prefs(this).edit().putBoolean("djmode", on).apply();
         if (!on) {
             Player.I.engine.resetFx();
+            // fuera del modo DJ no hay control de velocidad: se vuelve a la original
+            Player.I.setPitch(1.0);
+            lastPitchSeen = -1;
             faderVals.clear();
             wheel.setDisco(false);
         }
@@ -815,7 +822,7 @@ public class ScratchActivity extends Activity {
         return (db > 0.05 ? "+" : "") + String.format(java.util.Locale.US, "%.1f", db);
     }
 
-    /** Panel DJ: faders numerados, vúmetro, cues, bucles, efectos, sampler. Cada grupo se puede apagar en Ajustes. */
+    /** Panel DJ: faders numerados, vúmetro, cues, bucles y efectos. Cada grupo se puede apagar en Ajustes. */
     private LinearLayout buildDjCard() {
         final LinearLayout card = card();
         card.setPadding(dp(8), dp(8), dp(8), dp(8));
@@ -902,15 +909,11 @@ public class ScratchActivity extends Activity {
                 return Math.round(v * 100) + "%";
             }
         });
-        FaderView pitch = fader(faders, "PITCH", 0.5, new FaderView.Listener() {
+        // TEMPO: solo la velocidad (el tono se mantiene). PITCH: solo el tono, en semitonos.
+        en.setTempoKeepsTone(true);
+        FaderView pitch = fader(faders, "TEMPO", 0.5, new FaderView.Listener() {
             @Override
             public void onValue(double v) {
-                if (pitchLocked()) {
-                    if (pitchFader != null) {
-                        pitchFader.setValue((Player.I.pitch() - 0.8) / 0.4);
-                    }
-                    return;
-                }
                 double pc = v == 0.5 ? 1.0 : 0.8 + v * 0.4;
                 Player.I.setPitch(pc);
                 if (pitchLabel != null) {
@@ -930,6 +933,20 @@ public class ScratchActivity extends Activity {
         });
         pitch.setValue((Player.I.pitch() - 0.8) / 0.4);
         pitchFader = pitch;
+        FaderView tone = fader(faders, "PITCH", 0.5, new FaderView.Listener() {
+            @Override
+            public void onValue(double v) {
+                en.setPitchShift(semis(v));
+            }
+        });
+        tone.setTicks(new double[] {1, 0.75, 0.5, 0.25, 0}, new String[] {"+12", "+6", "0", "-6", "-12"});
+        tone.setReadout(new FaderView.Readout() {
+            @Override
+            public String text(double v) {
+                int st = semis(v);
+                return (st > 0 ? "+" : "") + st + " ST";
+            }
+        });
         card.addView(faders);
 
         // --- frenado / backspin / vinyl stop
@@ -1190,24 +1207,6 @@ public class ScratchActivity extends Activity {
             card.addView(fr);
         }
 
-        if (opt("dj_sampler", true)) {
-            card.addView(sectionTag("SAMPLER"));
-            LinearLayout sr = padRow();
-            String[] sn = {Tr.t("BOCINA"), Tr.t("SIRENA"), Tr.t("LÁSER"), "RISER"};
-            for (int k = 0; k < 4; k++) {
-                final int id = k;
-                TextView sp = pad(sn[k], true);
-                sp.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        Player.I.sample(id);
-                    }
-                });
-                sr.addView(sp, padLp());
-            }
-            card.addView(sr);
-        }
-
         if (opt("dj_cut", true)) {
             card.addView(sectionTag(Tr.t("MANTÉN PULSADO")));
             LinearLayout xr = padRow();
@@ -1343,6 +1342,11 @@ public class ScratchActivity extends Activity {
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.rightMargin = dp(8);
         t.setLayoutParams(lp);
+    }
+
+    /** Posición del fader PITCH (0..1, centro 0,5) a semitonos enteros, −12..+12. */
+    private static int semis(double v) {
+        return (int) Math.round((v - 0.5) * 24);
     }
 
     private FaderView fader(LinearLayout row, final String label, double neutral,
