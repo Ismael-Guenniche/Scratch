@@ -29,6 +29,9 @@ Primera pantalla (`HomeView`).
 - **Letras** (`LyricsReader`, `LyricsStore`, `LyricsActivity`): lee la letra de las etiquetas del archivo (MP3 USLT/SYLT, FLAC/Ogg LYRICS, M4A ©lyr) y formato LRC; menú ⋮ → LETRAS; buscar en lrclib.net o importar un .lrc (se guarda en la app, no toca el archivo); módulo LETRA en Big Picture.
 - **Grabación y M3U:** menú ⋮ del scratch → GRABAR SESIÓN / PARAR GRABACIÓN (WAV 16 bits en Música/Scratch); menú de cada lista → EXPORTAR COMO M3U (la importación de M3U ya existía en importar listas).
 - **Sonido:** Ajustes → SONIDO: nivelar volumen con ReplayGain (solo baja, nunca sube) y fundido cruzado de 0 a 10 s (potencia constante; con la precarga activada y sin saltar a mano).
+- **Android Auto (rama android-auto):** Artistas y Álbumes en el explorador, búsqueda por voz (`onPlayFromSearch`/`onSearch`), cola, salto de posición y botones de aleatorio/repetir. Ver [ANDROID-AUTO.md](ANDROID-AUTO.md).
+- Vista previa de Android Auto: prueba la biblioteca, la búsqueda y los controles sin coche
+- Vista previa de Android Auto: búsqueda local
 - **Editor de Big Picture** (`BigEditorActivity`): rejilla de 4 columnas con posición y tamaño libres por módulo (arrastrar, ancho/alto, añadir, quitar); se abre desde Ajustes → BIG PICTURE o desde el menú ⋮ de Big Picture. **Vista previa de la rueda** abajo en Ajustes → RUEDA: gira y se toca con el aspecto elegido.
 - Botones rápidos de cola y letras en la pantalla del scratch
 - Botón de cola en la cabecera de la pantalla principal

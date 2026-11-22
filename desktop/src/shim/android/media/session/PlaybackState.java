@@ -20,6 +20,7 @@ public final class PlaybackState {
     public static final long ACTION_PLAY_PAUSE = 512;
     public static final long ACTION_PLAY_FROM_MEDIA_ID = 1024;
     public static final long ACTION_PLAY_FROM_SEARCH = 2048;
+    public static final long ACTION_SKIP_TO_QUEUE_ITEM = 4096;
     public static final long PLAYBACK_POSITION_UNKNOWN = -1;
     private int state;
     private long position;

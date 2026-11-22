@@ -13,6 +13,25 @@ public final class MediaSession {
     public static final class Token {
     }
 
+    /** Elemento de la cola (en el escritorio solo se guarda). */
+    public static final class QueueItem {
+        private final android.media.MediaDescription desc;
+        private final long id;
+
+        public QueueItem(android.media.MediaDescription desc, long id) {
+            this.desc = desc;
+            this.id = id;
+        }
+
+        public android.media.MediaDescription getDescription() {
+            return desc;
+        }
+
+        public long getQueueId() {
+            return id;
+        }
+    }
+
     public abstract static class Callback {
         public void onPlay() {
         }
@@ -45,6 +64,9 @@ public final class MediaSession {
         }
 
         public void onCustomAction(String action, Bundle extras) {
+        }
+
+        public void onSkipToQueueItem(long id) {
         }
 
         public boolean onMediaButtonEvent(Intent i) {

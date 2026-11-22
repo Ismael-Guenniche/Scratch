@@ -36,6 +36,8 @@ public final class R {
         public static final int ic_media_next = 3;
         public static final int ic_media_previous = 4;
         public static final int ic_menu_close_clear_cancel = 5;
+        public static final int ic_menu_rotate = 6;
+        public static final int ic_menu_revert = 7;
     }
 
     public static final class color {

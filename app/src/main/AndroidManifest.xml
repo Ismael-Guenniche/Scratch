@@ -156,6 +156,10 @@
             android:screenOrientation="portrait" />
 
         <activity
+            android:name=".CarPreviewActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".BigEditorActivity"
             android:exported="false"
             android:screenOrientation="portrait" />

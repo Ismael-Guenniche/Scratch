@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.70: Todo junto en `main`: la versión de Windows (antes en la rama feat/windows-escritorio) y lo de la rama android-auto que nunca había llegado: Android Auto con Artistas y Álbumes, búsqueda y voz, cola, salto en la barra y aleatorio/repetir, y la vista previa sin coche (Ajustes → ANDROID AUTO → ABRIR).
 - 0.69: Modo DJ: el fader PITCH pasa a llamarse TEMPO y cambia solo la velocidad (el tono se mantiene); nuevo fader PITCH que cambia el tono de verdad en semitonos (−12..+12) sin cambiar la velocidad. El control de pitch del modo estándar desaparece (al salir del modo DJ la velocidad vuelve a la original). Se elimina el sampler (bocina, sirena, láser y riser) y su ajuste.
 - 0.68: Scratch (vertical): con el modo DJ activado la página entera se desplaza y la rueda mantiene su tamaño; en modo estándar la pantalla sigue fija, sin scroll.
 - Windows: primera versión de escritorio (beta). El mismo código de la app sobre una capa de compatibilidad (`desktop/`): biblioteca y reproductor lado a lado, modo DJ a dos columnas, MP3/FLAC/WAV sin dependencias, atajos de teclado, clic derecho como pulsación larga e instalador `.exe` generado por GitHub Actions. Ver docs/WINDOWS.md.
@@ -26,6 +27,7 @@ Resumen a partir de los commits (más reciente primero).
 - 0.49: Pantalla principal: botón de cola siempre visible en la cabecera, junto a la búsqueda.
 - 0.48: Scratch: la flecha de bajar (sin sentido, ya se cierra con atrás) pasa a ser el botón de cola y se añade un botón de letras junto al menú. Ajustes: la rueda de prueba ya no aparece y desaparece ni queda pegada abajo; va dentro de la tarjeta RUEDA y se desplaza con ella.
 - 0.47: Big Picture totalmente personalizable: editor a pantalla completa (arrastrar módulos, ancho y alto libres, añadir, quitar, restablecer) y rueda de prueba interactiva en Ajustes → RUEDA para ver cada skin
+- 0.46: Android Auto mejorado (rama android-auto): navegar por Artistas y Álbumes, búsqueda y voz (pon X en Scratch), cola visible, salto en la barra de progreso y botones de aleatorio y repetir
 - 0.45: ReplayGain (Ajustes → SONIDO: baja las canciones fuertes según la etiqueta REPLAYGAIN_TRACK_GAIN) y fundido cruzado entre canciones (0–10 s, cuando suena sola y la siguiente está precargada)
 - 0.44: grabar la sesión a WAV (menú ⋮ del scratch → GRABAR SESIÓN; se guarda en Música/Scratch con todo lo que suena, rueda y efectos incluidos); exportar una lista como M3U (menú de la lista)
 - 0.43: letras: lee la letra incrustada (ID3 USLT/SYLT, FLAC, Ogg, M4A) y archivos .lrc; pantalla LETRAS en el menú ⋮ del scratch con línea activa resaltada y saltar tocando; importar .lrc; búsqueda opcional en lrclib.net; módulo LETRA en Big Picture

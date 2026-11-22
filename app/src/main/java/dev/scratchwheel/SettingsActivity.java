@@ -453,6 +453,16 @@ public class SettingsActivity extends Activity {
         c.addView(muted(Tr.t("La rueda, el tiempo y la letra se muestran donde suena el audio de verdad, no donde va el motor. Si la rueda va por delante del sonido, sube el ajuste fino (en milisegundos); si va por detrás, bájalo.")
                 + (AudioTune.measuredMs >= 0 ? " " + Tr.t("Latencia medida:") + " " + AudioTune.measuredMs + " ms." : "")));
 
+        // ANDROID AUTO
+        c = card(list, Tr.t("ANDROID AUTO"));
+        c.addView(muted(Tr.t("Vista previa de lo que verás en el coche: usa el mismo servicio que Android Auto (explorador, búsqueda, cola y controles), con filas y botones grandes. Sirve también como modo coche.")));
+        c.addView(actionRow(Tr.t("Probar sin coche"), Tr.t("ABRIR"), new Runnable() {
+            @Override
+            public void run() {
+                startActivity(new Intent(SettingsActivity.this, CarPreviewActivity.class));
+            }
+        }));
+
         // PRECARGA
         c = card(list, Tr.t("PRECARGA"));
         c.addView(body(Tr.t("Canciones listas en memoria")));
@@ -601,7 +611,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.69");
+        about.setText("SCRATCH 0.70");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);
