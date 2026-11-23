@@ -111,7 +111,7 @@ public class MainActivity extends Activity {
         @Override
         public void run() {
             tickBar();
-            ui.postDelayed(this, Player.I.isPlayingOrPending() ? 120 : 400);
+            ui.postDelayed(this, Player.I.isPlayingOrPending() ? 120 : 1000);
         }
     };
 

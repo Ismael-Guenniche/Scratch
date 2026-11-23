@@ -204,6 +204,15 @@ public class PlayerService extends MediaBrowserService {
         return START_NOT_STICKY;
     }
 
+    /** Color de la notificación: el acento que el usuario eligió (por defecto el naranja de Scratch). */
+    private int notifAccent() {
+        try {
+            return Lucent.load(this).accent;
+        } catch (RuntimeException e) {
+            return 0xFFFB471F;
+        }
+    }
+
     private Notification build(Player p) {
         boolean playing = p.isPlayingOrPending();
         Notification.Builder b = Build.VERSION.SDK_INT >= 26
@@ -211,7 +220,7 @@ public class PlayerService extends MediaBrowserService {
         String title = p.title().length() == 0 ? "Scratch" : p.title();
         String sub = p.index() >= 0 ? (p.index() + 1) + " / " + p.count() : "Scratch";
         b.setSmallIcon(getResources().getIdentifier("ic_stat", "drawable", getPackageName()))
-                .setColor(0xFFFB471F)
+                .setColor(notifAccent())
                 .setCategory(Notification.CATEGORY_TRANSPORT)
                 .setSubText("SCRATCH")
                 .setLargeIcon(p.cover())

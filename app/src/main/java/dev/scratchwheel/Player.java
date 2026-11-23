@@ -121,6 +121,10 @@ final class Player {
 
     private AudioTrack track;
     private boolean audioRunning;
+    /** T12: el hilo de audio está dormido con el AudioTrack en pausa (se despierta sin crear otro). */
+    private boolean audioPaused;
+    /** Tras tanto tiempo en pausa sin uso, el AudioTrack se libera del todo (ms). */
+    private static final long AUDIO_PARK_MS = 60_000;
 
     private int index = -1;
     private String title = "";
@@ -1534,6 +1538,11 @@ final class Player {
     private void ensureAudio() {
         synchronized (audioLock) {
             if (audioRunning) {
+                if (audioPaused) {
+                    // despierta el hilo de audio: reanuda el mismo AudioTrack (sin crearlo de nuevo)
+                    audioPaused = false;
+                    audioLock.notifyAll();
+                }
                 return;
             }
             int minBuf = AudioTrack.getMinBufferSize(outRate, AudioFormat.CHANNEL_OUT_STEREO,
@@ -1735,12 +1744,40 @@ final class Player {
                 }
                 if (engine.isIdle()) {
                     if (++idle > idleBlocks) {
+                        // T12: en reposo el AudioTrack se pausa (no se destruye) y el hilo duerme; al volver a
+                        // sonar se reanuda al instante. Solo si pasa un minuto sin uso se libera del todo.
+                        boolean release = false;
                         synchronized (audioLock) {
                             if (engine.isIdle()) {
-                                audioRunning = false;
-                                break;
+                                try {
+                                    t.pause();
+                                    t.flush();
+                                } catch (RuntimeException ignored) {
+                                }
+                                audioPaused = true;
+                                long until = android.os.SystemClock.uptimeMillis() + AUDIO_PARK_MS;
+                                while (audioPaused) {
+                                    long left = until - android.os.SystemClock.uptimeMillis();
+                                    if (left <= 0) {
+                                        break;
+                                    }
+                                    try {
+                                        audioLock.wait(left);
+                                    } catch (InterruptedException ie) {
+                                        break;
+                                    }
+                                }
+                                if (audioPaused) {
+                                    audioPaused = false;
+                                    audioRunning = false;
+                                    release = true;
+                                }
                             }
                         }
+                        if (release) {
+                            break;
+                        }
+                        t.play();
                         idle = 0;
                     }
                 } else {
@@ -1759,6 +1796,7 @@ final class Player {
                 if (track == t) {
                     track = null;
                     audioRunning = false;
+                    audioPaused = false;
                 }
             }
         }

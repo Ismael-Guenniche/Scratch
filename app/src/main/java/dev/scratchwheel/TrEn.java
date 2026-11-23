@@ -70,6 +70,14 @@ final class TrEn {
         M.put("SIN PREMIUM · SESIÓN WEB (EXPERIMENTAL)", "NO PREMIUM · WEB SESSION (EXPERIMENTAL)");
         M.put("DESDE ARCHIVO · CSV O M3U", "FROM FILE · CSV OR M3U");
         M.put("CANCELAR", "CANCEL");
+        M.put("Resultados:", "Results:");
+        M.put("En cola:", "Queued:");
+        M.put("siguiente:", "next:");
+        M.put("Lista exportada:", "Playlist exported:");
+        M.put("AUTO", "AUTO");
+        M.put("Grabación guardada en", "Recording saved to");
+        M.put("Carpeta enlazada:", "Linked folder:");
+        M.put("canciones nuevas en la lista", "new songs in the playlist");
         M.put("3) En User Management añade tu email.", "3) In User Management add your email.");
         M.put("4) Pega aquí el Client ID.", "4) Paste the Client ID here.");
         M.put("GUARDAR", "SAVE");

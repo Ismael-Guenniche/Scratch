@@ -70,9 +70,25 @@ public class ScratchActivity extends Activity {
     private final Player.Listener listener = new Player.Listener() {
         @Override
         public void onChanged() {
+            kickTicker();
             refresh();
         }
     };
+
+    /** Ticks seguidos en reposo (para bajar el ritmo del ticker). */
+    private int idleTicks;
+
+    /** Vuelve al ritmo rápido al momento (si el ticker estaba en reposo, no espera hasta 1 s). */
+    private void kickTicker() {
+        if (idleTicks > 0) {
+            idleTicks = 0;
+            ui.removeCallbacks(ticker);
+            if (wheel != null) {
+                wheel.removeCallbacks(ticker);
+            }
+            ui.post(ticker);
+        }
+    }
 
     private final Runnable ticker = new Runnable() {
         @Override
@@ -84,9 +100,11 @@ public class ScratchActivity extends Activity {
             boolean busy = Player.I.isPlayingOrPending() || e.isScratching()
                     || Math.abs(e.getRate()) > 0.001 || (djMode && e.getLevel() > 0.004);
             if (busy) {
+                idleTicks = 0;
                 wheel.postOnAnimation(this);
             } else {
-                ui.postDelayed(this, 200);
+                // T12: 5 fps los primeros 2 s de reposo y luego 1 fps
+                ui.postDelayed(this, ++idleTicks > 10 ? 1000 : 200);
             }
         }
     };
@@ -346,6 +364,7 @@ public class ScratchActivity extends Activity {
             @Override
             public void onTouchDown() {
                 Player.I.touchDown();
+                kickTicker();
             }
 
             @Override
