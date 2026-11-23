@@ -2,6 +2,7 @@
 
 Resumen a partir de los commits (más reciente primero).
 
+- 0.74: Scratch: vuelve la física del dedo de antes (0.51): el disco persigue el punto del dedo sin extrapolar su velocidad, así un toque pequeño ya no lo lanza. Se mantiene el reparto de cada movimiento en un periodo táctil (sin zumbido) y el agarre al tocar.
 - 0.73: Scratch: al soltar el disco lanzado hacia delante o hacia atrás con la música sonando, vuelve a la velocidad normal de forma suave y natural (exponencial, como antes de la 0.58) en vez de con una rampa recta que acababa de golpe.
 - 0.72: Big Picture gira con el móvil: en horizontal la rejilla pasa a 8 columnas con los mismos módulos, en el mismo orden y tamaño (el editor sigue en vertical). Pantalla completa (sin barra de notificaciones ni de navegación; se ven un momento deslizando desde el borde) y la pantalla no se apaga. Los botones de CONTROLES crecen con el módulo y hay un tamaño nuevo de 4×2 para hacerlos aún más grandes.
 - 0.71: Scratch: se quita la barra lateral de scroll de color del modo DJ (la página se sigue desplazando).

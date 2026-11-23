@@ -28,6 +28,9 @@ public final class ScratchEngine {
     private static final double SLIP_TAU = 0.12;
     /** El disco va enganchado al plato (sigue la rampa del motor tal cual); se suelta al tocarlo, avanzar, etc. */
     private boolean discLocked;
+    /** Punto del dedo suavizado (un periodo de pantalla) para que el paso entre eventos táctiles no zumbe. */
+    private double smoothTgt;
+    private boolean smoothInit;
     /** Agarre del dedo: durante este tiempo tras tocar, el disco frena con la inercia de un vinilo (s). */
     private static final double GRIP_TIME = 0.015;
     private static final double GRIP_TAU = 0.004;
@@ -1265,6 +1268,7 @@ public final class ScratchEngine {
         slipBegin(false);
         scratching = true;
         scratchTarget = pos;
+        smoothInit = false;
         if (grab) {
             // El disco no para en seco: frena en unos milisegundos y el punto de agarre es donde acabará parado.
             gripLeft = (int) (GRIP_TIME * outRate);
@@ -1399,36 +1403,25 @@ public final class ScratchEngine {
                 }
             }
             if (scratching) {
-                // El objetivo se extrapola con la velocidad del dedo entre evento y evento (como mucho algo más
-                // de un periodo), así la lectura no va a escalones ni con retraso; si no llegan eventos, se queda.
-                double ex = evAge < capT ? evAge : capT;
-                double tgt = scratchTarget + fingerVel * ex * sampleRate;
-                if (tgt < 0) {
-                    tgt = 0;
-                } else if (tgt > last) {
-                    tgt = last;
+                // Como hasta la 0.51 (sonaba más natural): el disco persigue el punto del dedo con τ = 20 ms y un
+                // suavizado fijo. Sin extrapolar la velocidad del dedo, un toque pequeño no lanza el disco.
+                if (!smoothInit) {
+                    smoothTgt = scratchTarget;
+                    smoothInit = true;
                 }
-                target = fingerVel + (tgt - pos) / (0.02 * sampleRate);
-                if (evAge > capT) {
-                    // Dedo parado: la velocidad estimada se apaga y se llega al punto exacto del dedo; si la
-                    // extrapolación se pasó un poco, se vuelve en silencio (con el dedo quieto no debe sonar nada).
-                    fingerVel -= fingerVel * velDecay;
-                    if (target * lastMoveDir < 0) {
-                        settling = true;
-                        if (target > 1.5) {
-                            target = 1.5;
-                        } else if (target < -1.5) {
-                            target = -1.5;
-                        }
-                    }
-                }
-                evAge += dtOut;
+                // Cada movimiento del dedo se reparte en un periodo táctil en vez de llegar de golpe: sin zumbido y
+                // sin extrapolar (nunca va por delante del dedo, así un toque pequeño no lanza el disco).
+                double ev = evPeriod > 0.004 ? evPeriod : 0.004;
+                smoothTgt += (scratchTarget - smoothTgt) * (dtOut / ev);
+                target = (smoothTgt - pos) / (0.02 * sampleRate);
                 if (target > MAX_RATE) {
                     target = MAX_RATE;
                 } else if (target < -MAX_RATE) {
                     target = -MAX_RATE;
                 }
+                evAge += dtOut;
                 if (gripLeft > 0) {
+                    // al tocar un disco que gira no para en seco (agarre de 15 ms)
                     gripLeft--;
                     alpha = gripAlpha;
                 } else {

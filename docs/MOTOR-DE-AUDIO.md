@@ -27,9 +27,9 @@ El hilo de audio mide cada ~0,5 s la latencia de salida real con las marcas de t
 
 ## Cómo suena el scratch
 Como un vinilo: el motor lee la pista a **velocidad variable** con un **filtro sinc enventanado** (Kaiser, 12 muestras por punto). A velocidad normal o menor usa coeficientes precalculados por fase; por encima de 1× el filtro se ensancha con la velocidad (corte más bajo, hasta 4×) para que los agudos que quedarían fuera de lo audible no se plieguen como aliasing. En silencio (velocidad 0) no se calcula nada. Mientras el dedo está en la rueda, la posición de lectura *persigue* a una posición objetivo que mueve el dedo:
-- el motor estima la **velocidad del dedo** a partir de los eventos táctiles y su hora (`rotateAt`), con un filtro adaptativo: suave con el dedo lento, casi directo con el dedo rápido o ante un cambio brusco;
-- entre evento y evento el objetivo se **extrapola** con esa velocidad, así la lectura no va a escalones (zumbido) ni con retraso; la distancia que quede se corrige con τ = 20 ms; todo limitado a ±12×;
-- si dejan de llegar eventos (dedo parado), la velocidad estimada se apaga y la lectura acaba exactamente en el punto del dedo; si se había pasado, vuelve en silencio;
+- cada movimiento del dedo se **reparte en un periodo táctil** (el ritmo al que la pantalla manda eventos, que el motor aprende) en vez de llegar de golpe, así la lectura no va a escalones (zumbido); la distancia que quede se corrige con τ = 20 ms; todo limitado a ±12×;
+- **no se extrapola** la velocidad del dedo: la lectura nunca va por delante del dedo, así un toque pequeño no lanza el disco (desde la 0.74; de la 0.56 a la 0.73 sí se extrapolaba y con toques cortos salía disparado);
+- al tocar un disco que gira, frena en unos milisegundos (agarre) en vez de pararse en seco;
 - por eso el **tono sube y baja** con la velocidad, suena **al revés** si giras hacia atrás y se **calla** si paras;
 - una vuelta completa = 1,8 s de audio (33⅓ rpm); cambia con la sensibilidad (3,6 / 1,8 / 0,9 s).
 
