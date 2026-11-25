@@ -220,6 +220,7 @@ public final class CheckLists {
         gainTests();
         bigEditTests();
         searchTests();
+        jsonListTests();
         System.out.println(fails == 0 ? "LISTAS OK" : fails + " FALLOS");
         System.exit(fails == 0 ? 0 : 1);
     }
@@ -525,5 +526,63 @@ public final class CheckLists {
         System.out.println("búsqueda en 5.000 canciones: " + String.format(java.util.Locale.ROOT, "%.1f", ms) + " ms");
         ok(ms < 40, "5.000 canciones en menos de 40 ms (" + ms + ")");
         ok(n > 0, "encuentra en la biblioteca grande");
+    }
+
+    private static void jsonListTests() {
+        java.util.List<PlaylistJson.Song> lib = new java.util.ArrayList<PlaylistJson.Song>();
+        lib.add(new PlaylistJson.Song("Como Camarón", "Estopa", "Estopa", 215000, "Estopa - Como Camarón.mp3", "Rumba"));
+        lib.add(new PlaylistJson.Song("Numb", "Linkin Park", "Meteora", 187000, "Linkin Park - Numb.mp3", "Rock"));
+        lib.add(new PlaylistJson.Song("", "", "", 0, "Estopa - La Raja de tu Falda.mp3", "Rumba"));
+        lib.add(new PlaylistJson.Song("Chop Suey!", "System of a Down", "Toxicity", 210000, "SOAD - Chop Suey.mp3", ""));
+        lib.add(new PlaylistJson.Song("Numb", "Linkin Park", "Meteora", 187000, "copia.mp3", "Otra"));
+        String js = PlaylistJson.exportLibrary(lib, "0.76", "2026-11-25");
+        java.util.List<PlaylistJson.Playlist> back = null;
+        try {
+            PlaylistJson.parse(js);
+            ok(false, "la biblioteca no se importa como lista");
+        } catch (IllegalArgumentException e) {
+            ok("library".equals(e.getMessage()), "aviso de que es la biblioteca");
+        }
+        ok(js.contains("\"title\": \"La Raja de tu Falda\"") && js.contains("\"artist\": \"Estopa\""),
+                "sin etiquetas, título y artista salen del nombre del archivo");
+        String id0 = PlaylistJson.id(lib.get(0));
+        ok(id0.length() == 12, "id de 12 letras");
+        ok(id0.equals(PlaylistJson.id(new PlaylistJson.Song("COMO CAMARON", "estopa", "", 215400, "x.mp3", "Otra"))),
+                "el id no depende de la ruta, mayúsculas ni acentos");
+        ok(js.contains(PlaylistJson.id(lib.get(1)) + "-2"), "id repetido lleva sufijo");
+        String reply = "Aquí tienes:\n```json\n{\"format\":\"scratch-playlist\",\"version\":1,\"name\":\"Solo Estopa\","
+                + "\"description\":\"Rumba \\\"catalana\\\" \\u00e9\",\"songs\":[{\"id\":\"" + id0 + "\"},"
+                + "{\"id\":\"zzzzzzzzzzzz\",\"artist\":\"estopa\",\"title\":\"la raja de tu falda\"},"
+                + "{\"id\":\"nope\",\"artist\":\"Estopa\",\"title\":\"Cacho a Cacho\"},"
+                + "{\"id\":\"" + id0 + "\"}]}\n```\n";
+        back = PlaylistJson.parse(reply);
+        ok(back.size() == 1 && back.get(0).name.equals("Solo Estopa"), "lee la lista pegada del chat");
+        ok(back.get(0).description.equals("Rumba \"catalana\" é"), "escapes: " + back.get(0).description);
+        PlaylistJson.Match m = PlaylistJson.match(back.get(0), lib);
+        ok(m.found.equals(Arrays.asList(0, 2)), "empareja por id y por artista+título, sin repetir: " + m.found);
+        ok(m.missing.equals(Arrays.asList("Estopa - Cacho a Cacho")), "lo que falta: " + m.missing);
+        java.util.List<PlaylistJson.Playlist> many = PlaylistJson.parse("{\"format\":\"scratch-playlist\",\"playlists\":["
+                + "{\"name\":\"A\",\"songs\":[\"" + PlaylistJson.id(lib.get(3)) + "\"]},{\"name\":\"B\",\"songs\":[]}]}");
+        ok(many.size() == 2 && PlaylistJson.match(many.get(0), lib).found.equals(Arrays.asList(3)), "varias listas e ids sueltos");
+        ok(PlaylistJson.match(many.get(0), lib).missing.isEmpty(), "nada falta");
+        String[] bad = {"", "{", "{\"a\":}", "[1,2", "\"abc", "{\"songs\":[{\"id\":\"\\u12\"}]}"};
+        for (String b : bad) {
+            try {
+                PlaylistJson.parse(b);
+                ok(false, "JSON roto aceptado: " + b);
+            } catch (IllegalArgumentException e) {
+                // bien
+            }
+        }
+        StringBuilder deep = new StringBuilder();
+        for (int i = 0; i < 1000; i++) {
+            deep.append('[');
+        }
+        try {
+            PlaylistJson.parse(deep.toString());
+            ok(false, "anidado infinito");
+        } catch (IllegalArgumentException e) {
+            // bien: sin desbordar la pila
+        }
     }
 }

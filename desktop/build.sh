@@ -17,7 +17,7 @@ SRC=()
 for f in "$APP"/*.java; do
   [ -f "desktop/src/app/dev/scratchwheel/$(basename "$f")" ] || SRC+=("$f")
 done
-SRC+=("app/src/$FLAVOR/java/dev/scratchwheel/TrJa.java")
+SRC+=("app/src/$FLAVOR/java/dev/scratchwheel/TrJa.java" "app/src/$FLAVOR/java/dev/scratchwheel/Flavor.java")
 while IFS= read -r f; do SRC+=("$f"); done < <(find desktop/src desktop/third_party -name '*.java' | sort)
 
 javac -nowarn -encoding UTF-8 --release 17 -d "$CLS" "${SRC[@]}" 2>&1 | grep -v -e JAVA_TOOL_OPTIONS -e '^Note:' || true

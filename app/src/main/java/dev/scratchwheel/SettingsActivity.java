@@ -509,6 +509,32 @@ public class SettingsActivity extends Activity {
                     }
                 }));
 
+        // LISTAS CON CLAUDE (solo el sabor personal)
+        if (Flavor.PERSONAL) {
+            c = card(list, Tr.t("LISTAS CON CLAUDE"));
+            c.addView(muted(Tr.t("Exporta tu biblioteca, mándasela a Claude con lo que quieras («solo Estopa», «canciones pesadas tipo Linkin Park»…) e importa el archivo que te devuelva: la lista se crea sola.")));
+            c.addView(actionRow(Tr.t("Exportar la biblioteca"), Tr.t("EXPORTAR"), new Runnable() {
+                @Override
+                public void run() {
+                    Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("application/json");
+                    i.putExtra(Intent.EXTRA_TITLE, "biblioteca-scratch.json");
+                    startActivityForResult(i, REQ_LIB_EXPORT);
+                }
+            }));
+            c.addView(actionRow(Tr.t("Importar una lista de Claude"), Tr.t("IMPORTAR"), new Runnable() {
+                @Override
+                public void run() {
+                    Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("*/*");
+                    i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                    startActivityForResult(i, REQ_LIST_IMPORT);
+                }
+            }));
+        }
+
         // ANDROID AUTO
         c = card(list, Tr.t("ANDROID AUTO"));
         c.addView(muted(Tr.t("Vista previa de lo que verás en el coche: usa el mismo servicio que Android Auto (explorador, búsqueda, cola y controles), con filas y botones grandes. Sirve también como modo coche.")));
@@ -1080,5 +1106,189 @@ public class SettingsActivity extends Activity {
         }
         hs.addView(row);
         return hs;
+    }
+
+    // ------------------------------------------------------- listas con Claude
+
+    private static final int REQ_LIB_EXPORT = 41;
+    private static final int REQ_LIST_IMPORT = 42;
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (res != RESULT_OK || data == null) {
+            return;
+        }
+        if (req == REQ_LIB_EXPORT && data.getData() != null) {
+            exportLibrary(data.getData());
+        } else if (req == REQ_LIST_IMPORT) {
+            java.util.ArrayList<android.net.Uri> us = new java.util.ArrayList<android.net.Uri>();
+            if (data.getClipData() != null) {
+                for (int k = 0; k < data.getClipData().getItemCount(); k++) {
+                    us.add(data.getClipData().getItemAt(k).getUri());
+                }
+            } else if (data.getData() != null) {
+                us.add(data.getData());
+            }
+            importLists(us);
+        }
+    }
+
+    private static java.util.List<PlaylistJson.Song> librarySongs() {
+        java.util.ArrayList<PlaylistJson.Song> l = new java.util.ArrayList<PlaylistJson.Song>();
+        for (Player.Track t : new java.util.ArrayList<Player.Track>(Player.I.tracks)) {
+            l.add(new PlaylistJson.Song(t.title, t.artist, t.album, t.durMs, t.name, t.folder()));
+        }
+        return l;
+    }
+
+    private void exportLibrary(final android.net.Uri dest) {
+        if (Player.I.count() == 0) {
+            android.widget.Toast.makeText(this, Tr.t("La biblioteca está vacía"), android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final android.content.Context app = getApplicationContext();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String msg;
+                try {
+                    java.util.List<PlaylistJson.Song> songs = librarySongs();
+                    String v = "?";
+                    try {
+                        v = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+                    } catch (Exception ignored) {
+                    }
+                    String date = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.ROOT)
+                            .format(new java.util.Date());
+                    java.io.OutputStream o = getContentResolver().openOutputStream(dest, "wt");
+                    o.write(PlaylistJson.exportLibrary(songs, v, date).getBytes("UTF-8"));
+                    o.close();
+                    msg = Tr.t("Biblioteca exportada: ") + songs.size() + Tr.t(" CANCIONES");
+                } catch (Exception e) {
+                    msg = Tr.t("No se pudo exportar la biblioteca");
+                }
+                final String m = msg;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        android.widget.Toast.makeText(app, m, android.widget.Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private String readText(android.net.Uri u) throws java.io.IOException {
+        java.io.InputStream in = getContentResolver().openInputStream(u);
+        if (in == null) {
+            throw new java.io.IOException("null");
+        }
+        try {
+            java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[16384];
+            int n;
+            while ((n = in.read(buf)) > 0) {
+                b.write(buf, 0, n);
+                if (b.size() > 8 * 1024 * 1024) {
+                    throw new java.io.IOException("big");
+                }
+            }
+            return new String(b.toByteArray(), "UTF-8");
+        } finally {
+            in.close();
+        }
+    }
+
+    private void importLists(final java.util.List<android.net.Uri> us) {
+        if (us.isEmpty()) {
+            return;
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final StringBuilder report = new StringBuilder();
+                java.util.List<PlaylistJson.Song> lib = librarySongs();
+                java.util.List<Player.Track> tr = new java.util.ArrayList<Player.Track>(Player.I.tracks);
+                int made = 0;
+                for (android.net.Uri u : us) {
+                    java.util.List<PlaylistJson.Playlist> lists;
+                    try {
+                        lists = PlaylistJson.parse(readText(u));
+                    } catch (IllegalArgumentException e) {
+                        report.append("library".equals(e.getMessage())
+                                ? Tr.t("Ese archivo es la biblioteca exportada, no una lista de Claude.")
+                                : Tr.t("El archivo no es un JSON válido.")).append("\n\n");
+                        continue;
+                    } catch (Exception e) {
+                        report.append(Tr.t("No se pudo leer el archivo.")).append("\n\n");
+                        continue;
+                    }
+                    for (PlaylistJson.Playlist pl : lists) {
+                        PlaylistJson.Match m = PlaylistJson.match(pl, lib);
+                        if (m.found.isEmpty()) {
+                            report.append("«").append(pl.name).append("»: ")
+                                    .append(Tr.t("ninguna canción encontrada")).append("\n\n");
+                            continue;
+                        }
+                        String name = uniqueName(pl.name);
+                        java.util.ArrayList<String> uris = new java.util.ArrayList<String>();
+                        for (int idx : m.found) {
+                            uris.add(tr.get(idx).uri.toString());
+                        }
+                        Playlists.I.create(name);
+                        Playlists.I.add(name, uris);
+                        made++;
+                        report.append("«").append(name).append("»: ").append(m.found.size())
+                                .append(Tr.t(" CANCIONES"));
+                        if (!m.missing.isEmpty()) {
+                            report.append(" · ").append(m.missing.size()).append(Tr.t(" no encontradas"));
+                            for (int k = 0; k < Math.min(5, m.missing.size()); k++) {
+                                report.append("\n– ").append(m.missing.get(k));
+                            }
+                            if (m.missing.size() > 5) {
+                                report.append("\n…");
+                            }
+                        }
+                        report.append("\n\n");
+                    }
+                }
+                final int fm = made;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (isFinishing()) {
+                            return;
+                        }
+                        new DotDialog(SettingsActivity.this, th)
+                                .title(fm > 0 ? Tr.t("LISTA CREADA") : Tr.t("NO SE CREÓ NINGUNA LISTA"))
+                                .message(report.toString().trim())
+                                .button("OK", Lucent.ACCENT, null).show();
+                    }
+                });
+            }
+        }).start();
+    }
+
+    /** Nombre libre para la lista: si ya existe, «Nombre (2)», «Nombre (3)»… (máx. 40 letras). */
+    private static String uniqueName(String base) {
+        String b = base.replace('\n', ' ').replace('\t', ' ').trim();
+        if (b.length() == 0) {
+            b = "Claude";
+        }
+        if (b.length() > 40) {
+            b = b.substring(0, 40).trim();
+        }
+        if (Playlists.I.find(b) == null) {
+            return b;
+        }
+        for (int n = 2; n < 1000; n++) {
+            String suf = " (" + n + ")";
+            String c = (b.length() + suf.length() > 40 ? b.substring(0, 40 - suf.length()).trim() : b) + suf;
+            if (Playlists.I.find(c) == null) {
+                return c;
+            }
+        }
+        return b;
     }
 }
