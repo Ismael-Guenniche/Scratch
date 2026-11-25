@@ -312,6 +312,15 @@ public class SettingsActivity extends Activity {
                         prefs.edit().putBoolean("wlock", v).apply();
                     }
                 }));
+        c.addView(dots());
+        c.addView(switchRow(Tr.t("Forma de onda como barra"),
+                Tr.t("En la pantalla del scratch, la barra de progreso muestra la forma de onda de la canción; tócala o arrástrala para moverte."),
+                prefs.getBoolean("seekwave", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("seekwave", v).apply();
+                    }
+                }));
 
         // MODO DJ
         c = card(list, Tr.t("MODO DJ"));

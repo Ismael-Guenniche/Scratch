@@ -224,6 +224,7 @@ public final class CheckLists {
         groupTests();
         smartListTests();
         backupTests();
+        keyTests();
         System.out.println(fails == 0 ? "LISTAS OK" : fails + " FALLOS");
         System.exit(fails == 0 ? 0 : 1);
     }
@@ -667,5 +668,39 @@ public final class CheckLists {
             ok(new String(java.nio.file.Files.readAllBytes(new File(files2, "favs.txt").toPath()), "UTF-8").equals("a\nb\n")
                     && !new File(root2.getParentFile(), "fuera.txt").exists(), "zip ajeno: nada cambia");
         }
+    }
+
+    /** Canción sintética: acordes de una tonalidad (con armónicos) durante 30 s. */
+    private static PcmData chords(int[][] prog, int sr) {
+        PcmData.Builder b = new PcmData.Builder();
+        int per = sr * 2;
+        for (int t = 0; t < sr * 30; t++) {
+            int[] ch = prog[(t / per) % prog.length];
+            double v = 0;
+            for (int note : ch) {
+                double f = 440 * Math.pow(2, (note - 69) / 12.0);
+                for (int h = 1; h <= 3; h++) {
+                    v += Math.sin(2 * Math.PI * f * h * t / sr) / (h * h);
+                }
+            }
+            short x = (short) (v * 2500);
+            b.append(x, x);
+        }
+        return b.build(sr);
+    }
+
+    private static void keyTests() {
+        ok(KeyDetect.camelot(0, 0).equals("8B") && KeyDetect.camelot(12 + 9, 0).equals("8A"), "Camelot: C=8B, Am=8A");
+        ok(KeyDetect.camelot(7, 0).equals("9B") && KeyDetect.camelot(12 + 4, 0).equals("9A"), "Camelot: G=9B, Em=9A");
+        ok(KeyDetect.camelot(0, 2).equals("10B") && KeyDetect.name(0, 2).equals("D"), "con PITCH +2: C → D = 10B");
+        // Do mayor: C - F - G - C
+        double[] c = KeyDetect.detect(chords(new int[][] {{60, 64, 67}, {65, 69, 72}, {67, 71, 74}, {60, 64, 67}}, 44100));
+        ok(c != null && (int) c[0] == 0, "Do mayor detectado: " + (c == null ? null : KeyDetect.name((int) c[0], 0)));
+        // La menor: Am - Dm - E - Am
+        double[] a = KeyDetect.detect(chords(new int[][] {{57, 60, 64}, {62, 65, 69}, {64, 68, 71}, {57, 60, 64}}, 44100));
+        ok(a != null && (int) a[0] == 12 + 9, "La menor detectado: " + (a == null ? null : KeyDetect.name((int) a[0], 0)));
+        // Sol mayor
+        double[] g = KeyDetect.detect(chords(new int[][] {{67, 71, 74}, {60, 64, 67}, {62, 66, 69}, {67, 71, 74}}, 48000));
+        ok(g != null && (int) g[0] == 7, "Sol mayor detectado: " + (g == null ? null : KeyDetect.name((int) g[0], 0)));
     }
 }

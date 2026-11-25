@@ -54,6 +54,8 @@ public class ScratchActivity extends Activity {
     private int lastVol = -1;
     private android.media.AudioManager audio;
     private SeekBar progress;
+    /** Forma de onda como barra de progreso (Ajustes → RUEDA); si está apagada se usa la barra normal. */
+    private WaveSeekView waveSeek;
     private boolean locked;
     private boolean coverOn;
     private String coverKey = "";
@@ -61,6 +63,8 @@ public class ScratchActivity extends Activity {
     private int lastSec = -1;
     private int lastDur = -1;
     private TextView bpmText;
+    /** Tonalidad en Camelot (8A, 9B…) junto al BPM. */
+    private TextView keyText;
     private TextView beatText;
     private TextView syncPad;
     private FaderView pitchFader;
@@ -347,6 +351,14 @@ public class ScratchActivity extends Activity {
                 LinearLayout.LayoutParams.MATCH_PARENT, dp(32));
         plp.topMargin = dp(6);
         info.addView(progress, plp);
+        waveSeek = new WaveSeekView(this, th);
+        LinearLayout.LayoutParams wsl = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dp(44));
+        wsl.topMargin = dp(6);
+        info.addView(waveSeek, wsl);
+        boolean waveOn = Lucent.prefs(this).getBoolean("seekwave", true);
+        waveSeek.setVisibility(waveOn ? View.VISIBLE : View.GONE);
+        progress.setVisibility(waveOn ? View.GONE : View.VISIBLE);
         android.widget.FrameLayout infoHost = new android.widget.FrameLayout(this);
         infoHost.addView(info, new android.widget.FrameLayout.LayoutParams(
                 android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
@@ -1014,6 +1026,7 @@ public class ScratchActivity extends Activity {
         card.addView(br);
 
         bpmText = null;
+        keyText = null;
         beatText = null;
         syncPad = null;
         if (opt("dj_bpm", true)) {
@@ -1025,6 +1038,15 @@ public class ScratchActivity extends Activity {
             beatText = text(BEATS[0], 13, th.accent, th.mono);
             beatText.setGravity(Gravity.CENTER);
             bpr.addView(beatText, padLp());
+            keyText = text("—", 15, th.ink, th.mono);
+            keyText.setGravity(Gravity.CENTER);
+            keyText.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Toast.makeText(ScratchActivity.this, Tr.t("Tonalidad en notación Camelot: mezclan bien el mismo número, ±1, o el mismo número con la otra letra."), Toast.LENGTH_LONG).show();
+                }
+            });
+            bpr.addView(keyText, padLp());
             card.addView(bpr);
             LinearLayout sr2 = padRow();
             syncPad = pad("SYNC", false);
@@ -1725,6 +1747,13 @@ public class ScratchActivity extends Activity {
                     pitchFader.setValue((pc - 0.8) / 0.4);
                 }
             }
+            if (keyText != null) {
+                String kl = Player.I.keyLabel();
+                String ks = kl.length() == 0 ? "—" : kl;
+                if (!ks.contentEquals(keyText.getText())) {
+                    keyText.setText(ks);
+                }
+            }
             if (bpmText != null) {
                 double bpm = Player.I.bpm();
                 String bt = bpm > 0 ? String.format(java.util.Locale.US, "%.1f BPM", bpm * pc) : "— BPM";
@@ -1749,7 +1778,9 @@ public class ScratchActivity extends Activity {
         double pos = e.getHeardSeconds();
         wheel.setAngle((float) (pos / Player.I.engine.getSecondsPerRev() * 2 * Math.PI * (Player.I.engine.isInverted() ? -1 : 1)));
         double total = e.getDurationSeconds();
-        if (!dragging && total > 0) {
+        if (waveSeek != null && waveSeek.getVisibility() == View.VISIBLE) {
+            waveSeek.update();
+        } else if (!dragging && total > 0) {
             progress.setProgress((int) Math.round(pos / total * 1000));
         }
         int sec = (int) pos;

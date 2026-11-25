@@ -203,6 +203,59 @@ final class Player {
         }
     }
 
+    /** Tonalidad de la pista actual (0..23, ver KeyDetect) o -1 si aún no se sabe. */
+    private int keyIdx = -1;
+
+    int keyIndex() {
+        return keyIdx;
+    }
+
+    /** «8A · Am», con el desplazamiento del fader PITCH aplicado; "" si aún no se sabe. */
+    String keyLabel() {
+        int k = keyIdx;
+        if (k < 0) {
+            return "";
+        }
+        int sh = (int) Math.round(engine.getPitchShiftSemitones());
+        return KeyDetect.camelot(k, sh) + " · " + KeyDetect.name(k, sh);
+    }
+
+    private void analyzeKey(final Uri uri, final PcmData pcm) {
+        keyIdx = -1;
+        if (uri == null || pcm == null) {
+            return;
+        }
+        final int gen = loadGen;
+        final SharedPreferences kp = app.getSharedPreferences("key", 0);
+        int cached = kp.getInt(uri.toString(), -1);
+        if (cached >= 0 && cached < 24) {
+            keyIdx = cached;
+            return;
+        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                double[] r = null;
+                try {
+                    r = KeyDetect.detect(pcm);
+                } catch (RuntimeException ignored) {
+                }
+                final double[] fr = r;
+                main.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (gen != loadGen || fr == null) {
+                            return;
+                        }
+                        keyIdx = (int) fr[0];
+                        kp.edit().putInt(uri.toString(), keyIdx).apply();
+                        changed();
+                    }
+                });
+            }
+        }, "key").start();
+    }
+
     private void analyzeBpm(final Uri uri, final PcmData pcm) {
         bpmReady = false;
         bpmRaw = 0;
@@ -730,6 +783,7 @@ final class Player {
         loadCoverAsync(++loadGen);
         applyReplayGain(t.uri);
         analyzeBpm(t.uri, pcm);
+        analyzeKey(t.uri, pcm);
         savePos();
         updateSession();
         syncService();
@@ -1019,6 +1073,7 @@ final class Player {
         engine.replaceData(pcm);
         truncated = pcm.truncated;
         analyzeBpm(currentUri, pcm);
+        analyzeKey(currentUri, pcm);
         changed();
         refillCache();
     }
@@ -1047,6 +1102,7 @@ final class Player {
             partialLive = true;
         } else {
             analyzeBpm(currentUri, pcm);
+            analyzeKey(currentUri, pcm);
             truncated = pcm.truncated;
         }
         loadCoverAsync(gen);
