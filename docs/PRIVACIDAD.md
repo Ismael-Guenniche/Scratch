@@ -12,13 +12,13 @@ Todo se guarda únicamente en tu dispositivo: la carpeta de música que eliges, 
 
 ## Permisos que usa
 
-Música: Scratch no pide acceso a todo tu almacenamiento. Tú eliges una carpeta con el selector de archivos del sistema y la app solo lee esa carpeta.
+Música: Scratch no pide acceso a todo tu almacenamiento. Tú eliges una carpeta con el selector de archivos del sistema y la app solo lee esa carpeta (y escribe en ella solo si guardas etiquetas en un archivo con el editor).
 
 Notificaciones: para mostrar los controles de reproducción en la barra y en la pantalla de bloqueo.
 
 Servicio en primer plano y mantener activo: para que la música siga sonando con la pantalla apagada.
 
-Internet: solo para la función opcional de Spotify y para abrir enlaces de búsqueda en tu navegador.
+Internet: solo para funciones opcionales que activas tú: Spotify, buscar letras en lrclib.net y enviar tus escuchas a ListenBrainz (título, artista, álbum y hora, con tu token), y para abrir enlaces de búsqueda en tu navegador.
 
 ## Spotify (opcional)
 

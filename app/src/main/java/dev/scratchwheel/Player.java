@@ -920,8 +920,55 @@ final class Player {
             @Override
             public void run() {
                 Meta.countPlay(app, uri);
+                scrobble(uri);
             }
         });
+    }
+
+    // --------------------------------------------------------------- scrobbling (ListenBrainz)
+
+    static File scrobbleQueue(Context c) {
+        return new File(c.getFilesDir(), "scrobble.txt");
+    }
+
+    /** Se llama en el hilo de E/S cuando una reproducción cuenta (30 s o media canción). */
+    private void scrobble(String uri) {
+        android.content.SharedPreferences sp = Lucent.prefs(app);
+        String token = sp.getString("lb_token", "");
+        if (!sp.getBoolean("lb_on", false) || token.length() == 0) {
+            return;
+        }
+        Track t = null;
+        for (Track x : tracks) {
+            if (x.uri.toString().equals(uri)) {
+                t = x;
+                break;
+            }
+        }
+        if (t == null) {
+            return;
+        }
+        String artist = Groups.artistOf(t.artist, t.name);
+        String title = t.title.length() > 0 ? t.title : t.name;
+        if (t.title.length() == 0 && t.artist.length() == 0) {
+            int dash = t.name.indexOf(" - ");
+            if (dash > 0) {
+                title = t.name.substring(dash + 3);
+            }
+        }
+        final File q = scrobbleQueue(app);
+        Scrobble.enqueue(q, new Scrobble.Listen(System.currentTimeMillis(), artist, title, t.album, t.durMs));
+        final String tk = token;
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Scrobble.flush(q, tk);
+                } catch (java.io.IOException ignored) {
+                    // sin conexión o el servidor no responde: se queda en la cola para la próxima
+                }
+            }
+        }, "scrobble").start();
     }
 
     // --------------------------------------------------------------- getters

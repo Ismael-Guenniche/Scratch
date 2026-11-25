@@ -615,6 +615,59 @@ public class SettingsActivity extends Activity {
             c.addView(gnote);
         }
 
+        // SCROBBLING
+        c = card(list, Tr.t("SCROBBLING"));
+        c.addView(muted(Tr.t("Envía lo que escuchas a ListenBrainz (gratis y abierto; puede importarse en Last.fm). Pega tu token de listenbrainz.org/settings. Solo se envía título, artista, álbum y la hora.")));
+        c.addView(switchRow(Tr.t("Enviar a ListenBrainz"), "", prefs.getBoolean("lb_on", false),
+                true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("lb_on", v).apply();
+                    }
+                }));
+        String tok = prefs.getString("lb_token", "");
+        c.addView(actionRow(tok.length() == 0 ? Tr.t("Sin token") : Tr.t("Token: ") + "••••" + tok.substring(Math.max(0, tok.length() - 4)),
+                Tr.t("CAMBIAR"), new Runnable() {
+                    @Override
+                    public void run() {
+                        final DotDialog dd = new DotDialog(SettingsActivity.this, th).title("LISTENBRAINZ");
+                        final android.widget.EditText in = dd.input(Tr.t("Token"));
+                        in.setText(prefs.getString("lb_token", ""));
+                        dd.button(Tr.t("CANCELAR"), Lucent.GLASS, null);
+                        dd.button(Tr.t("GUARDAR"), Lucent.ACCENT, new Runnable() {
+                            @Override
+                            public void run() {
+                                prefs.edit().putString("lb_token", in.getText().toString().trim()).apply();
+                                redo();
+                            }
+                        });
+                        dd.show();
+                    }
+                }));
+        c.addView(actionRow(Tr.t("Pendientes de enviar: ") + Scrobble.pending(Player.scrobbleQueue(this)),
+                Tr.t("ENVIAR"), new Runnable() {
+                    @Override
+                    public void run() {
+                        final String token = prefs.getString("lb_token", "");
+                        if (token.length() == 0) {
+                            toastLong(Tr.t("Primero pega tu token"));
+                            return;
+                        }
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    int n = Scrobble.flush(Player.scrobbleQueue(SettingsActivity.this), token);
+                                    toastLong(Tr.t("Enviadas: ") + n);
+                                } catch (java.io.IOException e) {
+                                    toastLong(String.valueOf(e.getMessage()).contains("401")
+                                            ? Tr.t("ListenBrainz no acepta ese token") : Tr.t("No se pudo conectar; se reintentará"));
+                                }
+                            }
+                        }).start();
+                    }
+                }));
+
         // ANDROID AUTO
         c = card(list, Tr.t("ANDROID AUTO"));
         c.addView(muted(Tr.t("Vista previa de lo que verás en el coche: usa el mismo servicio que Android Auto (explorador, búsqueda, cola y controles), con filas y botones grandes. Sirve también como modo coche.")));

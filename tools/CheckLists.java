@@ -227,6 +227,7 @@ public final class CheckLists {
         keyTests();
         automixTests();
         id3Tests();
+        scrobbleTests();
         System.out.println(fails == 0 ? "LISTAS OK" : fails + " FALLOS");
         System.exit(fails == 0 ? 0 : 1);
     }
@@ -777,5 +778,20 @@ public final class CheckLists {
         } catch (Id3Tags.Unsupported e) {
             // bien
         }
+    }
+
+    private static void scrobbleTests() throws Exception {
+        File q = File.createTempFile("scr", ".txt");
+        q.delete();
+        Scrobble.enqueue(q, new Scrobble.Listen(1700000000000L, "Estopa", "Como \"Camarón\"", "Estopa", 215000));
+        Scrobble.enqueue(q, new Scrobble.Listen(1700000300000L, "", "Sin artista", "", 0));
+        Scrobble.enqueue(q, new Scrobble.Listen(1700000600000L, "Ado", "うっせぇわ", "", 0));
+        ok(Scrobble.pending(q) == 2, "cola: las que no tienen artista no entran");
+        java.util.List<Scrobble.Listen> ls = new java.util.ArrayList<Scrobble.Listen>();
+        ls.add(new Scrobble.Listen(1700000000000L, "Estopa", "Como \"Camarón\"", "Estopa", 215000));
+        String js = Scrobble.json(ls);
+        ok(js.startsWith("{\"listen_type\":\"single\"") && js.contains("\"listened_at\":1700000000")
+                && js.contains("\"track_name\":\"Como \\\"Camarón\\\"\"") && js.contains("\"duration_ms\":215000"), "JSON de ListenBrainz: " + js);
+        ok(!PlaylistJson.parse("[" + js + "]").isEmpty(), "el JSON se puede leer");
     }
 }
