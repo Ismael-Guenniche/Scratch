@@ -51,6 +51,8 @@ final class Player {
         /** Etiquetas originales del archivo (sin los nombres editados); las usa la importación de listas. */
         String tagTitle = "";
         String tagArtist = "";
+        /** Palabras para la búsqueda inteligente (se rehacen al cambiar las etiquetas). */
+        private SmartSearch.Entry se;
 
         Track(Uri uri, String name) {
             this.uri = uri;
@@ -79,6 +81,16 @@ final class Player {
                 }
             }
             lower = (name + " " + title + " " + artist + " " + album).toLowerCase(java.util.Locale.ROOT);
+            se = null;
+        }
+
+        SmartSearch.Entry searchEntry() {
+            SmartSearch.Entry e = se;
+            if (e == null) {
+                e = new SmartSearch.Entry(title, artist, album, folder(), name);
+                se = e;
+            }
+            return e;
         }
 
         /** Nombre de la carpeta que contiene la pista ("" si no se puede saber). Hace de lista de reproducción. */
@@ -1363,24 +1375,40 @@ final class Player {
         return new ArrayList<String>(m.values());
     }
 
-    /** Búsqueda por voz o texto: todas las palabras deben estar en título, artista, álbum o nombre de archivo. */
-    List<Integer> search(String q) {
-        ArrayList<Integer> out = new ArrayList<Integer>();
-        String[] words = q == null ? new String[0] : q.toLowerCase(java.util.Locale.ROOT).trim().split("\\s+");
-        for (int i = 0; i < tracks.size(); i++) {
-            String h = tracks.get(i).lower;
-            boolean all = words.length > 0 && words[0].length() > 0;
-            for (String w : words) {
-                if (!h.contains(w)) {
-                    all = false;
-                    break;
-                }
-            }
-            if (all) {
-                out.add(i);
-            }
+    /** Opciones de Ajustes → BÚSQUEDA. */
+    static SmartSearch.Opts searchOpts(Context c) {
+        android.content.SharedPreferences sp = Lucent.prefs(c);
+        SmartSearch.Opts o = new SmartSearch.Opts();
+        o.tol = Math.max(0, Math.min(2, sp.getInt("s_tol", SmartSearch.TOL_NORMAL)));
+        o.fields = sp.getInt("s_fields", SmartSearch.F_ALL) & SmartSearch.F_ALL;
+        if (o.fields == 0) {
+            o.fields = SmartSearch.F_ALL;
         }
-        return out;
+        o.inside = sp.getBoolean("s_inside", true);
+        o.relevance = sp.getBoolean("s_rel", true);
+        return o;
+    }
+
+    final SmartSearch.Lookup searchLookup = new SmartSearch.Lookup() {
+        @Override
+        public SmartSearch.Entry get(int i) {
+            return tracks.get(i).searchEntry();
+        }
+    };
+
+    /** Búsqueda por voz o texto (Android Auto, vista previa del coche): la búsqueda inteligente, por relevancia. */
+    List<Integer> search(String q) {
+        SmartSearch.Opts o = searchOpts(app);
+        o.relevance = true;
+        SmartSearch.Query sq = SmartSearch.query(q, o);
+        if (sq == null) {
+            return new ArrayList<Integer>();
+        }
+        ArrayList<Integer> all = new ArrayList<Integer>(tracks.size());
+        for (int i = 0; i < tracks.size(); i++) {
+            all.add(i);
+        }
+        return SmartSearch.filter(all, sq, searchLookup);
     }
 
     /** Reproduce un id "carpeta|uri" elegido desde el coche; "siguiente" sigue en esa carpeta. */

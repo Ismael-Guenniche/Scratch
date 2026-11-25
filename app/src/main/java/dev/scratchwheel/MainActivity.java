@@ -94,6 +94,12 @@ public class MainActivity extends Activity {
     private int listVersion = -1;
     private DotIconView searchBtn;
     private boolean searchOpen;
+    private final Runnable searchLater = new Runnable() {
+        @Override
+        public void run() {
+            refilter();
+        }
+    };
     private String[] folderOf = new String[0];
     private int folderStamp = -1;
     private String chipKey = "";
@@ -485,7 +491,7 @@ public class MainActivity extends Activity {
         panel.addView(status);
 
         search = new EditText(this);
-        search.setHint(Tr.t("BUSCAR POR TÍTULO O CARPETA"));
+        search.setHint(Tr.t("BUSCAR CANCIÓN, ARTISTA, ÁLBUM O CARPETA"));
         search.setVisibility(View.GONE);
         search.setHintTextColor(th.dotOff);
         search.setTextColor(th.ink);
@@ -501,7 +507,9 @@ public class MainActivity extends Activity {
 
             @Override
             public void onTextChanged(CharSequence s, int st, int b, int c) {
-                refilter();
+                // espera un poco mientras se teclea para no buscar en cada letra
+                search.removeCallbacks(searchLater);
+                search.postDelayed(searchLater, s.length() == 0 ? 0 : 120);
             }
 
             @Override
@@ -983,7 +991,12 @@ public class MainActivity extends Activity {
             }
         }
         buildChips();
-        String q = search == null ? "" : search.getText().toString().trim().toLowerCase(Locale.ROOT);
+        String raw = search == null ? "" : search.getText().toString();
+        sq = SmartSearch.query(raw, Player.searchOpts(this));
+        if (scores.length < p.tracks.size()) {
+            scores = new int[p.tracks.size() + 64];
+        }
+        String q = sq == null ? "" : raw;
         shown.clear();
         if (tab == TAB_HOME) {
             // el inicio no usa la lista
@@ -1031,6 +1044,9 @@ public class MainActivity extends Activity {
                 }
             }
         }
+        if (sq != null && sq.o.relevance && shown.size() > 1) {
+            sortByScore();
+        }
         boolean none = p.count() == 0 && !p.isScanning();
         boolean isHome = tab == TAB_HOME;
         empty.setVisibility(none ? View.VISIBLE : View.GONE);
@@ -1058,12 +1074,35 @@ public class MainActivity extends Activity {
         adapter.notifyDataSetChanged();
     }
 
+    /** Búsqueda inteligente de esta pasada de refilter (null si no se busca nada) y puntos de cada canción. */
+    private SmartSearch.Query sq;
+    private int[] scores = new int[0];
+
     private boolean matches(int i, String q) {
-        if (q.length() == 0) {
+        if (sq == null) {
             return true;
         }
-        return Player.I.tracks.get(i).lower.contains(q)
-                || folderOf[i].toLowerCase(Locale.ROOT).contains(q);
+        int s = SmartSearch.score(Player.I.tracks.get(i).searchEntry(), sq);
+        scores[i] = s;
+        return s > 0;
+    }
+
+    /** Al buscar: lo que más se parece arriba; en los empates se queda el orden de la lista. */
+    private void sortByScore() {
+        final int[] sc = scores;
+        final java.util.HashMap<Integer, Integer> pos = new java.util.HashMap<Integer, Integer>();
+        for (int k = 0; k < shown.size(); k++) {
+            pos.put(shown.get(k), k);
+        }
+        java.util.Collections.sort(shown, new java.util.Comparator<Integer>() {
+            @Override
+            public int compare(Integer a, Integer b) {
+                if (sc[a] != sc[b]) {
+                    return sc[a] > sc[b] ? -1 : 1;
+                }
+                return pos.get(a) - pos.get(b);
+            }
+        });
     }
 
     /** Pestañas: CANCIONES, FAVORITAS y una por carpeta. Solo se reconstruyen si cambia algo. */

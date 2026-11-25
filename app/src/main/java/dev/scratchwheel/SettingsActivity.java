@@ -453,6 +453,62 @@ public class SettingsActivity extends Activity {
         c.addView(muted(Tr.t("La rueda, el tiempo y la letra se muestran donde suena el audio de verdad, no donde va el motor. Si la rueda va por delante del sonido, sube el ajuste fino (en milisegundos); si va por detrás, bájalo.")
                 + (AudioTune.measuredMs >= 0 ? " " + Tr.t("Latencia medida:") + " " + AudioTune.measuredMs + " ms." : "")));
 
+        // BÚSQUEDA
+        c = card(list, Tr.t("BÚSQUEDA"));
+        c.addView(body(Tr.t("Tolerancia a errores")));
+        c.addView(segmented(new String[] {Tr.t("NO"), Tr.t("POCA"), "NORMAL"},
+                Math.max(0, Math.min(2, prefs.getInt("s_tol", SmartSearch.TOL_NORMAL))), new Pick() {
+                    @Override
+                    public void on(int v) {
+                        prefs.edit().putInt("s_tol", v).apply();
+                        redo();
+                    }
+                }));
+        TextView tolNote = muted(Tr.t("NORMAL: «estepa» encuentra «Estopa» (un error en palabras de 4 a 6 letras, dos desde 7). POCA: solo un error y en palabras de 7 letras o más. NO: sin errores. Mayúsculas, acentos y guiones nunca cuentan: «one x» encuentra «One-X»."));
+        tolNote.setPadding(0, dp(8), 0, 0);
+        c.addView(tolNote);
+        c.addView(dots());
+        c.addView(body(Tr.t("Dónde buscar")));
+        final String[] fLabels = {Tr.t("Título"), Tr.t("Artista"), Tr.t("Álbum"), Tr.t("Carpeta")};
+        final String[] fDescs = {Tr.t("También el nombre del archivo."), "", "", ""};
+        final int[] fBits = {SmartSearch.F_TITLE, SmartSearch.F_ARTIST, SmartSearch.F_ALBUM, SmartSearch.F_FOLDER};
+        final int fields = prefs.getInt("s_fields", SmartSearch.F_ALL);
+        for (int i = 0; i < fBits.length; i++) {
+            final int bit = fBits[i];
+            c.addView(switchRow(fLabels[i], fDescs[i], (fields & bit) != 0, true, new Toggle() {
+                @Override
+                public void on(boolean v) {
+                    int f = prefs.getInt("s_fields", SmartSearch.F_ALL);
+                    f = v ? (f | bit) : (f & ~bit);
+                    if ((f & SmartSearch.F_ALL) == 0) {
+                        // sin ningún campo no se podría buscar nada: se vuelve a todos
+                        f = SmartSearch.F_ALL;
+                        prefs.edit().putInt("s_fields", f).apply();
+                        redo();
+                        return;
+                    }
+                    prefs.edit().putInt("s_fields", f).apply();
+                }
+            }));
+        }
+        c.addView(dots());
+        c.addView(switchRow(Tr.t("Dentro de las palabras"),
+                Tr.t("Con 4 letras o más, también encuentra lo escrito en mitad de una palabra («park» en «Linkinpark»)."),
+                prefs.getBoolean("s_inside", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("s_inside", v).apply();
+                    }
+                }));
+        c.addView(switchRow(Tr.t("Ordenar por relevancia"),
+                Tr.t("Al buscar, lo que más se parece sale arriba (pesa más el artista y el título). Si lo quitas, se mantiene el orden de la lista."),
+                prefs.getBoolean("s_rel", true), true, new Toggle() {
+                    @Override
+                    public void on(boolean v) {
+                        prefs.edit().putBoolean("s_rel", v).apply();
+                    }
+                }));
+
         // ANDROID AUTO
         c = card(list, Tr.t("ANDROID AUTO"));
         c.addView(muted(Tr.t("Vista previa de lo que verás en el coche: usa el mismo servicio que Android Auto (explorador, búsqueda, cola y controles), con filas y botones grandes. Sirve también como modo coche.")));

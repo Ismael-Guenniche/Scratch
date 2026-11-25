@@ -219,6 +219,7 @@ public final class CheckLists {
         extraTests();
         gainTests();
         bigEditTests();
+        searchTests();
         System.out.println(fails == 0 ? "LISTAS OK" : fails + " FALLOS");
         System.exit(fails == 0 ? 0 : 1);
     }
@@ -419,5 +420,110 @@ public final class CheckLists {
         // formato antiguo (3 campos) sigue leyéndose
         java.util.List<BigLayout.Item> old = BigLayout.parse("cover:1:1;wave:0:1");
         ok(!old.get(0).fixed() && old.get(0).w() == 3, "formato antiguo");
+    }
+
+    private static SmartSearch.Entry se(String title, String artist, String album, String folder) {
+        return new SmartSearch.Entry(title, artist, album, folder, artist + " - " + title + ".mp3");
+    }
+
+    private static java.util.List<Integer> find(final SmartSearch.Entry[] lib, String q, SmartSearch.Opts o) {
+        java.util.List<Integer> order = new java.util.ArrayList<Integer>();
+        for (int i = 0; i < lib.length; i++) {
+            order.add(i);
+        }
+        return SmartSearch.filter(order, SmartSearch.query(q, o), new SmartSearch.Lookup() {
+            @Override
+            public SmartSearch.Entry get(int i) {
+                return lib[i];
+            }
+        });
+    }
+
+    private static void searchTests() {
+        final SmartSearch.Entry[] lib = {
+            se("Toxicity", "System of a Down", "Toxicity", "Musica"),       // 0
+            se("Usseewa", "Ado", "Kyougen", "Musica"),                      // 1
+            se("Como Camarón", "Estopa", "Estopa", "Rumba"),                // 2
+            se("Bandida", "One-X", "One-X", "Musica"),                      // 3
+            se("Numb", "Linkin Park", "Meteora", "Rock"),                   // 4
+            se("Tamacun", "Rodrigo y Gabriela", "Rodrigo y Gabriela", "Musica"), // 5
+            se("うっせぇわ", "Ado", "狂言", "Japon"),                         // 6
+            se("Maldito duende", "Héroes del Silencio", "Senderos de traición", "Rock"), // 7
+        };
+        SmartSearch.Opts o = new SmartSearch.Opts();
+        ok(SmartSearch.norm("ONE·X").equals("one x") && SmartSearch.norm("One-X").equals("one x"), "normaliza One-X");
+        ok(SmartSearch.norm("Héroes").equals("heroes"), "quita acentos");
+        ok(SmartSearch.norm("うっせぇわ").equals("うっせぇわ") && SmartSearch.norm("が").equals("が"), "el japonés conserva el dakuten");
+        ok(SmartSearch.norm("ＡＢＣ").equals("abc"), "anchura normal");
+        ok(find(lib, "one x", o).contains(3), "«one x» → One-X");
+        ok(find(lib, "onex", o).contains(3), "«onex» → One-X");
+        ok(find(lib, "ONE-X", o).get(0) == 3, "«ONE-X» → One-X primero");
+        ok(find(lib, "estepa", o).contains(2), "«estepa» → Estopa");
+        java.util.List<Integer> ado = find(lib, "ado", o);
+        ok(ado.contains(1) && ado.contains(6) && !ado.contains(0), "«ado» → Ado sin System of a Down: " + ado);
+        ok(find(lib, "heroes silencio", o).equals(Arrays.asList(7)), "varias palabras y acentos");
+        ok(find(lib, "linkn", o).contains(4), "principio parecido mientras escribes");
+        ok(find(lib, "lnkin park", o).get(0) == 4, "una letra de menos");
+        ok(find(lib, "lniknin", o).isEmpty() || find(lib, "lniknin", o).get(0) == 4, "letras cruzadas");
+        ok(find(lib, "linkni", o).contains(4), "dos letras cruzadas");
+        ok(find(lib, "camaron", o).contains(2), "«camaron» → Camarón");
+        ok(find(lib, "うっせ", o).contains(6), "japonés por prefijo");
+        ok(find(lib, "zzzz", o).isEmpty(), "nada encaja");
+        ok(find(lib, "   ", o).size() == lib.length, "vacío lo deja todo");
+        // relevancia: el artista exacto antes que la coincidencia en carpeta
+        java.util.List<Integer> rock = find(lib, "rock", o);
+        ok(rock.size() == 2, "«rock» por carpeta: " + rock);
+        java.util.List<Integer> rel = find(lib, "rodrigo", o);
+        ok(rel.equals(Arrays.asList(5)), "rodrigo");
+        java.util.List<Integer> tox = find(lib, "toxicity", o);
+        ok(tox.get(0) == 0, "toxicity");
+        // tolerancias
+        SmartSearch.Opts no = new SmartSearch.Opts();
+        no.tol = SmartSearch.TOL_NO;
+        ok(!find(lib, "estepa", no).contains(2), "sin tolerancia «estepa» no sale");
+        ok(find(lib, "one x", no).contains(3), "sin tolerancia sigue limpiando signos");
+        SmartSearch.Opts low = new SmartSearch.Opts();
+        low.tol = SmartSearch.TOL_LOW;
+        ok(!find(lib, "estepa", low).contains(2) && find(lib, "silencoi", low).contains(7), "tolerancia POCA");
+        // campos
+        SmartSearch.Opts onlyArtist = new SmartSearch.Opts();
+        onlyArtist.fields = SmartSearch.F_ARTIST;
+        ok(find(lib, "meteora", onlyArtist).isEmpty() && find(lib, "linkin", onlyArtist).contains(4), "solo artista");
+        SmartSearch.Opts noInside = new SmartSearch.Opts();
+        noInside.inside = false;
+        ok(find(lib, "acun", o).contains(5) && !find(lib, "acun", noInside).contains(5), "dentro de palabras");
+        // orden de la lista
+        SmartSearch.Opts keep = new SmartSearch.Opts();
+        keep.relevance = false;
+        java.util.List<Integer> k1 = find(lib, "musica", keep);
+        ok(k1.equals(Arrays.asList(0, 1, 3, 5)), "orden de la lista: " + k1);
+        // relevancia: exacta arriba
+        final SmartSearch.Entry[] lib2 = {
+            se("Estopa remix", "DJ X", "Mix", "Musica"),
+            se("Estopa", "Estopa", "Estopa", "Rumba"),
+        };
+        ok(find(lib2, "estopa", o).get(0) == 1, "exacta en artista primero");
+        ok(find(lib2, "estopa", keep).get(0) == 0, "sin relevancia, orden original");
+        // rendimiento: 5.000 canciones
+        final SmartSearch.Entry[] big = new SmartSearch.Entry[5000];
+        java.util.Random r = new java.util.Random(7);
+        String[] art = {"Estopa", "Linkin Park", "Ado", "System of a Down", "One-X", "Rosalía", "Bad Bunny", "Queen"};
+        for (int i = 0; i < big.length; i++) {
+            big[i] = se("Canción número " + i + " " + Long.toString(r.nextLong(), 36), art[i % art.length],
+                    "Álbum " + (i % 300), "Carpeta " + (i % 20));
+        }
+        for (int w = 0; w < 200; w++) {
+            find(big, "estepa remix", o);
+        }
+        long t0 = System.nanoTime();
+        int n = 0;
+        String[] qs = {"estepa", "linkn park", "ado", "one x", "cancion 4999", "queen"};
+        for (String q : qs) {
+            n += find(big, q, o).size();
+        }
+        double ms = (System.nanoTime() - t0) / 1e6 / qs.length;
+        System.out.println("búsqueda en 5.000 canciones: " + String.format(java.util.Locale.ROOT, "%.1f", ms) + " ms");
+        ok(ms < 40, "5.000 canciones en menos de 40 ms (" + ms + ")");
+        ok(n > 0, "encuentra en la biblioteca grande");
     }
 }
