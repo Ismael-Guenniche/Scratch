@@ -1,6 +1,6 @@
 # Política de privacidad de Scratch
 
-Última actualización: 25 de noviembre de 2026. Versión web: https://ismael-guenniche.github.io/scratch/privacidad.html
+Última actualización: 25 de noviembre de 2026. Versión web: https://ismael-guenniche.github.io/Scratch/privacidad.html
 
 ## Qué es scratch
 Scratch es un reproductor de música local para Android. Reproduce los archivos de audio que tú tienes en tu móvil. No tiene cuentas de usuario, ni servidores propios, ni anuncios, ni analítica.
