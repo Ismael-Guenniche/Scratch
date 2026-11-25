@@ -1375,6 +1375,46 @@ public class Check {
                 ok(minR > 0.99 && maxJump < 0.05 && Math.abs(prev - 1.0) < 0.01,
                         "lanzar el disco hacia delante: frena suave hasta 1× (mín " + minR + ", salto máx " + maxJump + ")");
             }
+            {
+                // Física NUEVA (selector de Ajustes): al soltar, rampa recta; a los 80 ms ya va a 1×
+                ScratchEngine nw = new ScratchEngine();
+                nw.setOutputRate(48000);
+                nw.setPhysics(ScratchEngine.PHYSICS_NEW);
+                ok(nw.physics() == ScratchEngine.PHYSICS_NEW, "física: se elige la NUEVA");
+                nw.load(DemoTrack.generate());
+                nw.setPlaying(true);
+                for (int k = 0; k < 900; k++) {
+                    nw.render(pb2, 16);
+                }
+                nw.touchDown();
+                for (int k = 0; k < 60; k++) {
+                    nw.render(pb2, 16);
+                }
+                nw.touchUp();
+                for (int k = 0; k < 240; k++) {
+                    nw.render(pb2, 16);
+                }
+                ok(Math.abs(nw.getRate() - 1.0) < 0.001, "física NUEVA: 80 ms después de soltar ya va a 1× ("
+                        + nw.getRate() + "×)");
+                // con el dedo a 1× sigue al dedo sin quedarse atrás (extrapola)
+                ScratchEngine fe = new ScratchEngine();
+                fe.setOutputRate(48000);
+                fe.setPhysics(ScratchEngine.PHYSICS_NEW);
+                fe.load(DemoTrack.generate());
+                fe.touchDown();
+                long t0 = System.nanoTime();
+                short[] fb = new short[512];
+                for (int k = 0; k < 400; k++) {
+                    double sec = k * 256 / 48000.0;
+                    fe.rotateAt(sec / ScratchEngine.SECONDS_PER_REV * 2 * Math.PI - (k == 0 ? 0 : (k - 1) * 256 / 48000.0
+                            / ScratchEngine.SECONDS_PER_REV * 2 * Math.PI), t0 + (long) (sec * 1e9));
+                    fe.render(fb, 256);
+                }
+                ok(Math.abs(fe.getRate() - 1.0) < 0.15, "física NUEVA: el dedo a 1× mueve el disco a ~1× (" + fe.getRate() + "×)");
+                // y vuelve a la CLÁSICA
+                fe.setPhysics(ScratchEngine.PHYSICS_CLASSIC);
+                ok(fe.physics() == ScratchEngine.PHYSICS_CLASSIC, "física: vuelve a la CLÁSICA");
+            }
         }
         {
             // Calidad del remuestreo: un tono de 10 kHz (44,1 → 48 kHz) sale limpio, y a 3× un tono de 12 kHz

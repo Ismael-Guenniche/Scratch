@@ -26,6 +26,12 @@ public final class ScratchEngine {
      * Es la respuesta de antes de la 0.58, que sonaba más natural que la rampa recta.
      */
     private static final double SLIP_TAU = 0.12;
+    /** Física NUEVA (0.58–0.72): al soltar, el slipmat acelera el disco 1× cada tantos segundos (rampa recta). */
+    private static final double SLIP_CATCH = 0.06;
+    /** Física de la rueda: CLÁSICA (como la 0.51) o NUEVA (dedo extrapolado y rampa recta al soltar, 0.58–0.72). */
+    public static final int PHYSICS_CLASSIC = 0;
+    public static final int PHYSICS_NEW = 1;
+    private int physics = PHYSICS_CLASSIC;
     /** El disco va enganchado al plato (sigue la rampa del motor tal cual); se suelta al tocarlo, avanzar, etc. */
     private boolean discLocked;
     /** Punto del dedo suavizado (un periodo de pantalla) para que el paso entre eventos táctiles no zumbe. */
@@ -1303,6 +1309,16 @@ public final class ScratchEngine {
     }
 
     /** Inercia: al soltar la rueda lanzada sigue girando con fricción (tau en segundos) hasta pararse. */
+    /** {@link #PHYSICS_CLASSIC} (por defecto) o {@link #PHYSICS_NEW}. */
+    public synchronized void setPhysics(int mode) {
+        physics = mode == PHYSICS_NEW ? PHYSICS_NEW : PHYSICS_CLASSIC;
+        smoothInit = false;
+    }
+
+    public synchronized int physics() {
+        return physics;
+    }
+
     public synchronized void setInertia(boolean on, double tauSeconds) {
         inertia = on;
         frictionTau = Math.max(0.2, Math.min(8, tauSeconds));
@@ -1373,6 +1389,7 @@ public final class ScratchEngine {
         final double motorStep = dtOut / MOTOR_UP;
         final double motorLand = dtOut / MOTOR_LAND;
         final double slipAlpha = dtOut / SLIP_TAU;
+        final double slipStep = dtOut / SLIP_CATCH;
         // diferencia por debajo de la cual el disco se engancha al plato (algo más que un paso del motor)
         final double lockTol = Math.max(1e-4, 1.5 * motorStep);
         final double gripAlpha = dtOut / GRIP_TAU;
@@ -1403,17 +1420,45 @@ public final class ScratchEngine {
                 }
             }
             if (scratching) {
-                // Como hasta la 0.51 (sonaba más natural): el disco persigue el punto del dedo con τ = 20 ms y un
-                // suavizado fijo. Sin extrapolar la velocidad del dedo, un toque pequeño no lanza el disco.
-                if (!smoothInit) {
-                    smoothTgt = scratchTarget;
-                    smoothInit = true;
+                if (physics == PHYSICS_NEW) {
+                    // Física NUEVA (0.58–0.72): el objetivo se extrapola con la velocidad del dedo entre evento y
+                    // evento (como mucho algo más de un periodo), así la lectura no va a escalones ni con retraso.
+                    // Responde antes, pero un toque pequeño puede lanzar el disco.
+                    double ex = evAge < capT ? evAge : capT;
+                    double tgt = scratchTarget + fingerVel * ex * sampleRate;
+                    if (tgt < 0) {
+                        tgt = 0;
+                    } else if (tgt > last) {
+                        tgt = last;
+                    }
+                    target = fingerVel + (tgt - pos) / (0.02 * sampleRate);
+                    if (evAge > capT) {
+                        // Dedo parado: la velocidad estimada se apaga y se llega al punto exacto del dedo; si la
+                        // extrapolación se pasó un poco, se vuelve en silencio (con el dedo quieto no suena nada).
+                        fingerVel -= fingerVel * velDecay;
+                        if (target * lastMoveDir < 0) {
+                            settling = true;
+                            if (target > 1.5) {
+                                target = 1.5;
+                            } else if (target < -1.5) {
+                                target = -1.5;
+                            }
+                        }
+                    }
+                } else {
+                    // CLÁSICA, como hasta la 0.51 (sonaba más natural): el disco persigue el punto del dedo con
+                    // τ = 20 ms y un suavizado fijo. Sin extrapolar la velocidad del dedo, un toque pequeño no lanza
+                    // el disco.
+                    if (!smoothInit) {
+                        smoothTgt = scratchTarget;
+                        smoothInit = true;
+                    }
+                    // Cada movimiento del dedo se reparte en un periodo táctil en vez de llegar de golpe: sin zumbido
+                    // y sin extrapolar (nunca va por delante del dedo).
+                    double ev = evPeriod > 0.004 ? evPeriod : 0.004;
+                    smoothTgt += (scratchTarget - smoothTgt) * (dtOut / ev);
+                    target = (smoothTgt - pos) / (0.02 * sampleRate);
                 }
-                // Cada movimiento del dedo se reparte en un periodo táctil en vez de llegar de golpe: sin zumbido y
-                // sin extrapolar (nunca va por delante del dedo, así un toque pequeño no lanza el disco).
-                double ev = evPeriod > 0.004 ? evPeriod : 0.004;
-                smoothTgt += (scratchTarget - smoothTgt) * (dtOut / ev);
-                target = (smoothTgt - pos) / (0.02 * sampleRate);
                 if (target > MAX_RATE) {
                     target = MAX_RATE;
                 } else if (target < -MAX_RATE) {
@@ -1470,10 +1515,18 @@ public final class ScratchEngine {
                 }
             } else if (slipmat) {
                 double dr = platter - rate;
-                if (discLocked || (dr <= lockTol && dr >= -lockTol)) {
+                if (physics == PHYSICS_NEW) {
+                    // NUEVA: rampa recta hasta la velocidad del plato
+                    if (dr <= slipStep && dr >= -slipStep) {
+                        rate = platter;
+                    } else {
+                        rate += dr > 0 ? slipStep : -slipStep;
+                    }
+                } else if (discLocked || (dr <= lockTol && dr >= -lockTol)) {
                     rate = platter;
                     discLocked = true;
                 } else {
+                    // CLÁSICA: vuelve de forma exponencial (rápido al principio, sin frenazo final)
                     rate += dr * slipAlpha;
                 }
             } else {

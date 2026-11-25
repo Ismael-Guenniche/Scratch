@@ -238,6 +238,21 @@ public class SettingsActivity extends Activity {
         sensNote.setPadding(0, dp(8), 0, 0);
         c.addView(sensNote);
         c.addView(dots());
+        c.addView(body(Tr.t("Física del scratch")));
+        c.addView(segmented(new String[] {Tr.t("CLÁSICA"), Tr.t("NUEVA")},
+                prefs.getInt("wphys", ScratchEngine.PHYSICS_CLASSIC) == ScratchEngine.PHYSICS_NEW ? 1 : 0, new Pick() {
+                    @Override
+                    public void on(int v) {
+                        prefs.edit().putInt("wphys", v == 1 ? ScratchEngine.PHYSICS_NEW
+                                : ScratchEngine.PHYSICS_CLASSIC).apply();
+                        Player.I.applyWheelPrefs();
+                        redo();
+                    }
+                }));
+        TextView physNote = muted(Tr.t("CLÁSICA (como la 0.51): el disco sigue al dedo con un poco de suavizado, un toque pequeño no lo lanza y al soltarlo vuelve a su velocidad poco a poco. NUEVA: responde antes porque adelanta el movimiento del dedo y al soltar recupera la velocidad en línea recta, pero un toque pequeño puede lanzar el disco."));
+        physNote.setPadding(0, dp(8), 0, 0);
+        c.addView(physNote);
+        c.addView(dots());
         c.addView(switchRow(Tr.t("Inercia al soltar"),
                 Tr.t("Si sueltas la rueda lanzada con la música parada, sigue girando como un plato hasta frenarse."),
                 prefs.getBoolean("inertia", true), true, new Toggle() {
