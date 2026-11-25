@@ -36,3 +36,8 @@ android {
         checkReleaseBuilds false
     }
 }
+
+dependencies {
+    // Glyph Developer Kit de Nothing (Glyph Bar del Phone (4a)): solo en el sabor personal, experimental.
+    personalImplementation files('libs/glyph-matrix-sdk-2.0.aar')
+}

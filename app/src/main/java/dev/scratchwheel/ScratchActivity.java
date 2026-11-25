@@ -193,7 +193,14 @@ public class ScratchActivity extends Activity {
         refresh();
         volBar.setProgress(audio.getStreamVolume(android.media.AudioManager.STREAM_MUSIC));
         ui.post(ticker);
+        glyphMode = Flavor.PERSONAL && GlyphLights.AVAILABLE ? Lucent.prefs(this).getInt("glyph", 0) : 0;
+        if (glyphMode != GlyphLights.OFF) {
+            GlyphLights.start(this);
+        }
     }
+
+    /** Glyph Bar del Phone (4a) (solo sabor personal): APAGADO / VÚMETRO / PULSO / PROGRESO. */
+    private int glyphMode;
 
     @Override
     public void finish() {
@@ -209,6 +216,9 @@ public class ScratchActivity extends Activity {
         super.onPause();
         Player.I.removeListener(listener);
         ui.removeCallbacks(ticker);
+        if (glyphMode != GlyphLights.OFF) {
+            GlyphLights.stop();
+        }
         wheel.removeCallbacks(ticker);
         Player.I.touchUp();
         Player.I.seekHold(0);
@@ -1778,6 +1788,17 @@ public class ScratchActivity extends Activity {
         double pos = e.getHeardSeconds();
         wheel.setAngle((float) (pos / Player.I.engine.getSecondsPerRev() * 2 * Math.PI * (Player.I.engine.isInverted() ? -1 : 1)));
         double total = e.getDurationSeconds();
+        if (glyphMode != GlyphLights.OFF) {
+            double bpmG = Player.I.bpm();
+            double phase = -1;
+            if (bpmG > 0) {
+                double per = 60.0 / bpmG;
+                double t = (pos - Player.I.beatOffset()) / per;
+                phase = t - Math.floor(t);
+            }
+            GlyphLights.frame(glyphMode, (float) e.getLevel(), phase,
+                    total > 0 ? (float) (pos / total) : 0f, e.isPlaying());
+        }
         if (waveSeek != null && waveSeek.getVisibility() == View.VISIBLE) {
             waveSeek.update();
         } else if (!dragging && total > 0) {

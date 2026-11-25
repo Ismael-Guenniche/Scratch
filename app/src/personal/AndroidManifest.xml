@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Solo sabor personal: Glyph Bar del Nothing Phone (4a) (experimental). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- El SDK de Glyph pide minSdk 33; la app sigue en 24 y solo lo usa en Android 14+ (se comprueba en código). -->
+    <uses-sdk tools:overrideLibrary="com.nothing.thirdparty" />
+
+    <uses-permission android:name="com.nothing.ketchum.permission.ENABLE" />
+
+    <application>
+        <!-- Desde Android 16 no hace falta clave de Nothing; «test» sirve para depurar en versiones anteriores. -->
+        <meta-data android:name="NothingKey" android:value="test" />
+    </application>
+</manifest>

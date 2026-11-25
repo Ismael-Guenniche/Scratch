@@ -585,6 +585,25 @@ public class SettingsActivity extends Activity {
             }
         }));
 
+        // GLYPH (solo sabor personal)
+        if (Flavor.PERSONAL && GlyphLights.AVAILABLE) {
+            c = card(list, Tr.t("GLYPH BAR"));
+            c.addView(muted(GlyphLights.supported()
+                    ? Tr.t("Las luces de la espalda del Phone (4a) siguen la música mientras la pantalla del scratch está abierta (el sistema solo deja usarlas con la app delante).")
+                    : Tr.t("Solo funciona en un Nothing Phone (4a) con Android 14 o superior.")));
+            c.addView(segmented(new String[] {Tr.t("NO"), Tr.t("VÚMETRO"), Tr.t("PULSO"), Tr.t("PROGRESO")},
+                    Math.max(0, Math.min(3, prefs.getInt("glyph", 0))), new Pick() {
+                        @Override
+                        public void on(int v) {
+                            prefs.edit().putInt("glyph", v).apply();
+                            redo();
+                        }
+                    }));
+            TextView gnote = muted(Tr.t("VÚMETRO: se llena de abajo arriba con el volumen. PULSO: destella en cada golpe (necesita el BPM del modo DJ). PROGRESO: se llena con la canción."));
+            gnote.setPadding(0, dp(8), 0, 0);
+            c.addView(gnote);
+        }
+
         // ANDROID AUTO
         c = card(list, Tr.t("ANDROID AUTO"));
         c.addView(muted(Tr.t("Vista previa de lo que verás en el coche: usa el mismo servicio que Android Auto (explorador, búsqueda, cola y controles), con filas y botones grandes. Sirve también como modo coche.")));
