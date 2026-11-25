@@ -225,6 +225,7 @@ public final class CheckLists {
         smartListTests();
         backupTests();
         keyTests();
+        automixTests();
         System.out.println(fails == 0 ? "LISTAS OK" : fails + " FALLOS");
         System.exit(fails == 0 ? 0 : 1);
     }
@@ -702,5 +703,19 @@ public final class CheckLists {
         // Sol mayor
         double[] g = KeyDetect.detect(chords(new int[][] {{67, 71, 74}, {60, 64, 67}, {62, 66, 69}, {67, 71, 74}}, 48000));
         ok(g != null && (int) g[0] == 7, "Sol mayor detectado: " + (g == null ? null : KeyDetect.name((int) g[0], 0)));
+    }
+
+    private static void automixTests() {
+        // C(8B) con Am(8A): compatibles; C con G(9B): compatibles; C con F#(2B): lejos
+        ok(Automix.keyDistance(0, 21) == 0 && Automix.keyDistance(0, 7) == 0 && Automix.keyDistance(0, 6) == 2, "distancia Camelot");
+        ok(Automix.bpmDiff(70, 140) == 0 && Math.abs(Automix.bpmDiff(120, 126) - 5) < 1e-9, "tempo: doble y mitad cuentan");
+        java.util.List<Automix.Item> it = new java.util.ArrayList<Automix.Item>();
+        it.add(new Automix.Item(128, 0, 0.9));   // 0: C, fuerte
+        it.add(new Automix.Item(100, 6, 0.2));   // 1: F#, tranquila → empieza aquí
+        it.add(new Automix.Item(124, 7, 0.7));   // 2: G
+        it.add(new Automix.Item(102, 1, 0.3));   // 3: C# (2B ... cerca de F# 2B? 3B) 
+        java.util.List<Integer> o = Automix.order(it);
+        ok(o.size() == 4 && o.get(0) == 1 && new java.util.HashSet<Integer>(o).size() == 4, "automix: empieza tranquilo y no repite: " + o);
+        ok(o.indexOf(2) == o.indexOf(0) - 1 || o.indexOf(0) == o.indexOf(2) - 1, "automix: C y G juntas: " + o);
     }
 }

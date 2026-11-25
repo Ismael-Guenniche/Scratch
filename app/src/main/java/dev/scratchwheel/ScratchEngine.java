@@ -149,6 +149,13 @@ public final class ScratchEngine {
     private double vinyl;
     private double wowS, wowC = 1, flutS, flutC = 1;
     private long vrnd = 0x9E3779B97F4A7C15L;
+    /**
+     * Modo cinta (experimental, sabor personal; guiño al TP-7): wow lento (±0,15 % a 1,1 Hz) y flutter (±0,05 % a
+     * 9 Hz) en la velocidad, agudos algo redondeados (paso bajo a 11 kHz), saturación suave y un siseo muy bajo.
+     */
+    private boolean tape;
+    private double tWowS, tWowC = 1, tFlS, tFlC = 1;
+    private double tLpL, tLpR;
     private double popL, popR;
     private double velGain;
     /** Duración total de la rampa del corte (s). */
@@ -1124,6 +1131,27 @@ public final class ScratchEngine {
         vinyl = Math.max(0, Math.min(1, amount));
     }
 
+    public synchronized void setTape(boolean on) {
+        tape = on;
+        tLpL = 0;
+        tLpR = 0;
+    }
+
+    /** Saturación de cinta: lo que pasa de 16000 se comprime suave (no cambia nada por debajo). */
+    public static double tapeSat(double v) {
+        double a = v < 0 ? -v : v;
+        if (a <= 16000) {
+            return v;
+        }
+        double over = a - 16000;
+        double o = 16000 + over / (1 + over / 16000);
+        return v < 0 ? -o : o;
+    }
+
+    public synchronized boolean isTape() {
+        return tape;
+    }
+
     /** Velocidad de reproducción normal (como el pitch de una mesa): 1,0 = original. */
     public synchronized void setPitch(double p) {
         pitch = Math.max(0.5, Math.min(1.5, p));
@@ -1397,6 +1425,9 @@ public final class ScratchEngine {
         final double wowW = 2 * Math.PI * (1.0 / SECONDS_PER_REV) * dtOut;
         final double flutW = 2 * Math.PI * 7.3 * dtOut;
         final double popDecay = Math.exp(-dtOut / 0.0003);
+        final double tWowW = 2 * Math.PI * 1.1 * dtOut;
+        final double tFlW = 2 * Math.PI * 9.0 * dtOut;
+        final double tLpA = 1 - Math.exp(-2 * Math.PI * 11000 * dtOut);
         final double popProb = 5.0 * dtOut;
         final double velGainAlpha = Math.min(1.0, dtOut / 0.0015);
         final double cutAlpha = Math.min(1.0, 1.0 / (0.002 * outRate));
@@ -1542,15 +1573,23 @@ public final class ScratchEngine {
             if (!scratching && seek == 0 && !playing && backspinLeft == 0 && Math.abs(rate) < 1e-4) {
                 rate = 0;
             }
+            double tapeMod = 1;
+            if (tape && !scratching) {
+                tWowS += tWowC * tWowW;
+                tWowC -= tWowS * tWowW;
+                tFlS += tFlC * tFlW;
+                tFlC -= tFlS * tFlW;
+                tapeMod = 1 + 0.0015 * tWowS + 0.0005 * tFlS;
+            }
             if (vinyl > 0 && !scratching) {
                 // Dos osciladores por rotación (sin senos por muestra): 0,556 Hz (una vuelta) y 7,3 Hz.
                 wowS += wowC * wowW;
                 wowC -= wowS * wowW;
                 flutS += flutC * flutW;
                 flutC -= flutS * flutW;
-                pos += rate * ratio * (1 + vinyl * (0.0012 * wowS + 0.0003 * flutS));
+                pos += rate * ratio * tapeMod * (1 + vinyl * (0.0012 * wowS + 0.0003 * flutS));
             } else {
-                pos += rate * ratio;
+                pos += rate * ratio * tapeMod;
             }
             if (slipping && playing) {
                 slipPos += pitch * ratio;
@@ -1691,6 +1730,20 @@ public final class ScratchEngine {
             } else if (xActive) {
                 xActive = false;
                 xFor = null;
+            }
+            if (tape) {
+                // cinta: agudos redondeados, saturación suave por encima de la mitad del nivel y siseo bajo
+                tLpL += (vl - tLpL) * tLpA;
+                tLpR += (vr - tLpR) * tLpA;
+                vl = tapeSat(tLpL);
+                vr = tapeSat(tLpR);
+                if (velGain > 0) {
+                    vrnd = vrnd * 6364136223846793005L + 1442695040888963407L;
+                    double hn = ((vrnd >>> 40) / (double) (1L << 24)) * 2 - 1;
+                    double hg = 6 * velGain * volume;
+                    vl += hn * hg;
+                    vr -= hn * hg;
+                }
             }
             bl[i] = vl;
             br[i] = vr;

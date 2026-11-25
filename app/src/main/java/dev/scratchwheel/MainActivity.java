@@ -1746,6 +1746,7 @@ public class MainActivity extends Activity {
     private static final int L_UNLINK = 5;
     private static final int L_DELETE = 6;
     private static final int L_EXPORT = 7;
+    private static final int L_AUTOMIX = 9;
     private static final int REQ_EXPORT = 8;
     private String exportTarget = "";
 
@@ -1816,6 +1817,10 @@ public class MainActivity extends Activity {
         }
         codes.add(L_EXPORT);
         labels.add(Tr.t("EXPORTAR COMO M3U…"));
+        if (Flavor.PERSONAL) {
+            codes.add(L_AUTOMIX);
+            labels.add(Tr.t("AUTOMIX (EXPERIMENTAL)"));
+        }
         codes.add(L_DELETE);
         labels.add(Tr.t("BORRAR LISTA"));
         DotMenu.show(this, th, anchor, labels.toArray(new String[0]), new DotMenu.Picked() {
@@ -1850,6 +1855,8 @@ public class MainActivity extends Activity {
                 } else if (code == L_UNLINK) {
                     Playlists.I.setFolder(name, null);
                     refilter();
+                } else if (code == L_AUTOMIX) {
+                    automix(name);
                 } else if (code == L_EXPORT) {
                     exportTarget = name;
                     Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -2109,5 +2116,139 @@ public class MainActivity extends Activity {
             t.setLineSpacing(0, 1.25f);
         }
         return t;
+    }
+
+    // ------------------------------------------------------- automix (sabor personal)
+
+    private volatile boolean automixCancel;
+
+    /**
+     * Analiza el BPM, la tonalidad y la energía de cada canción de la lista (lo que ya se sabe sale de la caché),
+     * crea «Lista · AUTOMIX» en el orden de Automix y la pone a sonar con fundido cruzado.
+     */
+    private void automix(final String list) {
+        final List<String> uris = new ArrayList<String>(Playlists.I.uris(list));
+        if (uris.size() < 2) {
+            Toast.makeText(this, Tr.t("La lista necesita al menos 2 canciones"), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        automixCancel = false;
+        final DotDialog dlg = new DotDialog(this, th).title("AUTOMIX")
+                .message(Tr.t("Analizando el tempo, la tonalidad y la energía de cada canción…"))
+                .button(Tr.t("CANCELAR"), Lucent.GLASS, new Runnable() {
+                    @Override
+                    public void run() {
+                        automixCancel = true;
+                    }
+                });
+        dlg.show();
+        final android.content.Context app = getApplicationContext();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                final android.content.SharedPreferences bp = app.getSharedPreferences("bpm", 0);
+                final android.content.SharedPreferences kp = app.getSharedPreferences("key", 0);
+                final android.content.SharedPreferences ep = app.getSharedPreferences("energy", 0);
+                ArrayList<Automix.Item> items = new ArrayList<Automix.Item>();
+                ArrayList<String> ok = new ArrayList<String>();
+                for (int k = 0; k < uris.size() && !automixCancel; k++) {
+                    final String u = uris.get(k);
+                    final int done = k;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            status.setText("AUTOMIX · " + (done + 1) + " / " + uris.size());
+                        }
+                    });
+                    double bpm = 0;
+                    String bc = bp.getString(u, null);
+                    if (bc != null) {
+                        try {
+                            String[] pz = bc.split("\\|");
+                            bpm = Double.parseDouble(pz[0]) * Double.parseDouble(pz[2]);
+                        } catch (RuntimeException ignored) {
+                            bpm = 0;
+                        }
+                    }
+                    int key = kp.getInt(u, -1);
+                    float en = ep.getFloat(u, -1f);
+                    if (bpm <= 0 || key < 0 || en < 0) {
+                        try {
+                            PcmData pcm = AudioLoader.load(app, Uri.parse(u));
+                            if (bpm <= 0) {
+                                double[] r = BpmDetect.detect(pcm);
+                                if (r != null) {
+                                    bpm = r[0];
+                                    bp.edit().putString(u, r[0] + "|" + r[1] + "|1.0").apply();
+                                }
+                            }
+                            if (key < 0) {
+                                double[] r = KeyDetect.detect(pcm);
+                                if (r != null) {
+                                    key = (int) r[0];
+                                    kp.edit().putInt(u, key).apply();
+                                }
+                            }
+                            if (en < 0) {
+                                en = (float) Automix.energy(pcm);
+                                ep.edit().putFloat(u, en).apply();
+                            }
+                        } catch (Exception e) {
+                            continue; // no se pudo leer: se queda fuera
+                        }
+                    }
+                    items.add(new Automix.Item(bpm, key, en < 0 ? 0.5 : en));
+                    ok.add(u);
+                }
+                if (automixCancel) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            refilter();
+                        }
+                    });
+                    return;
+                }
+                List<Integer> order = Automix.order(items);
+                final ArrayList<String> sorted = new ArrayList<String>();
+                for (int i : order) {
+                    sorted.add(ok.get(i));
+                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        dlg.dismiss();
+                        String base = list.length() > 30 ? list.substring(0, 30).trim() : list;
+                        String nm = base + " · AUTOMIX";
+                        for (int n = 2; Playlists.I.find(nm) != null && n < 100; n++) {
+                            nm = base + " · AUTOMIX " + n;
+                        }
+                        Playlists.I.create(nm);
+                        Playlists.I.add(nm, sorted);
+                        android.content.SharedPreferences sp = Lucent.prefs(MainActivity.this);
+                        if (sp.getInt("crossfade", 0) == 0) {
+                            // sin fundido no hay mezcla: se activa uno de 6 s (se puede cambiar en Ajustes → SONIDO)
+                            sp.edit().putInt("crossfade", 6).apply();
+                            Player.I.applyCrossfade();
+                        }
+                        tab = TAB_LIST;
+                        listSel = nm;
+                        refilter();
+                        ArrayList<Integer> idx = new ArrayList<Integer>();
+                        for (String u : sorted) {
+                            Integer i = uriIndex.get(u);
+                            if (i != null) {
+                                idx.add(i);
+                            }
+                        }
+                        if (!idx.isEmpty()) {
+                            Player.I.setShuffle(false);
+                            Player.I.playFrom(idx, 0);
+                        }
+                        Toast.makeText(MainActivity.this, Tr.t("Lista creada: ") + nm, Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        }, "automix").start();
     }
 }

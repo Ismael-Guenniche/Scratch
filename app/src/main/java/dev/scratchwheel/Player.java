@@ -358,7 +358,7 @@ final class Player {
     private boolean partialLive;
 
     int precacheCount() {
-        return prefs == null ? 5 : prefs.getInt("precache", 5);
+        return prefs == null ? 5 : Lucent.prefs(app).getInt("precache", 5);
     }
 
     /** Se llama al cambiar el ajuste de precarga. */
@@ -792,12 +792,12 @@ final class Player {
     }
 
     void applyCrossfade() {
-        engine.setCrossfade(prefs == null ? 0 : prefs.getInt("crossfade", 0));
+        engine.setCrossfade(prefs == null ? 0 : Lucent.prefs(app).getInt("crossfade", 0));
     }
 
     /** ReplayGain (si está activado en Ajustes): solo baja las pistas fuertes, nunca sube, para no saturar. */
     void applyReplayGain(final Uri u) {
-        if (prefs == null || !prefs.getBoolean("replaygain", false)) {
+        if (prefs == null || !Lucent.prefs(app).getBoolean("replaygain", false)) {
             engine.setTrackGain(1f);
             return;
         }
@@ -1583,6 +1583,7 @@ final class Player {
         engine.setInertia(sp.getBoolean("inertia", true), fr == 0 ? 0.6 : fr == 2 ? 3.0 : 1.5);
         engine.setPhysics(sp.getInt("wphys", ScratchEngine.PHYSICS_CLASSIC));
         engine.setVinyl(sp.getBoolean("vinyl", false) ? 1.0 : 0.0);
+        engine.setTape(Flavor.PERSONAL && sp.getBoolean("tape", false));
         AudioTune.compensate = sp.getInt("latcomp", 1) == 1;
         AudioTune.trimSec = (sp.getInt("lattrim", 2) - 2) * 0.020;
         AudioTune.apply(engine);

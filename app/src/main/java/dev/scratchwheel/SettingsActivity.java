@@ -585,9 +585,20 @@ public class SettingsActivity extends Activity {
             }
         }));
 
-        // GLYPH (solo sabor personal)
+        // EXPERIMENTAL: modo cinta y Glyph Bar (solo sabor personal)
         if (Flavor.PERSONAL && GlyphLights.AVAILABLE) {
-            c = card(list, Tr.t("GLYPH BAR"));
+            c = card(list, Tr.t("EXPERIMENTAL"));
+            c.addView(switchRow(Tr.t("Modo cinta"),
+                    Tr.t("Sonido de cinta como el TP-7: el tono ondula un poco, los agudos se redondean, los picos se saturan suave y hay un siseo muy bajo."),
+                    prefs.getBoolean("tape", false), true, new Toggle() {
+                        @Override
+                        public void on(boolean v) {
+                            prefs.edit().putBoolean("tape", v).apply();
+                            Player.I.applyWheelPrefs();
+                        }
+                    }));
+            c.addView(dots());
+            c.addView(body(Tr.t("Glyph Bar")));
             c.addView(muted(GlyphLights.supported()
                     ? Tr.t("Las luces de la espalda del Phone (4a) siguen la música mientras la pantalla del scratch está abierta (el sistema solo deja usarlas con la app delante).")
                     : Tr.t("Solo funciona en un Nothing Phone (4a) con Android 14 o superior.")));

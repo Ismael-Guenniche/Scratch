@@ -1411,6 +1411,22 @@ public class Check {
                     fe.render(fb, 256);
                 }
                 ok(Math.abs(fe.getRate() - 1.0) < 0.15, "física NUEVA: el dedo a 1× mueve el disco a ~1× (" + fe.getRate() + "×)");
+                // modo cinta: suena, no se pasa de nivel y lo pequeño no cambia
+                ScratchEngine tp = new ScratchEngine();
+                tp.setOutputRate(48000);
+                tp.setTape(true);
+                ok(tp.isTape(), "cinta: activada");
+                tp.load(DemoTrack.generate());
+                tp.setPlaying(true);
+                short[] tb = new short[512];
+                double te = 0;
+                for (int k = 0; k < 400; k++) {
+                    tp.render(tb, 256);
+                    te += energy(tb, 256);
+                }
+                ok(te > 1, "cinta: se oye (" + te + ")");
+                ok(ScratchEngine.tapeSat(1000) == 1000 && ScratchEngine.tapeSat(40000) < 32767
+                        && ScratchEngine.tapeSat(-40000) > -32767, "cinta: saturación suave");
                 // y vuelve a la CLÁSICA
                 fe.setPhysics(ScratchEngine.PHYSICS_CLASSIC);
                 ok(fe.physics() == ScratchEngine.PHYSICS_CLASSIC, "física: vuelve a la CLÁSICA");
