@@ -223,6 +223,7 @@ public final class CheckLists {
         jsonListTests();
         groupTests();
         smartListTests();
+        backupTests();
         System.out.println(fails == 0 ? "LISTAS OK" : fails + " FALLOS");
         System.exit(fails == 0 ? 0 : 1);
     }
@@ -622,5 +623,49 @@ public final class CheckLists {
         ok(SmartLists.build(SmartLists.WEEK, mod, cnt, last, fav, now).equals(Arrays.asList(2, 3)), "esta semana, más escuchadas primero");
         ok(SmartLists.build(SmartLists.REDISCOVER, mod, cnt, last, fav, now).equals(Arrays.asList(1)), "redescubre");
         ok(SmartLists.build(SmartLists.FORGOTTEN_FAVS, mod, cnt, last, fav, now).equals(Arrays.asList(1, 4)), "favoritas olvidadas");
+    }
+
+    private static void backupTests() throws Exception {
+        File root = java.nio.file.Files.createTempDirectory("bk").toFile();
+        File files = new File(root, "files");
+        File prefs = new File(root, "shared_prefs");
+        new File(files, "plcovers").mkdirs();
+        prefs.mkdirs();
+        java.nio.file.Files.write(new File(files, "favs.txt").toPath(), "a\nb\n".getBytes("UTF-8"));
+        java.nio.file.Files.write(new File(files, "plcovers/x.png").toPath(), new byte[] {1, 2, 3});
+        java.nio.file.Files.write(new File(files, "basura.tmp").toPath(), new byte[] {9});
+        java.nio.file.Files.write(new File(prefs, "ui.xml").toPath(), "<map/>".getBytes("UTF-8"));
+        java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+        int n = Backup.write(bo, files, prefs, "0.77");
+        ok(n == 3, "copia con 3 archivos (sin .tmp): " + n);
+        // se pierde todo y se restaura en otra carpeta
+        File root2 = java.nio.file.Files.createTempDirectory("bk2").toFile();
+        File files2 = new File(root2, "files");
+        File prefs2 = new File(root2, "shared_prefs");
+        files2.mkdirs();
+        java.nio.file.Files.write(new File(files2, "favs.txt").toPath(), "viejo".getBytes("UTF-8"));
+        int r = Backup.restore(new java.io.ByteArrayInputStream(bo.toByteArray()), files2, prefs2);
+        ok(r == 3, "restaura 3 archivos: " + r);
+        ok(new String(java.nio.file.Files.readAllBytes(new File(files2, "favs.txt").toPath()), "UTF-8").equals("a\nb\n"),
+                "favoritas restauradas");
+        ok(new File(files2, "plcovers/x.png").length() == 3 && new File(prefs2, "ui.xml").exists(), "subcarpetas y ajustes");
+        ok(!new File(root2, "restore.tmp").exists(), "sin restos temporales");
+        // un zip que no es una copia no toca nada
+        java.io.ByteArrayOutputStream ev = new java.io.ByteArrayOutputStream();
+        java.util.zip.ZipOutputStream z = new java.util.zip.ZipOutputStream(ev);
+        z.putNextEntry(new java.util.zip.ZipEntry("files/favs.txt"));
+        z.write("MAL".getBytes("UTF-8"));
+        z.closeEntry();
+        z.putNextEntry(new java.util.zip.ZipEntry("files/../../fuera.txt"));
+        z.write(1);
+        z.closeEntry();
+        z.close();
+        try {
+            Backup.restore(new java.io.ByteArrayInputStream(ev.toByteArray()), files2, prefs2);
+            ok(false, "un zip cualquiera no se restaura");
+        } catch (java.io.IOException e) {
+            ok(new String(java.nio.file.Files.readAllBytes(new File(files2, "favs.txt").toPath()), "UTF-8").equals("a\nb\n")
+                    && !new File(root2.getParentFile(), "fuera.txt").exists(), "zip ajeno: nada cambia");
+        }
     }
 }
