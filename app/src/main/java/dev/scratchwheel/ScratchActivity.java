@@ -404,6 +404,24 @@ public class ScratchActivity extends Activity {
         leftCol.addView(wheelCard, wlp);
         this.wheelCard = wheelCard;
         this.wheelLp = wlp;
+        if (!land) {
+            // Recuerda el alto que tiene la rueda en modo estándar para usar el mismo en modo DJ (si no, la rueda
+            // cambia de tamaño al entrar o salir del modo DJ).
+            wheelCard.addOnLayoutChangeListener(new View.OnLayoutChangeListener() {
+                @Override
+                public void onLayoutChange(View v, int l, int t, int r, int b, int ol, int ot, int or, int ob) {
+                    int h = b - t;
+                    if (!djMode && h > dp(120) && h != stdWheelH) {
+                        boolean wasUnknown = stdWheelH <= 0;
+                        stdWheelH = h;
+                        Lucent.prefs(ScratchActivity.this).edit().putInt(wheelKey(), h).apply();
+                        if (wasUnknown) {
+                            applyPageScroll();
+                        }
+                    }
+                }
+            });
+        }
 
         LinearLayout controls = card();
         controls.setPadding(dp(10), dp(10), dp(10), dp(12));
@@ -484,6 +502,14 @@ public class ScratchActivity extends Activity {
     }
 
     private PageScroll pageScroll;
+    /** Alto de la tarjeta de la rueda en modo estándar (px; 0 = aún no se sabe). */
+    private int stdWheelH;
+
+    private String wheelKey() {
+        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        return "wheelh_" + dm.widthPixels + "x" + dm.heightPixels;
+    }
+
     private LinearLayout wheelCard;
     private LinearLayout.LayoutParams wheelLp;
 
@@ -495,9 +521,13 @@ public class ScratchActivity extends Activity {
         }
         ps.enabled = djMode;
         if (djMode) {
-            android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
-            int side = Math.min(dm.widthPixels - dp(28), (int) (dm.heightPixels * 0.55f));
-            wheelLp.height = Math.max(dp(120), side);
+            int h = stdWheelH > 0 ? stdWheelH : Lucent.prefs(this).getInt(wheelKey(), 0);
+            if (h <= 0) {
+                // aún no se ha visto en modo estándar con esta pantalla: una estimación
+                android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+                h = Math.min(dm.widthPixels - dp(28), (int) (dm.heightPixels * 0.55f));
+            }
+            wheelLp.height = Math.max(dp(120), h);
             wheelLp.weight = 0f;
         } else {
             wheelLp.height = 0;

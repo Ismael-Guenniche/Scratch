@@ -443,7 +443,12 @@ public class MainActivity extends Activity {
             ver = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (Exception ignored) {
         }
+        // «0.76-personal» no cabe junto al título: se queda en «0.76·P»
+        if (ver != null && ver.endsWith("-personal")) {
+            ver = ver.substring(0, ver.length() - "-personal".length()) + "·P";
+        }
         TextView beta = text("BETA " + ver, 11, th.accent, th.mono);
+        beta.setSingleLine(true);
         beta.setLetterSpacing(0.1f);
         beta.setPadding(dp(10), dp(14), 0, 0);
         head.addView(beta, new LinearLayout.LayoutParams(0,
