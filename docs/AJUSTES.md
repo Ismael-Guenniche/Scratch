@@ -22,6 +22,7 @@ Las opciones están agrupadas en tarjetas. Entre paréntesis, la clave de `Share
 | Sonido de vinilo | `vinyl` | no |
 | Compensar la latencia NO / AUTO (Ajustes → SONIDO) | `latcomp` | AUTO |
 | Ajuste fino de la latencia −40 / −20 / 0 / +20 / +40 ms | `lattrim` | 0 |
+| Física del scratch CLÁSICA (0.51) / NUEVA (0.58–0.72) | `wphys` (0 / 1) | CLÁSICA |
 | Fricción ALTA / MEDIA / BAJA | `wfric` | MEDIA |
 | Invertir el sentido | `winvert` | no |
 | Vibración al girar | `haptic` | sí |
@@ -42,6 +43,20 @@ Interruptor por grupo de funciones; apagado = el grupo no aparece en el panel.
 | Modo disco | `dj_disco` | **no** |
 
 Estado interno: `djmode` (modo DJ activo), `slip_on` (botón SLIP).
+
+## Búsqueda
+| Opción | Clave | Por defecto |
+|---|---|---|
+| Tolerancia a errores NO / POCA / NORMAL | `s_tol` (0 / 1 / 2) | NORMAL |
+| Dónde buscar: título (y nombre de archivo), artista, álbum, carpeta | `s_fields` (bits 1 / 2 / 4 / 8) | todos (15) |
+| Dentro de las palabras (4+ letras) | `s_inside` | sí |
+| Ordenar por relevancia | `s_rel` | sí |
+
+NORMAL: un error en palabras de 4–6 letras y dos desde 7; POCA: uno, solo desde 7 letras; NO: ninguno. Android Auto ordena siempre por relevancia. Detalles en `SmartSearch.java`.
+
+## Listas con Claude (solo sabor personal)
+- **Exportar la biblioteca** → `biblioteca-scratch.json`.
+- **Importar una lista de Claude** → crea la lista (si el nombre existe, «Nombre (2)»). Ver [LISTAS-CLAUDE.md](LISTAS-CLAUDE.md).
 
 ## Permisos y privacidad
 - **Notificaciones:** abre los ajustes de notificaciones del sistema para Scratch.

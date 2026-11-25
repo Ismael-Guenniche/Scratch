@@ -1,6 +1,8 @@
 # Pendiente (cosas por hacer)
 
-## Búsqueda inteligente (propuesta, sin empezar)
+## Búsqueda inteligente — HECHA en la 0.76
+Decidido el 2026-11-25: orden por relevancia por defecto y tolerancia NORMAL. Lo de abajo es el diseño original (todo implementado en `SmartSearch.java`; tests en `tools/CheckLists.java`).
+
 Pedido el 2026-11-23. Problemas de ahora: la búsqueda solo mira si el texto escrito está tal cual dentro de «archivo + título + artista + álbum» (o de la carpeta). Por eso «one x» no encuentra «One-X», una letra mal («estepa») no encuentra «Estopa», y no hay orden por relevancia.
 
 **Cómo hacerlo**

@@ -468,5 +468,35 @@ final class TrJa {
         M.put("to add it.", "してついかしてください。");
         M.put("you pick a folder with the system picker and the app only reads that folder.", "しすてむのせんたくがめんでふぉるだをえらび、あぷりはそのふぉるだだけをよみます。");
         M.put("· PLAY SOMETHING", "· なにかさいせいして");
+            // 0.76
+        M.put("not found", "みつからない");
+        M.put("When searching, the closest matches go to the top (artist and title count the most). Turn it off to keep the list order.", "けんさくでは、いちばんちかいものがうえにでます(あーてぃすととたいとるがおもい)。おふにすると、りすとのじゅんばんのままです。");
+        M.put("SEARCH SONG, ARTIST, ALBUM OR FOLDER", "きょく・あーてぃすと・あるばむ・ふぉるだでさがす");
+        M.put("Library exported:", "らいぶらりをえくすぽーとしました:");
+        M.put("CLASSIC (like 0.51): the record follows your finger with a little smoothing, a small touch doesn't fling it and when you let go it eases back to speed. NEW: responds sooner because it predicts your finger's movement and gets back to speed in a straight line when released, but a small touch can fling the record.", "くらしっく(0.51とおなじ):でぃすくはゆびをすこしなめらかにおいかけ、ちいさくさわってもとんでいかず、はなすとすこしずつもとのはやさにもどります。にゅー:ゆびのうごきをさきよみするのではんのうがはやく、はなすとまっすぐもとのはやさにもどりますが、ちいさくさわってもでぃすくがとぶことがあります。");
+        M.put("NEW", "にゅー");
+        M.put("Folder", "ふぉるだ");
+        M.put("Album", "あるばむ");
+        M.put("With 4 letters or more, it also finds text in the middle of a word (\"park\" in \"Linkinpark\").", "4もじいじょうなら、ことばのとちゅうにあるもじもみつけます(「Linkinpark」の「park」)。");
+        M.put("Inside words", "ことばのなかもさがす");
+        M.put("Where to search", "さがすばしょ");
+        M.put("EXPORT", "えくすぽーと");
+        M.put("The file is not valid JSON.", "このふぁいるはただしいJSONではありません。");
+        M.put("That file is the exported library, not a playlist from Claude.", "このふぁいるはえくすぽーとしたらいぶらりで、Claudeのりすとではありません。");
+        M.put("Export your library, send it to Claude with what you want (\"only Estopa\", \"heavy songs like Linkin Park\"…) and import the file it sends back: the playlist is created automatically.", "らいぶらりをえくすぽーとして、ほしいもの(「Estopaだけ」「Linkin Parkみたいなはげしいきょく」など)といっしょにClaudeにおくり、かえってきたふぁいるをいんぽーとすると、りすとがじどうでできます。");
+        M.put("Export the library", "らいぶらりをえくすぽーと");
+        M.put("Scratch physics", "すくらっちのうごき");
+        M.put("Import a playlist from Claude", "Claudeのりすとをいんぽーと");
+        M.put("PLAYLIST CREATED", "りすとをつくりました");
+        M.put("PLAYLISTS WITH CLAUDE", "Claudeとりすと");
+        M.put("The library is empty", "らいぶらりはからです");
+        M.put("NO PLAYLIST WAS CREATED", "りすとはつくられませんでした");
+        M.put("NORMAL: \"estepa\" finds \"Estopa\" (one typo in 4–6 letter words, two from 7). LOW: only one typo and only in words of 7 letters or more. OFF: no typos. Capitals, accents and hyphens never matter: \"one x\" finds \"One-X\".", "NORMAL:「estepa」で「Estopa」がみつかります(4〜6もじはまちがい1つ、7もじからは2つ)。LOW:7もじいじょうのことばでまちがい1つだけ。OFF:まちがいなし。おおもじ・あくせんと・はいふんはかんけいありません:「one x」で「One-X」がみつかります。");
+        M.put("Could not export the library", "らいぶらりをえくすぽーとできませんでした");
+        M.put("Could not read the file.", "ふぁいるをよめませんでした。");
+        M.put("Sort by relevance", "ちかいじゅんにならべる");
+        M.put("Also the file name.", "ふぁいるめいもさがします。");
+        M.put("Typo tolerance", "まちがいのゆるし");
+        M.put("no songs found", "きょくがみつかりません");
     }
 }

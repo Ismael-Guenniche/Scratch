@@ -494,5 +494,38 @@ final class TrEn {
         M.put("Título", "Title");
         M.put("Artista", "Artist");
         M.put("RESTAURAR ORIGINAL", "RESTORE ORIGINAL");
+            // 0.76: búsqueda, listas con Claude, física
+        M.put("no encontradas", "not found");
+        M.put("Al buscar, lo que más se parece sale arriba (pesa más el artista y el título). Si lo quitas, se mantiene el orden de la lista.", "When searching, the closest matches go to the top (artist and title count the most). Turn it off to keep the list order.");
+        M.put("BUSCAR CANCIÓN, ARTISTA, ÁLBUM O CARPETA", "SEARCH SONG, ARTIST, ALBUM OR FOLDER");
+        M.put("Biblioteca exportada:", "Library exported:");
+        M.put("BÚSQUEDA", "SEARCH");
+        M.put("CLÁSICA (como la 0.51): el disco sigue al dedo con un poco de suavizado, un toque pequeño no lo lanza y al soltarlo vuelve a su velocidad poco a poco. NUEVA: responde antes porque adelanta el movimiento del dedo y al soltar recupera la velocidad en línea recta, pero un toque pequeño puede lanzar el disco.", "CLASSIC (like 0.51): the record follows your finger with a little smoothing, a small touch doesn't fling it and when you let go it eases back to speed. NEW: responds sooner because it predicts your finger's movement and gets back to speed in a straight line when released, but a small touch can fling the record.");
+        M.put("CLÁSICA", "CLASSIC");
+        M.put("NUEVA", "NEW");
+        M.put("Carpeta", "Folder");
+        M.put("Álbum", "Album");
+        M.put("Con 4 letras o más, también encuentra lo escrito en mitad de una palabra («park» en «Linkinpark»).", "With 4 letters or more, it also finds text in the middle of a word (\"park\" in \"Linkinpark\").");
+        M.put("Dentro de las palabras", "Inside words");
+        M.put("Dónde buscar", "Where to search");
+        M.put("EXPORTAR", "EXPORT");
+        M.put("El archivo no es un JSON válido.", "The file is not valid JSON.");
+        M.put("Ese archivo es la biblioteca exportada, no una lista de Claude.", "That file is the exported library, not a playlist from Claude.");
+        M.put("Exporta tu biblioteca, mándasela a Claude con lo que quieras («solo Estopa», «canciones pesadas tipo Linkin Park»…) e importa el archivo que te devuelva: la lista se crea sola.", "Export your library, send it to Claude with what you want (\"only Estopa\", \"heavy songs like Linkin Park\"…) and import the file it sends back: the playlist is created automatically.");
+        M.put("Exportar la biblioteca", "Export the library");
+        M.put("Física del scratch", "Scratch physics");
+        M.put("Importar una lista de Claude", "Import a playlist from Claude");
+        M.put("LISTA CREADA", "PLAYLIST CREATED");
+        M.put("LISTAS CON CLAUDE", "PLAYLISTS WITH CLAUDE");
+        M.put("La biblioteca está vacía", "The library is empty");
+        M.put("NO SE CREÓ NINGUNA LISTA", "NO PLAYLIST WAS CREATED");
+        M.put("NORMAL: «estepa» encuentra «Estopa» (un error en palabras de 4 a 6 letras, dos desde 7). POCA: solo un error y en palabras de 7 letras o más. NO: sin errores. Mayúsculas, acentos y guiones nunca cuentan: «one x» encuentra «One-X».", "NORMAL: \"estepa\" finds \"Estopa\" (one typo in 4–6 letter words, two from 7). LOW: only one typo and only in words of 7 letters or more. OFF: no typos. Capitals, accents and hyphens never matter: \"one x\" finds \"One-X\".");
+        M.put("No se pudo exportar la biblioteca", "Could not export the library");
+        M.put("No se pudo leer el archivo.", "Could not read the file.");
+        M.put("Ordenar por relevancia", "Sort by relevance");
+        M.put("POCA", "LOW");
+        M.put("También el nombre del archivo.", "Also the file name.");
+        M.put("Tolerancia a errores", "Typo tolerance");
+        M.put("ninguna canción encontrada", "no songs found");
     }
 }
