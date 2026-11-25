@@ -24,6 +24,7 @@ Las opciones están agrupadas en tarjetas. Entre paréntesis, la clave de `Share
 | Ajuste fino de la latencia −40 / −20 / 0 / +20 / +40 ms | `lattrim` | 0 |
 | Física del scratch CLÁSICA (0.51) / NUEVA (0.58–0.72) | `wphys` (0 / 1) | CLÁSICA |
 | Fricción ALTA / MEDIA / BAJA | `wfric` | MEDIA |
+| Forma de onda como barra de progreso | `seekwave` | sí |
 | Invertir el sentido | `winvert` | no |
 | Vibración al girar | `haptic` | sí |
 | Bloquear scratch | `wlock` | no |
@@ -53,6 +54,20 @@ Estado interno: `djmode` (modo DJ activo), `slip_on` (botón SLIP).
 | Ordenar por relevancia | `s_rel` | sí |
 
 NORMAL: un error en palabras de 4–6 letras y dos desde 7; POCA: uno, solo desde 7 letras; NO: ninguno. Android Auto ordena siempre por relevancia. Detalles en `SmartSearch.java`.
+
+## Scrobbling
+| Opción | Clave | Por defecto |
+|---|---|---|
+| Enviar a ListenBrainz | `lb_on` | no |
+| Token de ListenBrainz | `lb_token` | vacío |
+La cola pendiente está en `scrobble.txt` (máx. 5.000; se envía en lotes de 50).
+
+## Experimental (solo sabor personal)
+| Opción | Clave | Por defecto |
+|---|---|---|
+| Modo cinta | `tape` | no |
+| Glyph Bar NO / VÚMETRO / PULSO / PROGRESO | `glyph` (0–3) | NO |
+Glyph: solo Phone (4a) con Android 14+, solo con la pantalla del scratch delante. Si el sistema no lo deja (Android 14–15), activar la depuración con `adb shell settings put global nt_glyph_interface_debug_enable 1` (dura 48 h).
 
 ## Copia de seguridad
 - **Crear una copia** → `scratch-copia-AAAA-MM-DD.zip` con todo lo que hay en la carpeta de datos de la app (listas, favoritas, estadísticas, nombres editados, letras, portadas de listas, biblioteca) y los ajustes. Sin música ni cachés.

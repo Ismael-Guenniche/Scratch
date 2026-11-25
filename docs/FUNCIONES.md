@@ -23,6 +23,9 @@ Primera pantalla (`HomeView`).
 - **Carpeta por lista:** al crear una lista (+ LISTA) puedes elegir su carpeta; sus canciones se suman a la biblioteca y a la lista. Desde el menú de la lista: cambiar carpeta, actualizar o desenlazar.
 - **Listas:** play y aleatorio arriba de la lista (con aleatorio reproduce al azar, sin él de la primera a la última); ORDEN por título, artista, álbum o duración (se puede guardar como orden de la lista); barra lateral de scroll y número de posición. Botón de cola en la barra pequeña.
 - **Precarga (Ajustes → PRECARGA):** las próximas N canciones (5 por defecto; 0 = solo la siguiente) se mantienen decodificadas en memoria. Al abrir una pista suena en cuanto se decodifican los primeros segundos y el resto se completa detrás; hasta entonces el scratch solo llega a ese tramo.
+- **Editor de etiquetas** (`Id3Tags`): EDITAR NOMBRE… en un MP3 → GUARDAR EN EL ARCHIVO escribe título, artista y álbum en el ID3 (2.3/2.4 y v1) sin tocar el audio ni el resto de marcos.
+- **Scrobbling** (`Scrobble`): cada reproducción que cuenta se envía a ListenBrainz si está activado.
+- **Automix** (sabor personal, `Automix`): menú de una lista → AUTOMIX.
 - **Artistas y Álbumes** (`Groups`): pestañas con un artista o álbum por fila (carátula, nº de álbumes o artista y nº de canciones); tocar abre sus canciones, mantener pulsado lo reproduce entero; atrás o el chip vuelven a la lista.
 - **Listas inteligentes** (`SmartLists`, chips ✦; mantener pulsado explica qué entra): NUEVAS, SIN ESCUCHAR, ESTA SEMANA, REDESCUBRE, FAVORITAS OLVIDADAS.
 - **Búsqueda inteligente** (`SmartSearch`): por palabras en título, artista, álbum, carpeta y nombre de archivo; sin mayúsculas, acentos ni signos («one x» = «One-X»), palabras pegadas («onex»), errores de escritura («estepa» → «Estopa») y orden por relevancia. Ajustes → BÚSQUEDA.

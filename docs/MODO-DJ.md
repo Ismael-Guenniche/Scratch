@@ -51,6 +51,9 @@ El EQ divide en tres bandas (corte a 250 Hz y 2,5 kHz). El filtro es un biquad d
 ## Barra de scroll
 El panel DJ es largo: en modo DJ la página entera se desplaza (la rueda mantiene su tamaño), sin barra lateral. En modo estándar la pantalla es fija.
 
+## Tonalidad
+Junto al BPM sale la tonalidad en notación **Camelot** (8B = Do mayor, 8A = La menor) y en notación clásica. Dos canciones mezclan bien si tienen el mismo número, ±1, o el mismo número con la otra letra. Con el fader PITCH la tonalidad mostrada se mueve con él. Se calcula una vez por canción y se guarda.
+
 ## Tempo y pitch
 Solo existen en el modo DJ (en el modo estándar no hay control de velocidad y, al salir del modo DJ, vuelve a la original).
 - **TEMPO:** cambia la velocidad sin cambiar el tono (la reproducción pasa a granos WSOLA).

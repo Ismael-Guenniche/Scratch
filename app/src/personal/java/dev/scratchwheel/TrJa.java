@@ -525,5 +525,42 @@ final class TrJa {
         M.put("What you played in the last 7 days, most played first.", "さいきん7にちにきいたきょく、よくきいたじゅん。");
         M.put("Songs you played 3 times or more that haven't played in 90 days.", "3かいいじょうきいて、90にちきいていないきょく。");
         M.put("Favorites that haven't played in 60 days.", "60にちきいていないおきにいり。");
+            // 0.78
+        M.put("AUTOMIX (EXPERIMENTAL)", "おーとみっくす(じっけん)");
+        M.put("Analyzing the tempo, key and energy of each song…", "きょくごとのてんぽ・きー・えねるぎーをぶんせきちゅう…");
+        M.put("CHANGE", "かえる");
+        M.put("SEND", "そうしん");
+        M.put("TAGS", "たぐ");
+        M.put("EXPERIMENTAL", "じっけんてき");
+        M.put("On the scratch screen, the progress bar shows the song's waveform; tap or drag it to move around.", "すくらっちがめんのしんこうばーにきょくのはけいをひょうじします。たっぷかどらっぐでいどうできます。");
+        M.put("Sent:", "そうしんずみ:");
+        M.put("Send to ListenBrainz", "ListenBrainzにおくる");
+        M.put("Sends what you listen to to ListenBrainz (free and open; it can be imported into Last.fm). Paste your token from listenbrainz.org/settings. Only title, artist, album and time are sent.", "きいたきょくをListenBrainzにおくります(むりょうでおーぷん、Last.fmにもとりこめます)。listenbrainz.org/settingsのとーくんをはってください。おくるのはたいとる・あーてぃすと・あるばむ・じかんだけです。");
+        M.put("Tags saved in the file", "たぐをふぁいるにほぞんしました");
+        M.put("Waveform as progress bar", "はけいをしんこうばーに");
+        M.put("SAVE IN THE FILE", "ふぁいるにほぞん");
+        M.put("Glyph Bar", "ぐりふばー");
+        M.put("The playlist needs at least 2 songs", "りすとにはきょくが2ついじょうひつようです");
+        M.put("This file's tags use an old format Scratch can't safely rewrite. It is saved only in the app.", "このふぁいるのたぐはふるいけいしきで、あんぜんにかきかえられません。あぷりのなかだけにほぞんします。");
+        M.put("The lights on the back of the Phone (4a) follow the music while the scratch screen is open (the system only allows them with the app in front).", "すくらっちがめんをひらいているあいだ、Phone (4a)のうらのらいとがおんがくにあわせてひかります(あぷりがまえにあるときだけつかえます)。");
+        M.put("Playlist created:", "りすとをつくりました:");
+        M.put("ListenBrainz does not accept that token", "ListenBrainzはそのとーくんをうけつけません");
+        M.put("Tape mode", "てーぷもーど");
+        M.put("Could not connect; it will retry", "せつぞくできませんでした。あとでさいしこうします");
+        M.put("Could not write to the file.", "ふぁいるにかきこめませんでした。");
+        M.put("PROGRESS", "しんこう");
+        M.put("BEAT", "びーと");
+        M.put("Waiting to send:", "そうしんまち:");
+        M.put("Paste your token first", "さきにとーくんをはってください");
+        M.put("SCROBBLING", "すくろぶる");
+        M.put("Scratch only has permission to read your music folder. To write to the files, pick it again in the ⋮ menu → CHOOSE FOLDER (the same one) and accept.", "Scratchはおんがくふぉるだをよむけんげんしかありません。ふぁいるにかきこむには、⋮めにゅー→ふぉるだをえらぶでおなじふぉるだをえらびなおしてください。");
+        M.put("No token", "とーくんなし");
+        M.put("Only works on a Nothing Phone (4a) with Android 14 or later.", "Android 14いじょうのNothing Phone (4a)でだけつかえます。");
+        M.put("Tape sound like the TP-7: the pitch wobbles slightly, the highs get rounder, peaks saturate softly and there is a very low hiss.", "TP-7のようなてーぷのおと:ぴっちがすこしゆれ、こうおんがまるくなり、ぴーくがやさしくさちゅれーとし、ちいさなひすのいずがはいります。");
+        M.put("Token", "とーくん");
+        M.put("Token:", "とーくん:");
+        M.put("Key in Camelot notation: the same number, ±1, or the same number with the other letter mix well.", "Camelotひょうきのきー:おなじすうじ、±1、またはおなじすうじでべつのもじならよくまざります。");
+        M.put("METER", "めーたー");
+        M.put("METER: fills from the bottom with the volume. BEAT: flashes on every beat (needs the DJ mode BPM). PROGRESS: fills up with the song.", "めーたー:おんりょうでしたからうまります。びーと:びーとごとにひかります(DJもーどのBPMがひつよう)。しんこう:きょくといっしょにうまります。");
     }
 }

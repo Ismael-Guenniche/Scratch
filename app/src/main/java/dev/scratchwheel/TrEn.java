@@ -555,5 +555,42 @@ final class TrEn {
         M.put("Lo que has escuchado en los últimos 7 días, lo más escuchado primero.", "What you played in the last 7 days, most played first.");
         M.put("Canciones que escuchaste 3 veces o más y llevan 90 días sin sonar.", "Songs you played 3 times or more that haven't played in 90 days.");
         M.put("Favoritas que llevan 60 días sin sonar.", "Favorites that haven't played in 60 days.");
+            // 0.78
+        M.put("AUTOMIX (EXPERIMENTAL)", "AUTOMIX (EXPERIMENTAL)");
+        M.put("Analizando el tempo, la tonalidad y la energía de cada canción…", "Analyzing the tempo, key and energy of each song…");
+        M.put("CAMBIAR", "CHANGE");
+        M.put("ENVIAR", "SEND");
+        M.put("ETIQUETAS", "TAGS");
+        M.put("EXPERIMENTAL", "EXPERIMENTAL");
+        M.put("En la pantalla del scratch, la barra de progreso muestra la forma de onda de la canción; tócala o arrástrala para moverte.", "On the scratch screen, the progress bar shows the song's waveform; tap or drag it to move around.");
+        M.put("Enviadas:", "Sent:");
+        M.put("Enviar a ListenBrainz", "Send to ListenBrainz");
+        M.put("Envía lo que escuchas a ListenBrainz (gratis y abierto; puede importarse en Last.fm). Pega tu token de listenbrainz.org/settings. Solo se envía título, artista, álbum y la hora.", "Sends what you listen to to ListenBrainz (free and open; it can be imported into Last.fm). Paste your token from listenbrainz.org/settings. Only title, artist, album and time are sent.");
+        M.put("Etiquetas guardadas en el archivo", "Tags saved in the file");
+        M.put("Forma de onda como barra", "Waveform as progress bar");
+        M.put("GUARDAR EN EL ARCHIVO", "SAVE IN THE FILE");
+        M.put("Glyph Bar", "Glyph Bar");
+        M.put("La lista necesita al menos 2 canciones", "The playlist needs at least 2 songs");
+        M.put("Las etiquetas de este archivo usan un formato antiguo que Scratch no sabe reescribir sin riesgo. Se guarda solo en la app.", "This file's tags use an old format Scratch can't safely rewrite. It is saved only in the app.");
+        M.put("Las luces de la espalda del Phone (4a) siguen la música mientras la pantalla del scratch está abierta (el sistema solo deja usarlas con la app delante).", "The lights on the back of the Phone (4a) follow the music while the scratch screen is open (the system only allows them with the app in front).");
+        M.put("Lista creada:", "Playlist created:");
+        M.put("ListenBrainz no acepta ese token", "ListenBrainz does not accept that token");
+        M.put("Modo cinta", "Tape mode");
+        M.put("No se pudo conectar; se reintentará", "Could not connect; it will retry");
+        M.put("No se pudo escribir en el archivo.", "Could not write to the file.");
+        M.put("PROGRESO", "PROGRESS");
+        M.put("PULSO", "BEAT");
+        M.put("Pendientes de enviar:", "Waiting to send:");
+        M.put("Primero pega tu token", "Paste your token first");
+        M.put("SCROBBLING", "SCROBBLING");
+        M.put("Scratch solo tiene permiso para leer tu carpeta de música. Para escribir en los archivos, vuelve a elegirla en el menú ⋮ → ELEGIR CARPETA (la misma) y acepta.", "Scratch only has permission to read your music folder. To write to the files, pick it again in the ⋮ menu → CHOOSE FOLDER (the same one) and accept.");
+        M.put("Sin token", "No token");
+        M.put("Solo funciona en un Nothing Phone (4a) con Android 14 o superior.", "Only works on a Nothing Phone (4a) with Android 14 or later.");
+        M.put("Sonido de cinta como el TP-7: el tono ondula un poco, los agudos se redondean, los picos se saturan suave y hay un siseo muy bajo.", "Tape sound like the TP-7: the pitch wobbles slightly, the highs get rounder, peaks saturate softly and there is a very low hiss.");
+        M.put("Token", "Token");
+        M.put("Token:", "Token:");
+        M.put("Tonalidad en notación Camelot: mezclan bien el mismo número, ±1, o el mismo número con la otra letra.", "Key in Camelot notation: the same number, ±1, or the same number with the other letter mix well.");
+        M.put("VÚMETRO", "METER");
+        M.put("VÚMETRO: se llena de abajo arriba con el volumen. PULSO: destella en cada golpe (necesita el BPM del modo DJ). PROGRESO: se llena con la canción.", "METER: fills from the bottom with the volume. BEAT: flashes on every beat (needs the DJ mode BPM). PROGRESS: fills up with the song.");
     }
 }
