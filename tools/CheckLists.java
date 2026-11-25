@@ -221,6 +221,7 @@ public final class CheckLists {
         bigEditTests();
         searchTests();
         jsonListTests();
+        groupTests();
         System.out.println(fails == 0 ? "LISTAS OK" : fails + " FALLOS");
         System.exit(fails == 0 ? 0 : 1);
     }
@@ -584,5 +585,27 @@ public final class CheckLists {
         } catch (IllegalArgumentException e) {
             // bien: sin desbordar la pila
         }
+    }
+
+    private static void groupTests() {
+        java.util.List<String> ar = Arrays.asList("Estopa", "estopa", "", "Linkin Park", "Varios", "");
+        java.util.List<String> al = Arrays.asList("Estopa", "Destrangis", "", "Meteora", "Meteora", "");
+        java.util.List<String> fi = Arrays.asList("a.mp3", "b.mp3", "Estopa - Tu Calorro.mp3", "c.mp3", "d.mp3", "suelta.mp3");
+        java.util.List<Groups.Group> a = Groups.build(ar, al, fi, false);
+        ok(a.size() == 4, "artistas: " + a.size());
+        ok(a.get(0).name.equals("Estopa") && a.get(0).tracks.equals(Arrays.asList(0, 1, 2)),
+                "Estopa junta mayúsculas y el nombre del archivo: " + a.get(0).tracks);
+        ok(a.get(0).sub.equals("2"), "Estopa tiene 2 álbumes");
+        ok(a.get(a.size() - 1).key.length() == 0 && a.get(a.size() - 1).tracks.equals(Arrays.asList(5)), "sin artista al final");
+        java.util.List<Groups.Group> b = Groups.build(ar, al, fi, true);
+        Groups.Group met = null;
+        for (Groups.Group g : b) {
+            if (g.name.equals("Meteora")) {
+                met = g;
+            }
+        }
+        ok(met != null && met.sub.equals("*") && met.tracks.size() == 2, "álbum con varios artistas");
+        ok(b.get(0).name.equals("Destrangis") && b.get(0).sub.equals("estopa"), "álbumes en orden y su artista");
+        ok(b.get(b.size() - 1).key.length() == 0 && b.get(b.size() - 1).tracks.size() == 2, "sin álbum al final");
     }
 }
