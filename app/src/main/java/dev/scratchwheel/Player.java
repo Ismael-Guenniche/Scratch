@@ -46,6 +46,8 @@ final class Player {
         String title = "";
         String artist = "";
         String album = "";
+        /** Fecha de modificación del archivo (ms; 0 si el proveedor no la da). La usan las listas inteligentes. */
+        long modMs;
         /** Duración en milisegundos (0 si aún no se ha leído). */
         long durMs;
         /** Etiquetas originales del archivo (sin los nombres editados); las usa la importación de listas. */

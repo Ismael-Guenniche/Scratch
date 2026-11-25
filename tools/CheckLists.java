@@ -222,6 +222,7 @@ public final class CheckLists {
         searchTests();
         jsonListTests();
         groupTests();
+        smartListTests();
         System.out.println(fails == 0 ? "LISTAS OK" : fails + " FALLOS");
         System.exit(fails == 0 ? 0 : 1);
     }
@@ -607,5 +608,19 @@ public final class CheckLists {
         ok(met != null && met.sub.equals("*") && met.tracks.size() == 2, "álbum con varios artistas");
         ok(b.get(0).name.equals("Destrangis") && b.get(0).sub.equals("estopa"), "álbumes en orden y su artista");
         ok(b.get(b.size() - 1).key.length() == 0 && b.get(b.size() - 1).tracks.size() == 2, "sin álbum al final");
+    }
+
+    private static void smartListTests() {
+        long now = 1_000_000_000_000L;
+        long d = SmartLists.DAY;
+        long[] mod = {now - 2 * d, now - 40 * d, 0, now - 1 * d, now - 10 * d};
+        long[] cnt = {0, 5, 3, 1, 0};
+        long[] last = {0, now - 100 * d, now - 3 * d, now - 1 * d, 0};
+        boolean[] fav = {false, true, true, false, true};
+        ok(SmartLists.build(SmartLists.NEW, mod, cnt, last, fav, now).equals(Arrays.asList(3, 0, 4)), "nuevas, lo último primero");
+        ok(SmartLists.build(SmartLists.UNPLAYED, mod, cnt, last, fav, now).equals(Arrays.asList(0, 4)), "sin escuchar");
+        ok(SmartLists.build(SmartLists.WEEK, mod, cnt, last, fav, now).equals(Arrays.asList(2, 3)), "esta semana, más escuchadas primero");
+        ok(SmartLists.build(SmartLists.REDISCOVER, mod, cnt, last, fav, now).equals(Arrays.asList(1)), "redescubre");
+        ok(SmartLists.build(SmartLists.FORGOTTEN_FAVS, mod, cnt, last, fav, now).equals(Arrays.asList(1, 4)), "favoritas olvidadas");
     }
 }

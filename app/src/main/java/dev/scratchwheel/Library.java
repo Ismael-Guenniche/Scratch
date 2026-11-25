@@ -137,7 +137,8 @@ final class Library {
             cur = cr.query(children, new String[]{
                     DocumentsContract.Document.COLUMN_DOCUMENT_ID,
                     DocumentsContract.Document.COLUMN_DISPLAY_NAME,
-                    DocumentsContract.Document.COLUMN_MIME_TYPE}, null, null, null);
+                    DocumentsContract.Document.COLUMN_MIME_TYPE,
+                    DocumentsContract.Document.COLUMN_LAST_MODIFIED}, null, null, null);
             if (cur == null) {
                 rNullCursor++;
                 return;
@@ -154,7 +155,13 @@ final class Library {
                     dirs.add(id);
                 } else if (isAudio(name, mime)) {
                     String shown = name == null ? id : stripExt(name);
-                    out.add(new Player.Track(DocumentsContract.buildDocumentUriUsingTree(tree, id), shown));
+                    Player.Track t = new Player.Track(DocumentsContract.buildDocumentUriUsingTree(tree, id), shown);
+                    try {
+                        t.modMs = cur.isNull(3) ? 0 : cur.getLong(3);
+                    } catch (RuntimeException ignored) {
+                        // proveedores que no dan la fecha
+                    }
+                    out.add(t);
                     p.onCount(out.size());
                 } else if (name != null && rOther.size() < 30) {
                     int dot = name.lastIndexOf('.');
@@ -207,6 +214,10 @@ final class Library {
                 w.write(t.uri.toString());
                 w.write('\t');
                 w.write(t.name.replace('\t', ' ').replace('\n', ' '));
+                if (t.modMs > 0) {
+                    w.write('\t');
+                    w.write(Long.toString(t.modMs));
+                }
                 w.newLine();
             }
         } catch (IOException ignored) {
@@ -234,7 +245,21 @@ final class Library {
             while ((line = r.readLine()) != null) {
                 int tab = line.indexOf('\t');
                 if (tab > 0) {
-                    into.add(new Player.Track(Uri.parse(line.substring(0, tab)), line.substring(tab + 1)));
+                    // uri \t nombre [\t fecha del archivo] (las bibliotecas antiguas no llevan fecha)
+                    String rest = line.substring(tab + 1);
+                    long mod = 0;
+                    int t2 = rest.lastIndexOf('\t');
+                    if (t2 >= 0) {
+                        try {
+                            mod = Long.parseLong(rest.substring(t2 + 1));
+                            rest = rest.substring(0, t2);
+                        } catch (NumberFormatException ignored) {
+                            // no era una fecha
+                        }
+                    }
+                    Player.Track tr = new Player.Track(Uri.parse(line.substring(0, tab)), rest);
+                    tr.modMs = mod;
+                    into.add(tr);
                 }
             }
             return label == null ? "" : label;

@@ -56,6 +56,8 @@ public class MainActivity extends Activity {
     private static final int TAB_ARTIST = 6;
     private static final int TAB_HOME = 7;
     private static final int TAB_ALBUM = 8;
+    private static final int TAB_SMART = 9;
+    private int smartSel;
     /** Artista o álbum abierto en TAB_ARTIST / TAB_ALBUM (null = la lista de artistas o álbumes). */
     private String groupSel;
     /** Con TAB_ARTIST / TAB_ALBUM sin elegir: un grupo por fila (shown lleva una canción de muestra de cada uno). */
@@ -1064,6 +1066,25 @@ public class MainActivity extends Activity {
             if (sortMode != 0) {
                 sortShown();
             }
+        } else if (tab == TAB_SMART) {
+            int n = p.tracks.size();
+            long[] mod = new long[n];
+            long[] cnt = new long[n];
+            long[] last = new long[n];
+            boolean[] fav = new boolean[n];
+            for (int i = 0; i < n; i++) {
+                Player.Track t = p.tracks.get(i);
+                String u = t.uri.toString();
+                mod[i] = t.modMs;
+                cnt[i] = Meta.count(u);
+                last[i] = Meta.last(u);
+                fav[i] = p.isFav(t.uri);
+            }
+            for (int i : SmartLists.build(smartSel, mod, cnt, last, fav, System.currentTimeMillis())) {
+                if (matches(i, q)) {
+                    shown.add(i);
+                }
+            }
         } else if (tab == TAB_ARTIST || tab == TAB_ALBUM) {
             groups.clear();
             List<Groups.Group> all = groupsFor(tab == TAB_ALBUM);
@@ -1153,7 +1174,8 @@ public class MainActivity extends Activity {
             status.setText(groups.size() + (tab == TAB_ALBUM ? Tr.t(" ÁLBUMES") : Tr.t(" ARTISTAS")));
         } else {
             status.setText(shown.size() + Tr.t(" CANCIONES")
-                    + ((tab == TAB_RECENT || tab == TAB_TOP) && shown.isEmpty() ? Tr.t(" · REPRODUCE ALGO") : ""));
+                    + ((tab == TAB_RECENT || tab == TAB_TOP) && shown.isEmpty() ? Tr.t(" · REPRODUCE ALGO") : "")
+                    + (tab == TAB_SMART ? " · " + Tr.t(SmartLists.help(smartSel)) : ""));
         }
         adapter.notifyDataSetChanged();
     }
@@ -1232,7 +1254,7 @@ public class MainActivity extends Activity {
     /** Pestañas: CANCIONES, FAVORITAS y una por carpeta. Solo se reconstruyen si cambia algo. */
     private void buildChips() {
         String key = folderStamp + "|" + metaStamp + "|" + tab + "|" + folderSel + "|" + listSel + "|" + Playlists.I.version
-                + "|" + groupSel;
+                + "|" + groupSel + "|" + smartSel;
         if (key.equals(chipKey)) {
             return;
         }
@@ -1300,6 +1322,25 @@ public class MainActivity extends Activity {
                 refilter();
             }
         });
+        for (int k = 0; k < SmartLists.COUNT; k++) {
+            final int kind = k;
+            TextView sc = addChip("✦ " + Tr.t(SmartLists.name(k)), tab == TAB_SMART && smartSel == k,
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            tab = TAB_SMART;
+                            smartSel = kind;
+                            refilter();
+                        }
+                    });
+            sc.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View v) {
+                    Toast.makeText(MainActivity.this, Tr.t(SmartLists.help(kind)), Toast.LENGTH_LONG).show();
+                    return true;
+                }
+            });
+        }
         for (final String name : Playlists.I.names()) {
             final String label = name.toUpperCase(Locale.ROOT) + "  " + Playlists.I.size(name);
             TextView chip = addChip(label, tab == TAB_LIST && name.equals(listSel), new View.OnClickListener() {
