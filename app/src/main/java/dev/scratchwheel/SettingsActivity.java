@@ -183,6 +183,7 @@ public class SettingsActivity extends Activity {
                         prefs.edit().putBoolean("cover", v).apply();
                     }
                 }));
+        c.addView(dots());
         c.addView(body(Tr.t("Aspecto del vinilo")));
         final int vsel = prefs.getInt("vskin", 0);
         c.addView(segmented(new String[] {Tr.t("CLÁSICO"), Tr.t("PUNTOS"), Tr.t("RAYAS"), Tr.t("ESPIRAL")},
@@ -201,6 +202,7 @@ public class SettingsActivity extends Activity {
                         redo();
                     }
                 }));
+        c.addView(dots());
         c.addView(body(Tr.t("Estilo de la rueda (sin carátula)")));
         c.addView(segmented(new String[] {Tr.t("PUNTOS"), Tr.t("GRABADORA")}, prefs.getInt("wstyle", 0),
                 new Pick() {
@@ -717,22 +719,42 @@ public class SettingsActivity extends Activity {
         about.setPadding(0, dp(18), 0, dp(10));
         list.addView(about);
 
-        ScrollView sv = new ScrollView(this);
+        final int restoreY = savedScroll;
+        savedScroll = -1;
+        // La posición se recupera en la primera colocación, antes de pintar nada: así al cambiar un ajuste (que
+        // recrea la pantalla) no se ve un fotograma con los ajustes desde arriba.
+        ScrollView sv = new ScrollView(this) {
+            private int pending = restoreY;
+
+            @Override
+            protected void onLayout(boolean changed, int l, int t, int r, int b) {
+                super.onLayout(changed, l, t, r, b);
+                if (pending > 0 && getChildCount() > 0) {
+                    int max = Math.max(0, getChildAt(0).getHeight() - (b - t));
+                    scrollTo(0, Math.min(pending, max));
+                    if (pending <= max) {
+                        pending = -1;
+                    }
+                } else {
+                    pending = -1;
+                }
+            }
+
+            @Override
+            protected void onScrollChanged(int x, int y, int ox, int oy) {
+                super.onScrollChanged(x, y, ox, oy);
+                if (getChildCount() > 0 && getChildAt(0).getHeight() > 0 && pending > 0 && y != pending
+                        && y != Math.max(0, getChildAt(0).getHeight() - getHeight())) {
+                    // el usuario ya se ha movido: no volver a la posición guardada
+                    pending = -1;
+                }
+            }
+        };
         sv.setFillViewport(false);
         sv.setVerticalScrollBarEnabled(false);
         sv.setOverScrollMode(View.OVER_SCROLL_NEVER);
         sv.addView(list);
         scroll = sv;
-        if (savedScroll > 0) {
-            final int y = savedScroll;
-            savedScroll = -1;
-            sv.post(new Runnable() {
-                @Override
-                public void run() {
-                    scroll.scrollTo(0, y);
-                }
-            });
-        }
         root.addView(sv, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
         return root;
@@ -1017,7 +1039,46 @@ public class SettingsActivity extends Activity {
     }
 
     private View segmented(String[] opts, int selected, final Pick pick) {
-        LinearLayout row = new LinearLayout(this);
+        // Si los botones no caben a lo ancho (pantallas estrechas, textos largos), se reparten el ancho a partes
+        // iguales en vez de salirse por la derecha cortados.
+        LinearLayout row = new LinearLayout(this) {
+            private boolean squeezed;
+
+            @Override
+            protected void onMeasure(int wSpec, int hSpec) {
+                super.onMeasure(wSpec, hSpec);
+                if (squeezed || MeasureSpec.getMode(wSpec) == MeasureSpec.UNSPECIFIED) {
+                    return;
+                }
+                int avail = MeasureSpec.getSize(wSpec) - getPaddingLeft() - getPaddingRight();
+                // ancho que pide cada botón sin límite (el LinearLayout recorta el último para que «quepa»)
+                int used = 0;
+                int any = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+                for (int k = 0; k < getChildCount(); k++) {
+                    View ch = getChildAt(k);
+                    ch.measure(any, any);
+                    used += ch.getMeasuredWidth() + ((LinearLayout.LayoutParams) ch.getLayoutParams()).rightMargin;
+                }
+                if (used <= avail) {
+                    super.onMeasure(wSpec, hSpec);
+                    return;
+                }
+                squeezed = true;
+                int gapPx = dp(6);
+                for (int k = 0; k < getChildCount(); k++) {
+                    View ch = getChildAt(k);
+                    LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) ch.getLayoutParams();
+                    lp.width = 0;
+                    lp.weight = 1f;
+                    lp.rightMargin = k + 1 < getChildCount() ? gapPx : 0;
+                    ch.setPadding(dp(4), ch.getPaddingTop(), dp(4), ch.getPaddingBottom());
+                    if (ch instanceof TextView) {
+                        ((TextView) ch).setLetterSpacing(0f);
+                    }
+                }
+                super.onMeasure(wSpec, hSpec);
+            }
+        };
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setPadding(0, dp(8), 0, 0);
         for (int i = 0; i < opts.length; i++) {
@@ -1064,9 +1125,11 @@ public class SettingsActivity extends Activity {
         LinearLayout txt = new LinearLayout(this);
         txt.setOrientation(LinearLayout.VERTICAL);
         txt.addView(body(label));
-        TextView d = muted(desc);
-        d.setPadding(0, dp(2), 0, 0);
-        txt.addView(d);
+        if (desc != null && desc.length() > 0) {
+            TextView d = muted(desc);
+            d.setPadding(0, dp(2), 0, 0);
+            txt.addView(d);
+        }
         row.addView(txt, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
         Switch sw = new Switch(this);
         sw.setChecked(on);

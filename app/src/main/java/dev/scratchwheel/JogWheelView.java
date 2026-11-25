@@ -371,10 +371,15 @@ public class JogWheelView extends View {
             groove.setColor(0x26FFFFFF);
         } else {
             float dotR = dp(1.7f) * (1f + level * 1.2f);
-            int rings = 7;
+            // Los anillos van de 0,38 r a 0,89 r. En ruedas pequeñas (la vista previa de Ajustes, pantallas
+            // estrechas) hay menos anillos para que la separación entre anillos no baje de ~12 dp, y los puntos de
+            // cada anillo van a la misma distancia que los anillos: rejilla uniforme, sin «brazos» en espiral.
+            float span = r * 0.51f;
+            int rings = Math.max(3, Math.min(7, (int) (span / dp(12)) + 1));
+            float gap = span / (rings - 1);
             for (int k = 0; k < rings; k++) {
-                float rad = r * (0.38f + 0.085f * k);
-                int n = Math.max(6, Math.round((float) (TWO_PI * rad / dp(14))));
+                float rad = r * 0.38f + gap * k;
+                int n = Math.max(6, Math.round((float) (TWO_PI * rad / gap)));
                 double step = TWO_PI / n;
                 double stagger = (k % 2) * step / 2;
                 for (int i = 0; i < n; i++) {
