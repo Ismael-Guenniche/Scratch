@@ -81,6 +81,16 @@ final class Meta {
         }
     }
 
+    /** Las etiquetas se acaban de escribir en el archivo: se actualiza la caché sin volver a leerlo. */
+    static synchronized void setTags(Player.Track t, String title, String artist, String album) {
+        String key = t.uri.toString();
+        String[] old = cache.get(key);
+        String dur = old != null && old.length > 3 ? old[3] : String.valueOf(t.durMs);
+        cache.put(key, new String[]{clean(title), clean(artist), clean(album), dur});
+        save();
+        t.setMeta(clean(title), clean(artist), clean(album));
+    }
+
     /** Lee las etiquetas que faltan. Devuelve true si cambió algo. */
     static boolean scan(Context c, List<Player.Track> tracks) {
         boolean changed = false;

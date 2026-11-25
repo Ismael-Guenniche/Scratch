@@ -1461,7 +1461,9 @@ public class MainActivity extends Activity {
 
     private void pickFolder() {
         Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        // también escritura: la necesita el editor de etiquetas para guardar en los archivos
+        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
         startActivityForResult(i, REQ_TREE);
     }
 
@@ -1944,8 +1946,13 @@ public class MainActivity extends Activity {
         if (req == REQ_TREE) {
             try {
                 getContentResolver().takePersistableUriPermission(uri,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            } catch (RuntimeException ignored) {
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            } catch (RuntimeException e) {
+                try {
+                    getContentResolver().takePersistableUriPermission(uri,
+                            Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                } catch (RuntimeException ignored) {
+                }
             }
             Player.I.scan(uri);
         } else if (req == REQ_OPEN) {

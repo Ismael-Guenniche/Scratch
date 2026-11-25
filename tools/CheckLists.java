@@ -226,6 +226,7 @@ public final class CheckLists {
         backupTests();
         keyTests();
         automixTests();
+        id3Tests();
         System.out.println(fails == 0 ? "LISTAS OK" : fails + " FALLOS");
         System.exit(fails == 0 ? 0 : 1);
     }
@@ -717,5 +718,64 @@ public final class CheckLists {
         java.util.List<Integer> o = Automix.order(it);
         ok(o.size() == 4 && o.get(0) == 1 && new java.util.HashSet<Integer>(o).size() == 4, "automix: empieza tranquilo y no repite: " + o);
         ok(o.indexOf(2) == o.indexOf(0) - 1 || o.indexOf(0) == o.indexOf(2) - 1, "automix: C y G juntas: " + o);
+    }
+
+    private static void id3Tests() throws Exception {
+        java.util.Map<String, String> m = new java.util.LinkedHashMap<String, String>();
+        m.put(Id3Tags.TITLE, "Como Camarón");
+        m.put(Id3Tags.ARTIST, "Estopa");
+        m.put(Id3Tags.ALBUM, null);
+        // archivo sin etiqueta: se crea una 2.3 y el audio no cambia
+        byte[] audio = new byte[4000];
+        for (int i = 0; i < audio.length; i++) {
+            audio[i] = (byte) (i * 7);
+        }
+        byte[] out = Id3Tags.retag(audio, m);
+        ok("Como Camarón".equals(Id3Tags.read(out, "TIT2")) && "Estopa".equals(Id3Tags.read(out, "TPE1")), "crea ID3 2.3");
+        ok(java.util.Arrays.equals(java.util.Arrays.copyOfRange(out, out.length - audio.length, out.length), audio), "audio intacto");
+        // reescribir encima: mantiene la carátula (APIC) y cambia el título
+        java.io.ByteArrayOutputStream raw = new java.io.ByteArrayOutputStream();
+        byte[] apic = new byte[10 + 20];
+        System.arraycopy("APIC".getBytes("ISO-8859-1"), 0, apic, 0, 4);
+        apic[7] = 20;
+        for (int i = 10; i < apic.length; i++) {
+            apic[i] = (byte) i;
+        }
+        byte[] tag1 = Id3Tags.retag(audio, m);
+        // inserta el APIC a mano en una 2.3 nueva
+        int size = 0;
+        byte[] withApic = new byte[tag1.length + apic.length];
+        System.arraycopy(tag1, 0, withApic, 0, 10);
+        System.arraycopy(apic, 0, withApic, 10, apic.length);
+        System.arraycopy(tag1, 10, withApic, 10 + apic.length, tag1.length - 10);
+        size = ((tag1[6] & 0x7F) << 21 | (tag1[7] & 0x7F) << 14 | (tag1[8] & 0x7F) << 7 | (tag1[9] & 0x7F)) + apic.length;
+        withApic[6] = (byte) ((size >> 21) & 0x7F);
+        withApic[7] = (byte) ((size >> 14) & 0x7F);
+        withApic[8] = (byte) ((size >> 7) & 0x7F);
+        withApic[9] = (byte) (size & 0x7F);
+        java.util.Map<String, String> m2 = new java.util.LinkedHashMap<String, String>();
+        m2.put(Id3Tags.TITLE, "Tu Calorro");
+        m2.put(Id3Tags.ALBUM, "Estopa");
+        byte[] out2 = Id3Tags.retag(withApic, m2);
+        ok("Tu Calorro".equals(Id3Tags.read(out2, "TIT2")) && "Estopa".equals(Id3Tags.read(out2, "TPE1"))
+                && "Estopa".equals(Id3Tags.read(out2, "TALB")), "cambia título, añade álbum, deja artista");
+        ok(Id3Tags.read(out2, "APIC") != null, "la carátula sigue");
+        ok(java.util.Arrays.equals(java.util.Arrays.copyOfRange(out2, out2.length - audio.length, out2.length), audio), "audio intacto 2");
+        // ID3v1 al final
+        byte[] v1 = new byte[audio.length + 128];
+        System.arraycopy(audio, 0, v1, 0, audio.length);
+        v1[audio.length] = 'T';
+        v1[audio.length + 1] = 'A';
+        v1[audio.length + 2] = 'G';
+        byte[] out3 = Id3Tags.retag(v1, m);
+        ok(new String(out3, out3.length - 125, 6, "ISO-8859-1").equals("Como C"), "ID3v1 actualizada");
+        // etiqueta con unsync: no se toca
+        byte[] us = new byte[] {'I', 'D', '3', 3, 0, (byte) 0x80, 0, 0, 0, 0, 1, 2, 3};
+        try {
+            Id3Tags.retag(us, m);
+            ok(false, "unsync rechazada");
+        } catch (Id3Tags.Unsupported e) {
+            // bien
+        }
     }
 }

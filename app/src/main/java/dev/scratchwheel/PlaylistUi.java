@@ -106,7 +106,21 @@ final class PlaylistUi {
         ti.setText(t.display());
         final EditText ar = dd.input(Tr.t("Artista"));
         ar.setText(t.artist);
+        final boolean mp3 = isMp3(t);
+        final EditText al = mp3 ? dd.input(Tr.t("Álbum")) : null;
+        if (al != null) {
+            al.setText(t.album);
+        }
         dd.button(Tr.t("CANCELAR"), Lucent.GLASS, null);
+        if (mp3) {
+            dd.button(Tr.t("GUARDAR EN EL ARCHIVO"), Lucent.GLASS, new Runnable() {
+                @Override
+                public void run() {
+                    writeTags(a, t, TrackEdits.clean(ti.getText().toString()),
+                            TrackEdits.clean(ar.getText().toString()), TrackEdits.clean(al.getText().toString()), done);
+                }
+            });
+        }
         if (TrackEdits.I.has(t.uri.toString())) {
             dd.button(Tr.t("RESTAURAR ORIGINAL"), Lucent.GLASS, new Runnable() {
                 @Override
@@ -128,6 +142,100 @@ final class PlaylistUi {
         });
         dd.show();
         ti.requestFocus();
+    }
+
+    static boolean isMp3(Player.Track t) {
+        String seg = t.uri.getLastPathSegment();
+        return seg != null && seg.toLowerCase(java.util.Locale.ROOT).endsWith(".mp3");
+    }
+
+    /**
+     * Escribe título, artista y álbum en las etiquetas ID3 del propio MP3 (no solo en la app). Necesita permiso de
+     * escritura en la carpeta: si solo hay de lectura, se explica cómo darlo.
+     */
+    static void writeTags(final Activity a, final Player.Track t, final String title, final String artist,
+                          final String album, final Runnable done) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String err = null;
+                try {
+                    java.io.InputStream in = a.getContentResolver().openInputStream(t.uri);
+                    if (in == null) {
+                        throw new java.io.IOException("null");
+                    }
+                    byte[] data;
+                    try {
+                        java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+                        byte[] buf = new byte[65536];
+                        int n;
+                        while ((n = in.read(buf)) > 0) {
+                            bo.write(buf, 0, n);
+                            if (bo.size() > 200 * 1024 * 1024) {
+                                throw new java.io.IOException("big");
+                            }
+                        }
+                        data = bo.toByteArray();
+                    } finally {
+                        in.close();
+                    }
+                    java.util.Map<String, String> m = new java.util.LinkedHashMap<String, String>();
+                    m.put(Id3Tags.TITLE, title);
+                    m.put(Id3Tags.ARTIST, artist);
+                    m.put(Id3Tags.ALBUM, album);
+                    byte[] out = Id3Tags.retag(data, m);
+                    java.io.OutputStream o = a.getContentResolver().openOutputStream(t.uri, "wt");
+                    if (o == null) {
+                        throw new java.io.IOException("null");
+                    }
+                    try {
+                        o.write(out);
+                    } catch (java.io.IOException we) {
+                        // falló a mitad: se intenta dejar el archivo como estaba
+                        try {
+                            o.close();
+                            java.io.OutputStream back = a.getContentResolver().openOutputStream(t.uri, "wt");
+                            if (back != null) {
+                                back.write(data);
+                                back.close();
+                            }
+                        } catch (Exception ignored) {
+                        }
+                        throw we;
+                    } finally {
+                        try {
+                            o.close();
+                        } catch (java.io.IOException ignored) {
+                        }
+                    }
+                } catch (SecurityException e) {
+                    err = Tr.t("Scratch solo tiene permiso para leer tu carpeta de música. Para escribir en los archivos, vuelve a elegirla en el menú ⋮ → ELEGIR CARPETA (la misma) y acepta.");
+                } catch (Id3Tags.Unsupported e) {
+                    err = Tr.t("Las etiquetas de este archivo usan un formato antiguo que Scratch no sabe reescribir sin riesgo. Se guarda solo en la app.");
+                } catch (Exception e) {
+                    err = Tr.t("No se pudo escribir en el archivo.");
+                }
+                final String fe = err;
+                a.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (fe != null) {
+                            new DotDialog(a, Lucent.load(a)).title(Tr.t("ETIQUETAS"))
+                                    .message(fe).button("OK", Lucent.ACCENT, null).show();
+                            return;
+                        }
+                        TrackEdits.I.clear(t.uri.toString());
+                        Meta.setTags(t, title, artist, album);
+                        Player.I.metaEdited(t);
+                        android.widget.Toast.makeText(a, Tr.t("Etiquetas guardadas en el archivo"),
+                                android.widget.Toast.LENGTH_SHORT).show();
+                        if (done != null) {
+                            done.run();
+                        }
+                    }
+                });
+            }
+        }, "tags").start();
     }
 
     private static void applied(Player.Track t, Runnable done) {
