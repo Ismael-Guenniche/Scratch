@@ -19,10 +19,40 @@ android {
     productFlavors {
         play {
             dimension 'dist'
+            // ID en Google Play (no se puede cambiar nunca). El sabor personal sigue siendo dev.scratchwheel,
+            // así que las dos versiones se pueden tener instaladas a la vez.
+            applicationId 'io.github.ismaelguenniche.scratch'
         }
         personal {
             dimension 'dist'
             versionNameSuffix '-personal'
+        }
+    }
+
+    // Firma de subida a Google Play: lee keystore.properties de la raíz del proyecto (no se sube a git).
+    // Si no existe, la build release sale sin firmar (no se puede subir).
+    def ksFile = rootProject.file('keystore.properties')
+    if (ksFile.exists()) {
+        def ks = new Properties()
+        ksFile.withInputStream { ks.load(it) }
+        signingConfigs {
+            release {
+                storeFile file(ks['storeFile'])
+                storePassword ks['storePassword']
+                keyAlias ks['keyAlias']
+                keyPassword ks['keyPassword']
+            }
+        }
+        buildTypes {
+            release {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
         }
     }
 
