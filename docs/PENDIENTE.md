@@ -1,5 +1,8 @@
 # Pendiente (cosas por hacer)
 
+## Letras que no aparecen (pedido el 2026-11-25)
+En el móvil no se ven las letras. Ismael pasará varias canciones de su biblioteca para analizarlas: comprobar si llevan letra incrustada (USLT/SYLT en MP3, LYRICS en FLAC/Ogg, ©lyr en M4A) y si `LyricsReader` la lee. Si los archivos no traen letra, buscar una forma de arreglarlo (por ejemplo, bajar las letras en bloque de lrclib.net para toda la biblioteca y guardarlas en la app, o incrustarlas en los archivos desde el PC).
+
 ## Búsqueda inteligente — HECHA en la 0.76
 Decidido el 2026-11-25: orden por relevancia por defecto y tolerancia NORMAL. Lo de abajo es el diseño original (todo implementado en `SmartSearch.java`; tests en `tools/CheckLists.java`).
 

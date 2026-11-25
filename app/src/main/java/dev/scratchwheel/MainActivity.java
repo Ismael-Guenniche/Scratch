@@ -55,6 +55,11 @@ public class MainActivity extends Activity {
     private static final int TAB_TOP = 5;
     private static final int TAB_ARTIST = 6;
     private static final int TAB_HOME = 7;
+    private static final int TAB_ALBUM = 8;
+    /** Artista o álbum abierto en TAB_ARTIST / TAB_ALBUM (null = la lista de artistas o álbumes). */
+    private String groupSel;
+    /** Con TAB_ARTIST / TAB_ALBUM sin elegir: un grupo por fila (shown lleva una canción de muestra de cada uno). */
+    private final ArrayList<Groups.Group> groups = new ArrayList<Groups.Group>();
     private String artistSel = "";
 
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -658,6 +663,27 @@ public class MainActivity extends Activity {
                     row.addView(num, new LinearLayout.LayoutParams(
                             LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
                 }
+                if (groupList() && pos < groups.size()) {
+                    Groups.Group g = groups.get(pos);
+                    Player.Track gt = Player.I.tracks.get(g.tracks.get(0));
+                    CoverCache.into(MainActivity.this, (android.widget.ImageView) row.getChildAt(0), gt.uri);
+                    LinearLayout gtx = (LinearLayout) row.getChildAt(1);
+                    TextView gn = (TextView) gtx.getChildAt(0);
+                    TextView gs = (TextView) gtx.getChildAt(1);
+                    gn.setText(groupName(g));
+                    gn.setTypeface(th.regular);
+                    String sub;
+                    if (tab == TAB_ALBUM) {
+                        sub = "*".equals(g.sub) ? Tr.t("VARIOS ARTISTAS") : g.sub;
+                    } else {
+                        int na = Integer.parseInt(g.sub);
+                        sub = na == 0 ? "" : na + (na == 1 ? Tr.t(" ÁLBUM") : Tr.t(" ÁLBUMES"));
+                    }
+                    gs.setText(sub);
+                    gs.setVisibility(sub.length() == 0 ? View.GONE : View.VISIBLE);
+                    ((TextView) row.getChildAt(2)).setText(String.valueOf(g.tracks.size()));
+                    return row;
+                }
                 ((TextView) row.getChildAt(2)).setText(String.valueOf(pos + 1));
                 int idx = shown.get(pos);
                 Player.Track t = Player.I.tracks.get(idx);
@@ -680,12 +706,30 @@ public class MainActivity extends Activity {
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int pos, long id) {
+                if (groupList()) {
+                    if (pos < groups.size()) {
+                        groupSel = groups.get(pos).key;
+                        if (searchOpen) {
+                            toggleSearch();
+                        }
+                        refilter();
+                        list.setSelection(0);
+                    }
+                    return;
+                }
                 playAt(pos);
             }
         });
         list.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int pos, long id) {
+                if (groupList()) {
+                    // mantener pulsado un artista o álbum: reproducirlo entero
+                    if (pos < groups.size()) {
+                        Player.I.playFrom(new ArrayList<Integer>(groups.get(pos).tracks), 0);
+                    }
+                    return true;
+                }
                 showTrackMenu(view, shown.get(pos));
                 return true;
             }
@@ -862,6 +906,9 @@ public class MainActivity extends Activity {
     public void onBackPressed() {
         if (searchOpen) {
             toggleSearch();
+        } else if ((tab == TAB_ARTIST || tab == TAB_ALBUM) && groupSel != null) {
+            groupSel = null;
+            refilter();
         } else if (tab != TAB_HOME) {
             tab = TAB_HOME;
             refilter();
@@ -893,6 +940,12 @@ public class MainActivity extends Activity {
             tab = TAB_RECENT;
         } else if (what.equals("TOP")) {
             tab = TAB_TOP;
+        } else if (what.equals("ARTISTS")) {
+            tab = TAB_ARTIST;
+            groupSel = null;
+        } else if (what.equals("ALBUMS")) {
+            tab = TAB_ALBUM;
+            groupSel = null;
         } else if (what.startsWith("LIST:")) {
             tab = TAB_LIST;
             listSel = what.substring(5);
@@ -1011,6 +1064,35 @@ public class MainActivity extends Activity {
             if (sortMode != 0) {
                 sortShown();
             }
+        } else if (tab == TAB_ARTIST || tab == TAB_ALBUM) {
+            groups.clear();
+            List<Groups.Group> all = groupsFor(tab == TAB_ALBUM);
+            Groups.Group open = null;
+            if (groupSel != null) {
+                for (Groups.Group g : all) {
+                    if (g.key.equals(groupSel)) {
+                        open = g;
+                        break;
+                    }
+                }
+                if (open == null) {
+                    groupSel = null;
+                }
+            }
+            if (open == null) {
+                for (Groups.Group g : all) {
+                    if (sq == null || SmartSearch.score(new SmartSearch.Entry(g.name, g.name, "", "", ""), sq) > 0) {
+                        groups.add(g);
+                        shown.add(g.tracks.get(0));
+                    }
+                }
+            } else {
+                for (int i : open.tracks) {
+                    if (matches(i, q)) {
+                        shown.add(i);
+                    }
+                }
+            }
         } else if (tab == TAB_RECENT || tab == TAB_TOP) {
             final boolean top = tab == TAB_TOP;
             ArrayList<Integer> all = new ArrayList<Integer>();
@@ -1044,7 +1126,7 @@ public class MainActivity extends Activity {
                 }
             }
         }
-        if (sq != null && sq.o.relevance && shown.size() > 1) {
+        if (sq != null && sq.o.relevance && shown.size() > 1 && !groupList()) {
             sortByScore();
         }
         boolean none = p.count() == 0 && !p.isScanning();
@@ -1067,11 +1149,53 @@ public class MainActivity extends Activity {
             status.setText(Tr.t("ESCANEANDO… ") + p.scanCount());
         } else if (p.count() == 0 || isHome) {
             status.setText("");
+        } else if (groupList()) {
+            status.setText(groups.size() + (tab == TAB_ALBUM ? Tr.t(" ÁLBUMES") : Tr.t(" ARTISTAS")));
         } else {
             status.setText(shown.size() + Tr.t(" CANCIONES")
                     + ((tab == TAB_RECENT || tab == TAB_TOP) && shown.isEmpty() ? Tr.t(" · REPRODUCE ALGO") : ""));
         }
         adapter.notifyDataSetChanged();
+    }
+
+    /** Lista de artistas o de álbumes (sin ninguno abierto): cada fila es un grupo, no una canción. */
+    private boolean groupList() {
+        return (tab == TAB_ARTIST || tab == TAB_ALBUM) && groupSel == null;
+    }
+
+    private List<Groups.Group> groupCache;
+    private long groupSig = -1;
+    private boolean groupCacheAlbum;
+
+    /** Artistas o álbumes de la biblioteca; se rehacen solo si cambian las canciones o sus etiquetas. */
+    private List<Groups.Group> groupsFor(boolean byAlbum) {
+        Player p = Player.I;
+        long sig = p.tracks.size();
+        for (Player.Track t : p.tracks) {
+            sig = sig * 31 + t.artist.hashCode() * 7 + t.album.hashCode();
+        }
+        if (groupCache != null && sig == groupSig && byAlbum == groupCacheAlbum) {
+            return groupCache;
+        }
+        ArrayList<String> ar = new ArrayList<String>(p.tracks.size());
+        ArrayList<String> al = new ArrayList<String>(p.tracks.size());
+        ArrayList<String> fi = new ArrayList<String>(p.tracks.size());
+        for (Player.Track t : p.tracks) {
+            ar.add(t.artist);
+            al.add(t.album);
+            fi.add(t.name);
+        }
+        groupCache = Groups.build(ar, al, fi, byAlbum);
+        groupSig = sig;
+        groupCacheAlbum = byAlbum;
+        return groupCache;
+    }
+
+    private String groupName(Groups.Group g) {
+        if (g.name.length() == 0) {
+            return tab == TAB_ALBUM ? Tr.t("SIN ÁLBUM") : Tr.t("ARTISTA DESCONOCIDO");
+        }
+        return g.name;
     }
 
     /** Búsqueda inteligente de esta pasada de refilter (null si no se busca nada) y puntos de cada canción. */
@@ -1107,7 +1231,8 @@ public class MainActivity extends Activity {
 
     /** Pestañas: CANCIONES, FAVORITAS y una por carpeta. Solo se reconstruyen si cambia algo. */
     private void buildChips() {
-        String key = folderStamp + "|" + metaStamp + "|" + tab + "|" + folderSel + "|" + listSel + "|" + Playlists.I.version;
+        String key = folderStamp + "|" + metaStamp + "|" + tab + "|" + folderSel + "|" + listSel + "|" + Playlists.I.version
+                + "|" + groupSel;
         if (key.equals(chipKey)) {
             return;
         }
@@ -1145,6 +1270,33 @@ public class MainActivity extends Activity {
             @Override
             public void onClick(View v) {
                 tab = TAB_TOP;
+                refilter();
+            }
+        });
+        String artLabel = Tr.t("ARTISTAS");
+        String albLabel = Tr.t("ÁLBUMES");
+        if (groupSel != null && (tab == TAB_ARTIST || tab == TAB_ALBUM)) {
+            String sel = "‹ " + (groupSel.length() == 0 ? (tab == TAB_ALBUM ? Tr.t("SIN ÁLBUM")
+                    : Tr.t("ARTISTA DESCONOCIDO")) : groupDisplay(groupSel));
+            if (tab == TAB_ARTIST) {
+                artLabel = sel.toUpperCase(Locale.ROOT);
+            } else {
+                albLabel = sel.toUpperCase(Locale.ROOT);
+            }
+        }
+        addChip(artLabel, tab == TAB_ARTIST, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tab = TAB_ARTIST;
+                groupSel = null;
+                refilter();
+            }
+        });
+        addChip(albLabel, tab == TAB_ALBUM, new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tab = TAB_ALBUM;
+                groupSel = null;
                 refilter();
             }
         });
@@ -1199,6 +1351,17 @@ public class MainActivity extends Activity {
                 }
             });
         }
+    }
+
+    private String groupDisplay(String key) {
+        if (groupCache != null) {
+            for (Groups.Group g : groupCache) {
+                if (g.key.equals(key)) {
+                    return g.name;
+                }
+            }
+        }
+        return key;
     }
 
     private TextView addChip(String label, boolean selected, View.OnClickListener click) {

@@ -197,11 +197,13 @@ final class HomeView extends ScrollView {
             {Tr.t("ALEATORIO"), Tr.t("TODA LA BIBLIOTECA"), "SHUFFLE"},
             {Tr.t("MÁS ESCUCHADAS"), "", "TOP"},
             {Tr.t("RECIENTES"), "", "RECENT"},
+            {Tr.t("ARTISTAS"), "", "ARTISTS"},
+            {Tr.t("ÁLBUMES"), "", "ALBUMS"},
             {Tr.t("CARPETAS"), "", "FOLDERS"},
             {Tr.t("PENDIENTES"), missing > 0 ? String.valueOf(missing) : Tr.t("AL DÍA"), "MISSING"},
             {Tr.t("ESTADÍSTICAS"), "WRAPPED", "STATS"},
             {Tr.t("AJUSTES"), "", "SETTINGS"}};
-        String[][] icons = {{"QUEUE"}, {"SHUFFLE"}, {"PITCH"}, {"DISC"}, {"FOLDER"}, {"DOWN"}, {"PITCH"}, {"MENU"}};
+        String[][] icons = {{"QUEUE"}, {"SHUFFLE"}, {"PITCH"}, {"DISC"}, {"ARTIST"}, {"COVER"}, {"FOLDER"}, {"DOWN"}, {"PITCH"}, {"MENU"}};
         for (int r = 0; r < tiles.length; r += 2) {
             LinearLayout row = new LinearLayout(getContext());
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -226,6 +228,10 @@ final class HomeView extends ScrollView {
             return DotIcons.DISC;
         } else if ("FOLDER".equals(n)) {
             return DotIcons.FOLDER;
+        } else if ("ARTIST".equals(n)) {
+            return DotIcons.ARTIST;
+        } else if ("COVER".equals(n)) {
+            return DotIcons.COVER;
         }
         return DotIcons.DOWN;
     }

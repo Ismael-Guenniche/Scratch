@@ -48,6 +48,9 @@ public final class DotIcons {
     public static final String[] FOLDER = {
         "0000000", "1110000", "1111111", "1000001", "1000001", "1000001", "1111111"};
 
+    public static final String[] ARTIST = {
+        "0011100", "0011100", "0011100", "0001000", "0111110", "1111111", "1111111"};
+
     public static final String[] VOL = {
         "0001001", "0011010", "1111101", "1111101", "1111101", "0011010", "0001001"};
     public static final String[] SEARCH = {
