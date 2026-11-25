@@ -1,0 +1,7 @@
+Scratch 0.78
+os: Windows Server 2022 10.0
+java: 21.0.13
+pantalla: 1024x768 escala 1.0
+ventana: 1024x688
+tema oscuro: false, acento: ff0078d7
+ffmpeg: null
