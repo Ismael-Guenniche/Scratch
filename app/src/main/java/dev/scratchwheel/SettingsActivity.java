@@ -552,6 +552,30 @@ public class SettingsActivity extends Activity {
             }));
         }
 
+        // COPIA DE SEGURIDAD
+        c = card(list, Tr.t("COPIA DE SEGURIDAD"));
+        c.addView(muted(Tr.t("Guarda en un archivo tus listas, favoritas, estadísticas, nombres editados, letras guardadas y ajustes. La música no va incluida.")));
+        c.addView(actionRow(Tr.t("Crear una copia"), Tr.t("CREAR"), new Runnable() {
+            @Override
+            public void run() {
+                Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType("application/zip");
+                i.putExtra(Intent.EXTRA_TITLE, "scratch-copia-" + new java.text.SimpleDateFormat("yyyy-MM-dd",
+                        java.util.Locale.ROOT).format(new java.util.Date()) + ".zip");
+                startActivityForResult(i, REQ_BACKUP);
+            }
+        }));
+        c.addView(actionRow(Tr.t("Restaurar una copia"), Tr.t("RESTAURAR"), new Runnable() {
+            @Override
+            public void run() {
+                Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                i.addCategory(Intent.CATEGORY_OPENABLE);
+                i.setType("*/*");
+                startActivityForResult(i, REQ_RESTORE);
+            }
+        }));
+
         // ANDROID AUTO
         c = card(list, Tr.t("ANDROID AUTO"));
         c.addView(muted(Tr.t("Vista previa de lo que verás en el coche: usa el mismo servicio que Android Auto (explorador, búsqueda, cola y controles), con filas y botones grandes. Sirve también como modo coche.")));
@@ -710,7 +734,7 @@ public class SettingsActivity extends Activity {
         refreshIcons();
 
         TextView about = new TextView(this);
-        about.setText("SCRATCH 0.76");
+        about.setText("SCRATCH 0.77");
         about.setTextSize(11);
         about.setTextColor(th.ink2);
         about.setTypeface(th.mono);
@@ -1189,6 +1213,91 @@ public class SettingsActivity extends Activity {
     // ------------------------------------------------------- listas con Claude
 
     private static final int REQ_LIB_EXPORT = 41;
+    private static final int REQ_BACKUP = 43;
+    private static final int REQ_RESTORE = 44;
+
+    /** Carpeta de los ajustes: shared_prefs en Android, prefs en la versión de escritorio. */
+    private java.io.File prefsDir() {
+        java.io.File base = getFilesDir().getParentFile();
+        java.io.File sp = new java.io.File(base, "shared_prefs");
+        java.io.File desk = new java.io.File(base, "prefs");
+        return !sp.isDirectory() && desk.isDirectory() ? desk : sp;
+    }
+
+    private void toastLong(final String m) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                android.widget.Toast.makeText(getApplicationContext(), m, android.widget.Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void makeBackup(final android.net.Uri dest) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String v = "?";
+                    try {
+                        v = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+                    } catch (Exception ignored) {
+                    }
+                    java.io.OutputStream o = getContentResolver().openOutputStream(dest, "wt");
+                    int n;
+                    try {
+                        n = Backup.write(o, getFilesDir(), prefsDir(), v);
+                    } finally {
+                        o.close();
+                    }
+                    toastLong(Tr.t("Copia creada: ") + n + Tr.t(" archivos"));
+                } catch (Exception e) {
+                    toastLong(Tr.t("No se pudo crear la copia"));
+                }
+            }
+        }).start();
+    }
+
+    private void restoreBackup(final android.net.Uri src) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String err = null;
+                try {
+                    java.io.InputStream in = getContentResolver().openInputStream(src);
+                    try {
+                        Backup.restore(in, getFilesDir(), prefsDir());
+                    } finally {
+                        if (in != null) {
+                            in.close();
+                        }
+                    }
+                } catch (Exception e) {
+                    err = Tr.t("Ese archivo no es una copia de Scratch o está dañado. No se ha cambiado nada.");
+                }
+                final String fe = err;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        if (fe != null) {
+                            new DotDialog(SettingsActivity.this, th).title(Tr.t("NO SE PUDO RESTAURAR"))
+                                    .message(fe).button("OK", Lucent.ACCENT, null).show();
+                            return;
+                        }
+                        new DotDialog(SettingsActivity.this, th).title(Tr.t("COPIA RESTAURADA"))
+                                .message(Tr.t("La app se cerrará ahora. Vuelve a abrirla para ver tus datos."))
+                                .button("OK", Lucent.ACCENT, new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        finishAffinity();
+                                        System.exit(0);
+                                    }
+                                }).show();
+                    }
+                });
+            }
+        }).start();
+    }
     private static final int REQ_LIST_IMPORT = 42;
 
     @Override
@@ -1197,7 +1306,20 @@ public class SettingsActivity extends Activity {
         if (res != RESULT_OK || data == null) {
             return;
         }
-        if (req == REQ_LIB_EXPORT && data.getData() != null) {
+        if (req == REQ_BACKUP && data.getData() != null) {
+            makeBackup(data.getData());
+        } else if (req == REQ_RESTORE && data.getData() != null) {
+            final android.net.Uri src = data.getData();
+            new DotDialog(this, th).title(Tr.t("RESTAURAR LA COPIA"))
+                    .message(Tr.t("Se sustituirán tus listas, favoritas, estadísticas y ajustes por los de la copia. Después la app se cerrará; vuelve a abrirla."))
+                    .button(Tr.t("CANCELAR"), Lucent.GLASS, null)
+                    .button(Tr.t("RESTAURAR"), Lucent.ACCENT, new Runnable() {
+                        @Override
+                        public void run() {
+                            restoreBackup(src);
+                        }
+                    }).show();
+        } else if (req == REQ_LIB_EXPORT && data.getData() != null) {
             exportLibrary(data.getData());
         } else if (req == REQ_LIST_IMPORT) {
             java.util.ArrayList<android.net.Uri> us = new java.util.ArrayList<android.net.Uri>();

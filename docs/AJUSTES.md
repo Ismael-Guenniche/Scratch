@@ -54,6 +54,10 @@ Estado interno: `djmode` (modo DJ activo), `slip_on` (botón SLIP).
 
 NORMAL: un error en palabras de 4–6 letras y dos desde 7; POCA: uno, solo desde 7 letras; NO: ninguno. Android Auto ordena siempre por relevancia. Detalles en `SmartSearch.java`.
 
+## Copia de seguridad
+- **Crear una copia** → `scratch-copia-AAAA-MM-DD.zip` con todo lo que hay en la carpeta de datos de la app (listas, favoritas, estadísticas, nombres editados, letras, portadas de listas, biblioteca) y los ajustes. Sin música ni cachés.
+- **Restaurar una copia** → comprueba que es una copia de Scratch, la descomprime aparte y solo entonces sustituye; luego la app se cierra. Las listas apuntan a las canciones por su ruta: en otro móvil funcionan si la carpeta de música está en el mismo sitio.
+
 ## Listas con Claude (solo sabor personal)
 - **Exportar la biblioteca** → `biblioteca-scratch.json`.
 - **Importar una lista de Claude** → crea la lista (si el nombre existe, «Nombre (2)»). Ver [LISTAS-CLAUDE.md](LISTAS-CLAUDE.md).

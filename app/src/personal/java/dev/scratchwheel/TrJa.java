@@ -498,5 +498,32 @@ final class TrJa {
         M.put("Also the file name.", "ふぁいるめいもさがします。");
         M.put("Typo tolerance", "まちがいのゆるし");
         M.put("no songs found", "きょくがみつかりません");
+            // 0.77
+        M.put("files", "ふぁいる");
+        M.put("UNKNOWN ARTIST", "ふめいなあーてぃすと");
+        M.put("BACKUP", "ばっくあっぷ");
+        M.put("BACKUP RESTORED", "ばっくあっぷをもどしました");
+        M.put("Backup created:", "ばっくあっぷをつくりました:");
+        M.put("Create a backup", "ばっくあっぷをつくる");
+        M.put("That file is not a Scratch backup or it is damaged. Nothing was changed.", "このふぁいるはScratchのばっくあっぷではないか、こわれています。なにもかわっていません。");
+        M.put("Saves your playlists, favorites, stats, edited names, saved lyrics and settings in one file. Music is not included.", "りすと・おきにいり・とうけい・へんしゅうしたなまえ・かし・せっていをひとつのふぁいるにほぞんします。おんがくはふくまれません。");
+        M.put("The app will close now. Open it again to see your data.", "あぷりをとじます。もういちどひらくとでーたがみられます。");
+        M.put("COULD NOT RESTORE", "もどせませんでした");
+        M.put("Could not create the backup", "ばっくあっぷをつくれませんでした");
+        M.put("RESTORE THE BACKUP", "ばっくあっぷをもどす");
+        M.put("RESTORE", "もどす");
+        M.put("Restore a backup", "ばっくあっぷをもどす");
+        M.put("NO ALBUM", "あるばむなし");
+        M.put("Your playlists, favorites, stats and settings will be replaced by the ones in the backup. Then the app will close; open it again.", "りすと・おきにいり・とうけい・せっていがばっくあっぷのものにかわります。そのあとあぷりがとじるので、もういちどひらいてください。");
+        M.put("VARIOUS ARTISTS", "いろいろなあーてぃすと");
+        M.put("UNPLAYED", "まだきいていない");
+        M.put("THIS WEEK", "こんしゅう");
+        M.put("REDISCOVER", "さいはっけん");
+        M.put("FORGOTTEN FAVORITES", "わすれたおきにいり");
+        M.put("Files from the last 30 days, newest first.", "さいきん30にちのふぁいる、あたらしいじゅん。");
+        M.put("Songs you have never played.", "まだいちどもきいていないきょく。");
+        M.put("What you played in the last 7 days, most played first.", "さいきん7にちにきいたきょく、よくきいたじゅん。");
+        M.put("Songs you played 3 times or more that haven't played in 90 days.", "3かいいじょうきいて、90にちきいていないきょく。");
+        M.put("Favorites that haven't played in 60 days.", "60にちきいていないおきにいり。");
     }
 }

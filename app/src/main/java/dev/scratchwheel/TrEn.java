@@ -527,5 +527,33 @@ final class TrEn {
         M.put("También el nombre del archivo.", "Also the file name.");
         M.put("Tolerancia a errores", "Typo tolerance");
         M.put("ninguna canción encontrada", "no songs found");
+            // 0.77
+        M.put("archivos", "files");
+        M.put("ARTISTA DESCONOCIDO", "UNKNOWN ARTIST");
+        M.put("COPIA DE SEGURIDAD", "BACKUP");
+        M.put("COPIA RESTAURADA", "BACKUP RESTORED");
+        M.put("Copia creada:", "Backup created:");
+        M.put("Crear una copia", "Create a backup");
+        M.put("Ese archivo no es una copia de Scratch o está dañado. No se ha cambiado nada.", "That file is not a Scratch backup or it is damaged. Nothing was changed.");
+        M.put("Guarda en un archivo tus listas, favoritas, estadísticas, nombres editados, letras guardadas y ajustes. La música no va incluida.", "Saves your playlists, favorites, stats, edited names, saved lyrics and settings in one file. Music is not included.");
+        M.put("La app se cerrará ahora. Vuelve a abrirla para ver tus datos.", "The app will close now. Open it again to see your data.");
+        M.put("NO SE PUDO RESTAURAR", "COULD NOT RESTORE");
+        M.put("No se pudo crear la copia", "Could not create the backup");
+        M.put("RESTAURAR LA COPIA", "RESTORE THE BACKUP");
+        M.put("RESTAURAR", "RESTORE");
+        M.put("Restaurar una copia", "Restore a backup");
+        M.put("SIN ÁLBUM", "NO ALBUM");
+        M.put("Se sustituirán tus listas, favoritas, estadísticas y ajustes por los de la copia. Después la app se cerrará; vuelve a abrirla.", "Your playlists, favorites, stats and settings will be replaced by the ones in the backup. Then the app will close; open it again.");
+        M.put("VARIOS ARTISTAS", "VARIOUS ARTISTS");
+        M.put("NUEVAS", "NEW");
+        M.put("SIN ESCUCHAR", "UNPLAYED");
+        M.put("ESTA SEMANA", "THIS WEEK");
+        M.put("REDESCUBRE", "REDISCOVER");
+        M.put("FAVORITAS OLVIDADAS", "FORGOTTEN FAVORITES");
+        M.put("Archivos de los últimos 30 días, lo más nuevo primero.", "Files from the last 30 days, newest first.");
+        M.put("Canciones que aún no has escuchado nunca.", "Songs you have never played.");
+        M.put("Lo que has escuchado en los últimos 7 días, lo más escuchado primero.", "What you played in the last 7 days, most played first.");
+        M.put("Canciones que escuchaste 3 veces o más y llevan 90 días sin sonar.", "Songs you played 3 times or more that haven't played in 90 days.");
+        M.put("Favoritas que llevan 60 días sin sonar.", "Favorites that haven't played in 60 days.");
     }
 }
