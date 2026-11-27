@@ -1,5 +1,14 @@
 # Pendiente (cosas por hacer)
 
+## Pantalla completa: tocar título, portada o artista para ir a su página (pedido el 2026-11-27)
+En el reproductor a pantalla completa (y lo mismo en Big Picture y la mini-barra si encaja):
+- **Tocar el título de la canción o la portada** → abre la página del **álbum** de esa canción, o la del **single** si es una canción suelta (álbum con una sola pista, sin álbum en las etiquetas o con el mismo nombre que la canción).
+- **Tocar el nombre del artista** → abre la página del **artista**: sus álbumes y singles, sus canciones y los datos que haya (nº de canciones, tiempo total, lo más escuchado según `Stats`).
+- **Todo local**, sin internet: sale solo de las etiquetas (ID3/FLAC/MP4) y de lo que ya agrupa `Groups.java` para las pestañas ARTISTAS y ÁLBUMES, más las ediciones de `TrackEdits`. Reutilizar esas pantallas en vez de hacer otras nuevas.
+- **Muchas canciones no traen metadatos.** Si no hay artista, se saca del nombre del archivo («Artista - Título.mp3», que es como están casi todas); si no hay álbum, la canción cuenta como single del artista. Si no se puede saber nada, el toque no hace nada (o avisa con un toast), nunca abre una página vacía.
+- Si un artista aparece escrito de varias formas («Estopa» / «ESTOPA» / «Estopa feat. …»), juntarlo con la misma normalización de `SmartSearch` y usar el primer artista en los «feat.».
+- Mantener el estilo de la app (`docs/ESTILO.md`), en `play` y `personal`, y traducir los textos nuevos en `TrEn`.
+
 ## Claude DJ con IA local (idea para el futuro, experimental)
 Pedido el 2026-11-25. Ahora no hay clave de la API, así que la idea es probarlo con una IA local en el PC (RTX 3060), no como función habitual: pedirle listas o que «pinche» hablando, con voz (texto a voz) y una animación, y que se pueda levantar con un comando de PowerShell. El móvil le pasaría la biblioteca (el mismo JSON de LISTAS CON CLAUDE) y recibiría las listas por la red local.
 
